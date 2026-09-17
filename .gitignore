@@ -1,0 +1,28 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python and JavaScript
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+dist/
+build/
+
+# Source and generated data
+data/raw/
+data/private/
+*.xlsx
+*.pptx
+*.pdf
+
+# Editor and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
