@@ -1,0 +1,97 @@
+"""Вопросы к decision-модели. Каждый ответ — отдельный интерпретируемый признак.
+
+Вопросы сформулированы на английском: так decision-модели отвечают точнее.
+Русские подписи используются в интерфейсе и объяснениях.
+"""
+
+MATURITY_LEVELS = [
+    "Basic research or concept only",
+    "Laboratory prototype or proof of concept",
+    "Pilot projects or first field trials",
+    "First commercial products with few customers",
+    "Growing market with several competing vendors",
+    "Mainstream, widely deployed and commoditized",
+]
+
+QUESTIONS = {
+    "specific_tech": {
+        "type": "noul",
+        "instructions": "Is the SUBJECT a specific technology or technical approach, rather than a broad research field, a generic buzzword, a company or a single product brand?",
+    },
+    "mass_adoption": {
+        "type": "noul",
+        "instructions": "Does the evidence show the SUBJECT is already widely deployed in production by many organizations (mass adoption)?",
+    },
+    "market_leaders": {
+        "type": "noul",
+        "instructions": "Does the evidence show an established market for the SUBJECT with clear dominant vendors and stable competition?",
+    },
+    "standard": {
+        "type": "noul",
+        "instructions": "Is the SUBJECT itself an established industry standard, protocol or regulation that is already in wide use?",
+    },
+    "early_stage": {
+        "type": "noul",
+        "instructions": "Does the evidence mostly describe research, prototypes, pilots or first deployments of the SUBJECT?",
+    },
+    "independent": {
+        "type": "noul",
+        "instructions": "Is the SUBJECT pursued by several independent organizations (different research groups, companies or regulators), not by a single company?",
+    },
+    "hype": {
+        "type": "noul",
+        "instructions": "Is the evidence about the SUBJECT dominated by marketing claims, press releases or promotional language without technical substance?",
+    },
+    "novelty": {
+        "type": "noul",
+        "instructions": "Is the SUBJECT presented in the evidence as new, emerging or recently proposed?",
+    },
+    "benefit": {
+        "type": "noul",
+        "instructions": "Does the evidence describe a concrete practical advantage of the SUBJECT, such as lower cost, higher accuracy or a new capability?",
+    },
+    "maturity": {
+        "type": "score",
+        "instructions": "What is the development stage of the SUBJECT according to the evidence?",
+        "criteria": MATURITY_LEVELS,
+    },
+}
+
+# Вопрос о релевантности зависит от запроса и в классификатор не входит: используется для ранжирования.
+def relevance_question(topic: str) -> dict:
+    return {
+        "type": "score",
+        "instructions": f"How relevant is the SUBJECT to the topic '{topic}'?",
+        "criteria": ["Unrelated", "Weakly related", "Related", "Core part of the topic"],
+    }
+
+
+QUESTION_RU = {
+    "specific_tech": "Конкретная технология, а не общая область",
+    "mass_adoption": "Массовое внедрение",
+    "market_leaders": "Сформированный рынок с лидерами",
+    "standard": "Действующий отраслевой стандарт",
+    "early_stage": "Ранняя стадия (исследования, пилоты)",
+    "independent": "Независимые участники",
+    "hype": "Маркетинговый шум",
+    "novelty": "Новизна",
+    "benefit": "Конкретное преимущество",
+    "maturity": "Зрелость (0 — исследование, 1 — мейнстрим)",
+    "relevance": "Релевантность запросу",
+}
+
+
+def build_state(subject: str, topic: str, evidence: list[dict], max_chars: int = 3500) -> str:
+    """Текст для decision-модели: предмет оценки и пронумерованные фрагменты доказательств."""
+    lines = [f"SUBJECT: {subject}"]
+    if topic:
+        lines.append(f"TOPIC OF INTEREST: {topic}")
+    lines.append("EVIDENCE:")
+    used = sum(len(x) for x in lines)
+    for i, e in enumerate(evidence, 1):
+        line = f"[{i}] ({e.get('type', '')}, {e.get('source', '')}, {e.get('date') or 'n.d.'}) {e.get('title', '')}. {e.get('snippet', '')[:420]}"
+        if used + len(line) > max_chars:
+            break
+        lines.append(line)
+        used += len(line)
+    return "\n".join(lines)

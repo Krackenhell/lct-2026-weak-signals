@@ -45,6 +45,8 @@ class HttpClient:
         self._cache_dir = Path(s.cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._ttl = s.cache_ttl_hours * 3600
+        # Поиск GitHub без токена: 10 запросов/мин, с токеном: 30 запросов/мин.
+        self._interval = {**HOST_INTERVAL, "api.github.com": 2.2 if s.github_token else 6.5}
         self.stats: dict[str, dict[str, int]] = {}
 
     async def close(self) -> None:
@@ -58,7 +60,7 @@ class HttpClient:
         return self._cache_dir / (hashlib.sha1(raw.encode()).hexdigest() + ".json")
 
     async def _throttle(self, host: str) -> None:
-        interval = HOST_INTERVAL.get(host, 0.0)
+        interval = self._interval.get(host, 0.0)
         if not interval:
             return
         lock = self._locks.setdefault(host, asyncio.Lock())
@@ -104,7 +106,7 @@ class HttpClient:
                 return data
             except (httpx.HTTPError, SourceError) as exc:
                 last_exc = exc
-                await asyncio.sleep(1.5 * (attempt + 1) + HOST_INTERVAL.get(host, 0))
+                await asyncio.sleep(1.5 * (attempt + 1) + self._interval.get(host, 0))
         self._bump(host, "failed")
         log.warning("source failed %s %s: %s", url, params, last_exc)
         raise SourceError(str(last_exc))
