@@ -32,6 +32,8 @@ def _filters(a: dict) -> tuple[str, str] | None:
     rel = _ans(a, "relevance", 0.6)
     if rel < 0.34:
         return "irrelevant", f"Слабо связано с темой запроса (оценка релевантности {rel:.2f} из 1)."
+    if _ans(a, "evidence_match", 1.0) < 0.4:
+        return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {_ans(a, 'evidence_match', 1.0):.0%}) — вероятно, это случайное сочетание слов."
     if _ans(a, "specific_tech") < 0.25:
         return "broad", "Это широкая область или общее понятие, а не конкретная технология — такие направления не являются слабыми сигналами."
     if _ans(a, "standard") >= 0.6:

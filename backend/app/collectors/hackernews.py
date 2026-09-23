@@ -1,4 +1,6 @@
 """Hacker News (Algolia API): обсуждения в инженерном сообществе — индикатор с пониженным доверием."""
+from urllib.parse import urlparse
+
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient
 
@@ -13,14 +15,16 @@ async def search(http: HttpClient, query: str, since_ts: int, n: int = 20) -> tu
     )
     docs = []
     for h in data.get("hits", []):
-        url = h.get("url") or f"https://news.ycombinator.com/item?id={h.get('objectID')}"
+        external = h.get("url")
+        url = external or f"https://news.ycombinator.com/item?id={h.get('objectID')}"
         docs.append(
             RawDoc(
                 url=url,
                 title=h.get("title") or "",
                 published=(h.get("created_at") or "")[:10] or None,
-                source_name="Hacker News",
-                source_type="community",
+                # Ссылка на внешнюю статью — это новость/публикация издания (доверие по домену), иначе — обсуждение.
+                source_name=(urlparse(external).netloc.removeprefix("www.") + " (через Hacker News)") if external else "Hacker News",
+                source_type="news" if external else "community",
                 language="en",
                 collector="hackernews",
                 extra={"points": h.get("points", 0), "discussion": f"https://news.ycombinator.com/item?id={h.get('objectID')}"},

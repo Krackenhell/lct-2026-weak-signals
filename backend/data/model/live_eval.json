@@ -1,0 +1,222 @@
+{
+ "runs": [
+  {
+   "domain": "Финтех",
+   "mode": "с базой отслеживания",
+   "run_id": 1,
+   "query": "перспективные решения в финтехе",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 407,
+   "n_signals": 15,
+   "confident_75": 15,
+   "new_candidates_in_top": 2,
+   "top": [
+    {
+     "rank": 1,
+     "name": "know your agent",
+     "name_ru": "Знай своего агента",
+     "p": 0.993,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 2,
+     "name": "injection attack liveness detection",
+     "name_ru": "инъекционные атаки для проверки подлинности личности",
+     "p": 0.995,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 3,
+     "name": "purpose bound money",
+     "name_ru": "Цельносвязанные деньги",
+     "p": 0.981,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 4,
+     "name": "HTTP 402 payments",
+     "name_ru": "HTTP 402 платежи",
+     "p": 0.984,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 5,
+     "name": "zero-knowledge KYC",
+     "name_ru": "Переиспользуемые ZK-верифицируемые credentials для KYC (zk-KYC)",
+     "p": 0.977,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 6,
+     "name": "agent payments protocol",
+     "name_ru": "агентские платежные протоколы",
+     "p": 0.967,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 7,
+     "name": "AI-native core banking",
+     "name_ru": "AI-насыщенная платформа ядра банковского дела",
+     "p": 0.935,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 8,
+     "name": "tokenized money market fund collateral",
+     "name_ru": "токенизированный денежный рынок фондов залога",
+     "p": 0.93,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 9,
+     "name": "tokenized deposits",
+     "name_ru": "токенизированные депозиты",
+     "p": 0.928,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 10,
+     "name": "agent payment authorization",
+     "name_ru": "агентская авторизация платежей",
+     "p": 0.923,
+     "origin": "discovered"
+    },
+    {
+     "rank": 11,
+     "name": "quantum tokens",
+     "name_ru": "Квантовые токены",
+     "p": 0.971,
+     "origin": "discovered"
+    },
+    {
+     "rank": 12,
+     "name": "post-quantum cryptography migration financial",
+     "name_ru": "миграция на постквантовую криптографию в финансовом секторе",
+     "p": 0.901,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 13,
+     "name": "voice AI agent debt collection",
+     "name_ru": "голосовой ИИ-агент для взыскания долгов",
+     "p": 0.87,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 14,
+     "name": "LLM trading agent benchmark",
+     "name_ru": "Бенчмарки и стресс-тесты LLM-агентов для трейдинга (в т.ч. состязательные рынки)",
+     "p": 0.995,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 15,
+     "name": "AI compliance agent KYC",
+     "name_ru": "агент искусственного интеллекта для комплаенс-контроля и KYC",
+     "p": 0.859,
+     "origin": "watchlist"
+    }
+   ],
+   "exclusions": {
+    "reserve": 5,
+    "hype": 1,
+    "low_probability": 13,
+    "mature": 5,
+    "broad": 6,
+    "irrelevant": 5
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 13,
+   "share_of_top15_from_dataset": 0.867,
+   "recall_of_domain": 0.765
+  },
+  {
+   "domain": "Финтех",
+   "mode": "только обнаружение",
+   "run_id": 2,
+   "query": "перспективные решения в финтехе",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 708,
+   "n_signals": 8,
+   "confident_75": 6,
+   "new_candidates_in_top": 8,
+   "top": [
+    {
+     "rank": 1,
+     "name": "decentralized credit scoring",
+     "name_ru": "децентрализованная система оценки кредитоспособности",
+     "p": 0.967,
+     "origin": "discovered"
+    },
+    {
+     "rank": 2,
+     "name": "real-time dynamic protection",
+     "name_ru": "реальная временная динамическая защита",
+     "p": 0.98,
+     "origin": "discovered"
+    },
+    {
+     "rank": 3,
+     "name": "quantum-tokens",
+     "name_ru": "Квантовые токены",
+     "p": 0.951,
+     "origin": "discovered"
+    },
+    {
+     "rank": 4,
+     "name": "ai-powered oracles",
+     "name_ru": "AI-питаемые оракулы",
+     "p": 0.94,
+     "origin": "discovered"
+    },
+    {
+     "rank": 5,
+     "name": "agent-commerce-security",
+     "name_ru": "агент-коммерция-безопасность",
+     "p": 0.762,
+     "origin": "discovered"
+    },
+    {
+     "rank": 6,
+     "name": "face-morphing-attacks",
+     "name_ru": "Атаки методом морфинга лица",
+     "p": 0.765,
+     "origin": "discovered"
+    },
+    {
+     "rank": 7,
+     "name": "physical unclonable functions",
+     "name_ru": "Физически неуникальные функции",
+     "p": 0.737,
+     "origin": "discovered"
+    },
+    {
+     "rank": 8,
+     "name": "quantum-safe cryptography",
+     "name_ru": "квантово-защищённая криптография",
+     "p": 0.556,
+     "origin": "discovered"
+    }
+   ],
+   "exclusions": {
+    "mature": 9,
+    "broad": 5,
+    "low_probability": 14,
+    "low_evidence": 9,
+    "irrelevant": 5
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 1,
+   "share_of_top15_from_dataset": 0.125,
+   "recall_of_domain": 0.059
+  }
+ ]
+}

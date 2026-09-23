@@ -57,6 +57,14 @@ QUESTIONS = {
     },
 }
 
+# Проверка, что доказательства действительно про предмет, а не про созвучные слова.
+# В классификатор не входит (при обучении предмет задан точно), используется как фильтр.
+EVIDENCE_MATCH = {
+    "type": "noul",
+    "instructions": "Do the EVIDENCE items actually discuss the SUBJECT as a technology (not just contain similar words)?",
+}
+
+
 # Вопрос о релевантности зависит от запроса и в классификатор не входит: используется для ранжирования.
 def relevance_question(topic: str) -> dict:
     return {
@@ -78,6 +86,7 @@ QUESTION_RU = {
     "benefit": "Конкретное преимущество",
     "maturity": "Зрелость (0 — исследование, 1 — мейнстрим)",
     "relevance": "Релевантность запросу",
+    "evidence_match": "Источники действительно про эту технологию",
 }
 
 

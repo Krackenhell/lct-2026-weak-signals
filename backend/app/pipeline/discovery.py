@@ -13,7 +13,9 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 from pathlib import Path
 
-from app.collectors import arxiv, gdelt, habr, openalex
+import time
+
+from app.collectors import arxiv, gdelt, habr, hackernews, openalex
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -56,9 +58,16 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
     from_date = (today - timedelta(days=int(365 * 2.5))).isoformat()
     subs = plan.get("subqueries", [])[:12]
     tasks = []
+    since_ts = int(time.time()) - 365 * 86400
+
+    async def hn_docs(q):
+        docs, _ = await hackernews.search(http, q, since_ts, 20)
+        return docs
+
     for sq in subs:
         tasks.append(arxiv.search(http, sq, 20))
         tasks.append(openalex.search(http, sq, from_date, 20))
+        tasks.append(hn_docs(sq))  # ссылки на свежие статьи отраслевых изданий о стартапах и продуктах
     tasks.append(gdelt.search(http, plan.get("topic_en", subs[0] if subs else ""), "6m", 30))
     for ru in plan.get("ru_terms", [])[:3]:
         tasks.append(gdelt.search(http, ru, "12m", 25, lang="russian"))
