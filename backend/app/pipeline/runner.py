@@ -94,7 +94,11 @@ async def execute(run_id: int) -> None:
         # Предварительный отбор: сначала подтверждённые несколькими документами/методами.
         # Сигналы из базы отслеживания получают зарезервированные места (до 20), остальное — новые кандидаты.
         watched = [c for c in pool if "watchlist" in c["methods"]][:20]
-        fresh = sorted((c for c in pool if "watchlist" not in c["methods"]), key=lambda c: -(len(c["doc_idx"]) + 2 * c["support"]))
+        # Кандидаты, извлечённые LLM из текстов, приоритетнее статистических фраз.
+        fresh = sorted(
+            (c for c in pool if "watchlist" not in c["methods"]),
+            key=lambda c: (-("llm-extraction" in c["methods"]), -(len(c["doc_idx"]) + 2 * c["support"])),
+        )
         pool = watched + fresh[: max(s.max_candidates - len(watched), 0)]
         ctx.run.stats = {**ctx.run.stats, "corpus_docs": len(corpus), "raw_candidates": len(extracted) + len(mined) + len(watch)}
         ctx.stage(f"Проверка {len(pool)} кандидатов по открытым источникам", 32)

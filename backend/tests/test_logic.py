@@ -95,3 +95,12 @@ def test_decide_filters_and_ranking():
     assert status["offtopic"][1] == "irrelevant"
     assert status["thin"][1] == "low_evidence"
     assert status["unlikely"][1] == "low_probability"
+
+
+def test_salvage_broken_llm_json():
+    from app.llm.tasks import _salvage_candidates
+
+    text = '[\n"{\n"name_en": "tokenized deposits",\n"name_ru": "токенизированные депозиты",\n"docs": [\n0, 3\n]\n}\n,\n"{\n"name_en": "zk KYC",\n"name_ru": "zk-KYC",\n"docs": [1]\n}"]'
+    out = _salvage_candidates(text)
+    assert [c["name_en"] for c in out] == ["tokenized deposits", "zk KYC"]
+    assert out[0]["docs"] == [0, 3]

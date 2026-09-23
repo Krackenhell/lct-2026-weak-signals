@@ -32,7 +32,7 @@ def _filters(a: dict) -> tuple[str, str] | None:
     rel = _ans(a, "relevance", 0.6)
     if rel < 0.34:
         return "irrelevant", f"Слабо связано с темой запроса (оценка релевантности {rel:.2f} из 1)."
-    if _ans(a, "specific_tech") < 0.35:
+    if _ans(a, "specific_tech") < 0.25:
         return "broad", "Это широкая область или общее понятие, а не конкретная технология — такие направления не являются слабыми сигналами."
     if _ans(a, "standard") >= 0.6:
         return "standard", f"Decision-модель оценивает вероятность того, что это действующий стандарт или протокол, в {_ans(a, 'standard'):.0%}."
@@ -49,7 +49,7 @@ def _filters(a: dict) -> tuple[str, str] | None:
         mature_reasons.append(f"более {works:,.0f} научных работ".replace(",", " "))
     if mature_reasons:
         return "mature", "Зрелая технология: " + "; ".join(mature_reasons) + "."
-    if _ans(a, "hype") >= 0.6 and f.get("share_science", 0) < 0.3:
+    if _ans(a, "hype") >= 0.75 and f.get("share_science", 0) < 0.2:
         return "hype", f"Доказательства состоят в основном из рекламных материалов (оценка шума {_ans(a, 'hype'):.0%}), научных подтверждений мало."
     docs = a["ev"].docs
     if len(docs) < 3:

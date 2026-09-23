@@ -45,9 +45,11 @@ def fallback_plan(query: str) -> dict:
 async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
     prompt = (
         f"Запрос аналитика: «{query}».\n"
-        "Сформируй план поиска ранних технологических сигналов в научных и отраслевых источниках. "
+        "Сформируй план поиска РАННИХ технологических сигналов (новые технические подходы последних 1-2 лет) в научных и отраслевых источниках. "
+        "Не включай зрелые общие темы вроде «AI in banking», «blockchain», «biometrics», «machine learning». "
         "Верни JSON: {\"topic_en\": краткое название области на английском, "
-        "\"subqueries\": 10 англоязычных поисковых фраз по 2-4 слова, покрывающих разные подобласти и новые подходы, "
+        "\"subqueries\": 10 англоязычных поисковых фраз по 2-4 слова, каждая — узкое новое направление внутри области "
+        "(например для финтеха: «agentic payments», «tokenized deposits», «zero-knowledge KYC»), "
         "\"ru_terms\": 3 русскоязычные поисковые фразы}. Не называй конкретные компании."
     )
     res = await llm.complete(SYSTEM_ANALYST, prompt, temperature=0.3, max_tokens=600)
@@ -74,6 +76,8 @@ async def extract_candidates(llm: BaseLLM, topic: str, docs: list[dict]) -> tupl
     )
     res = await llm.complete(SYSTEM_ANALYST, prompt, temperature=0.1, max_tokens=1500)
     data = parse_json(res.text) if res.ok else None
+    if not (isinstance(data, list) and all(isinstance(c, dict) for c in data)):
+        data = _salvage_candidates(res.text)
     out = []
     if isinstance(data, list):
         for c in data:
@@ -82,6 +86,16 @@ async def extract_candidates(llm: BaseLLM, topic: str, docs: list[dict]) -> tupl
             ids = [i for i in c.get("docs", []) if isinstance(i, int) and 0 <= i < len(docs)]
             out.append({"name_en": str(c["name_en"]).strip(), "name_ru": str(c.get("name_ru") or "").strip(), "doc_idx": ids})
     return out, res
+
+
+def _salvage_candidates(text: str) -> list[dict]:
+    """Разбор «почти JSON», который иногда возвращают LLM: достаём поля регулярными выражениями."""
+    out = []
+    pattern = r'name_en\W+([^"\n]+?)\s*"\s*,\s*"?\s*name_ru\W+([^"\n]*?)\s*"(.*?)(?=name_en|\Z)'
+    for m in re.finditer(pattern, text or "", flags=re.S):
+        docs = [int(x) for x in re.findall(r"\d+", (re.search(r"docs\W*\[([^\]]*)\]", m.group(3)) or [None, ""])[1])]
+        out.append({"name_en": m.group(1).strip(), "name_ru": m.group(2).strip(), "docs": docs})
+    return out
 
 
 async def write_dossier(llm: BaseLLM, query: str, name: str, evidence: list[dict], facts: dict) -> tuple[dict | None, LLMResult]:

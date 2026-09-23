@@ -46,7 +46,8 @@ class BaseLLM:
                     return LLMResult(text, self.provider, self.model, int((time.perf_counter() - t) * 1000))
                 except (httpx.HTTPError, KeyError, ValueError) as exc:
                     last = str(exc)
-                    await asyncio.sleep(2 * (attempt + 1))
+                    rate_limited = isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429
+                    await asyncio.sleep((6 if rate_limited else 2) * (attempt + 1))
         return LLMResult("", self.provider, self.model, int((time.perf_counter() - t) * 1000), ok=False, error=last)
 
 
@@ -54,7 +55,7 @@ class GigaChat(BaseLLM):
     provider = "gigachat"
 
     def __init__(self) -> None:
-        super().__init__(concurrency=3)
+        super().__init__(concurrency=1)  # бесплатный тариф: один поток запросов
         s = get_settings()
         self.model = s.gigachat_model
         self._auth_key = s.gigachat_auth_key
