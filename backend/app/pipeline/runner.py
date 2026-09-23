@@ -92,8 +92,10 @@ async def execute(run_id: int) -> None:
         watch = discovery.watchlist(query, plan)
         pool = discovery.merge(extracted + mined + watch)
         # Предварительный отбор: сначала подтверждённые несколькими документами/методами.
-        pool.sort(key=lambda c: (-(len(c["doc_idx"]) + 2 * c["support"] + (3 if "watchlist" in c["methods"] else 0))))
-        pool = pool[: s.max_candidates]
+        # Сигналы из базы отслеживания получают зарезервированные места (до 20), остальное — новые кандидаты.
+        watched = [c for c in pool if "watchlist" in c["methods"]][:20]
+        fresh = sorted((c for c in pool if "watchlist" not in c["methods"]), key=lambda c: -(len(c["doc_idx"]) + 2 * c["support"]))
+        pool = watched + fresh[: max(s.max_candidates - len(watched), 0)]
         ctx.run.stats = {**ctx.run.stats, "corpus_docs": len(corpus), "raw_candidates": len(extracted) + len(mined) + len(watch)}
         ctx.stage(f"Проверка {len(pool)} кандидатов по открытым источникам", 32)
 
@@ -104,10 +106,21 @@ async def execute(run_id: int) -> None:
 
         async def assess(c: dict) -> dict:
             nonlocal done
-            ev = await evidence_mod.gather(http, c["name_en"], date.today(), with_news=True, with_repos=True)
+            with_repos = bool(s.github_token)  # без токена лимит GitHub слишком мал для топ-репозиториев
+            ev = await evidence_mod.gather(http, c["name_en"], date.today(), with_news=True, with_repos=with_repos)
+            for alt in c.get("alt_terms", []):
+                if len(ev.docs) >= 5:
+                    break
+                alt_ev = await evidence_mod.gather(http, alt, date.today(), with_news=True, with_repos=with_repos)
+                if len(alt_ev.docs) > len(ev.docs):
+                    ev = alt_ev
             numeric = numeric_features(ev)  # до добавления документов корпуса — как при обучении
             corpus_docs = [corpus[i] for i in c["doc_idx"][:6]]
-            ev.docs = evidence_mod._dedupe(corpus_docs + ev.docs)
+            dataset_docs = [
+                RawDoc(url=w["url"], title=w["title"], source_name="Датасет организатора: ссылка на первоисточник", source_type="dataset", collector="dataset")
+                for w in c.get("watch_sources", [])
+            ]
+            ev.docs = evidence_mod._dedupe(corpus_docs + ev.docs + dataset_docs)
             items = evidence_mod.evidence_items(ev)
             state = build_state(c["name_en"], topic, items)
             res = await dm.ask(state, questions)

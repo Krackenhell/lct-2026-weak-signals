@@ -23,7 +23,10 @@ from app.llm.tasks import extract_candidates
 STOP = set(
     "a an the of for and or in on to with by from via as at is are be this that these those we our its their using based towards toward "
     "into over under new novel approach approaches method methods study analysis framework system systems model models results paper "
-    "survey review case towards large scale efficient effective improved improving learning data use via than more less".split()
+    "survey review case towards large scale efficient effective improved improving learning data use via than more less "
+    "has have had been being become becomes became emerged emerging is was were can could will would may might should "
+    "rapid growing role impact key current future recent various different traditional potential significant "
+    "evolution landscape industry sector literature systematic activities transactions institutions services price".split()
 )
 GENERIC = {
     "artificial intelligence", "machine learning", "deep learning", "neural network", "neural networks", "large language model",
@@ -193,5 +196,8 @@ def watchlist(query: str, plan: dict) -> list[dict]:
         phrase = terms[str(it["id"])][0]
         overlap = words & set(re.findall(r"[a-z]{4,}", phrase.lower()))
         if it["domain"] in domains or len(overlap) >= 2:
-            out.append({"name_en": phrase, "name_ru": it["name"], "doc_idx": [], "method": "watchlist", "watch_id": it["id"], "watch_sources": it["sources"]})
+            out.append({
+                "name_en": phrase, "name_ru": it["name"], "doc_idx": [], "method": "watchlist", "watch_id": it["id"],
+                "alt_terms": terms[str(it["id"])][1:], "watch_sources": it["sources"],
+            })
     return out

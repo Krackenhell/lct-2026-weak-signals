@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
     # Пайплайн
     top_k: int = 15
-    max_candidates: int = 45
+    max_candidates: int = 50
     confident_threshold: float = 0.75
     use_watchlist: bool = True
 

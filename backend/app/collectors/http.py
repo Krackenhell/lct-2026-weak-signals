@@ -34,6 +34,10 @@ class SourceError(Exception):
     pass
 
 
+class NotFound(SourceError):
+    pass
+
+
 class HttpClient:
     def __init__(self) -> None:
         s = get_settings()
@@ -48,6 +52,9 @@ class HttpClient:
         # Поиск GitHub без токена: 10 запросов/мин, с токеном: 30 запросов/мин.
         self._interval = {**HOST_INTERVAL, "api.github.com": 2.2 if s.github_token else 6.5}
         self.stats: dict[str, dict[str, int]] = {}
+        # Предохранитель: после 3 неудач подряд источник пропускается до конца запроса,
+        # чтобы недоступный сервис не съедал время обработки.
+        self._fails: dict[str, int] = {}
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -85,6 +92,9 @@ class HttpClient:
             self._bump(host, "cached")
             return json.loads(path.read_text(encoding="utf-8"))
 
+        if self._fails.get(host, 0) >= 3:
+            self._bump(host, "failed")
+            raise SourceError(f"{host} временно отключён после серии сбоев")
         last_exc: Exception | None = None
         for attempt in range(retries):
             await self._throttle(host)
@@ -97,7 +107,10 @@ class HttpClient:
                     raise SourceError("rate limit, waited for reset")
                 if resp.status_code == 429 or resp.status_code >= 500:
                     raise SourceError(f"HTTP {resp.status_code}")
-                resp.raise_for_status()
+                if resp.status_code >= 400:
+                    # Ошибка запроса (например, 404): источник исправен, повторять бессмысленно.
+                    self._bump(host, "failed")
+                    raise NotFound(f"HTTP {resp.status_code}")
                 if as_json:
                     try:
                         data = resp.json()
@@ -108,10 +121,14 @@ class HttpClient:
                 if cache:
                     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
                 self._bump(host, "ok")
+                self._fails[host] = 0
                 return data
+            except NotFound:
+                raise
             except (httpx.HTTPError, SourceError) as exc:
                 last_exc = exc
                 await asyncio.sleep(1.5 * (attempt + 1) + self._interval.get(host, 0))
         self._bump(host, "failed")
+        self._fails[host] = self._fails.get(host, 0) + 1
         log.warning("source failed %s %s: %s", url, params, last_exc)
         raise SourceError(str(last_exc))
