@@ -71,7 +71,7 @@ PRODUCT_NAME = {
 
 IS_TECHNOLOGY = {
     "type": "noul",
-    "instructions": "Is the SUBJECT a technology, technique or technical approach, as opposed to a book, document, code repository, dataset, organization, market phenomenon or policy topic?",
+    "instructions": "Is the SUBJECT an innovation — a technology, technical approach, or a new type of product, financial instrument or service model that several organizations could offer — as opposed to a book, document, code repository, dataset, a single organization, or a general market phenomenon or policy topic?",
 }
 
 
@@ -98,7 +98,7 @@ QUESTION_RU = {
     "relevance": "Релевантность запросу",
     "evidence_match": "Источники действительно про эту технологию",
     "product_name": "Название конкретного продукта / компании",
-    "is_technology": "Это технология (а не документ, явление, организация)",
+    "is_technology": "Это инновация (а не документ, явление, организация)",
 }
 
 

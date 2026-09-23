@@ -3,252 +3,122 @@
   {
    "domain": "Финтех",
    "mode": "с базой отслеживания",
-   "run_id": 6,
+   "run_id": 9,
    "query": "перспективные решения в финтехе",
    "status": "done",
    "options": {
     "use_watchlist": true,
     "eval": true
    },
-   "seconds": 557,
-   "n_signals": 15,
-   "confident_75": 15,
-   "new_candidates_in_top": 2,
+   "seconds": 243,
+   "n_signals": 13,
+   "confident_75": 12,
+   "new_candidates_in_top": 4,
    "top": [
     {
      "rank": 1,
      "name": "know your agent",
      "name_ru": "Знай своего агента",
-     "p": 0.991,
+     "p": 0.994,
      "origin": "watchlist"
     },
     {
      "rank": 2,
-     "name": "injection attack liveness detection",
-     "name_ru": "инъекционные атаки для проверки подлинности (liveness detection)",
-     "p": 0.996,
+     "name": "purpose bound money",
+     "name_ru": "Цельносвязанные деньги",
+     "p": 0.982,
      "origin": "watchlist"
     },
     {
      "rank": 3,
-     "name": "purpose bound money",
-     "name_ru": "Цельносвязанные деньги",
-     "p": 0.983,
+     "name": "injection attack liveness detection",
+     "name_ru": "инъекционные атаки для проверки подлинности пользователя",
+     "p": 0.996,
      "origin": "watchlist"
     },
     {
      "rank": 4,
-     "name": "HTTP 402 payments",
-     "name_ru": "HTTP 402 платежи",
-     "p": 0.983,
+     "name": "zero-knowledge KYC",
+     "name_ru": "нулевое знание KYC",
+     "p": 0.981,
      "origin": "watchlist"
     },
     {
      "rank": 5,
-     "name": "zero-knowledge KYC",
-     "name_ru": "нулевое знание при аутентификации (zero-knowledge KYC)",
-     "p": 0.981,
+     "name": "HTTP 402 payments",
+     "name_ru": "HTTP 402 платежей",
+     "p": 0.98,
      "origin": "watchlist"
     },
     {
      "rank": 6,
      "name": "agent payments protocol",
      "name_ru": "агентский платёжный протокол",
-     "p": 0.965,
+     "p": 0.962,
      "origin": "watchlist"
     },
     {
      "rank": 7,
-     "name": "agent-payment-repro",
-     "name_ru": "агентная репроцессинговая платежная технология",
-     "p": 1.0,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "tokenized deposits",
-     "name_ru": "токенизированные депозиты",
-     "p": 0.946,
+     "name": "AI-native core banking",
+     "name_ru": "AI-настольная банковская платформа",
+     "p": 0.927,
      "origin": "watchlist"
     },
     {
+     "rank": 8,
+     "name": "leveraged looping",
+     "name_ru": "Усиленный цикл",
+     "p": 0.981,
+     "origin": "discovered"
+    },
+    {
      "rank": 9,
-     "name": "AI-native core banking",
-     "name_ru": "AI-настольная банковская платформа",
-     "p": 0.934,
+     "name": "voice AI agent debt collection",
+     "name_ru": "голосовой ИИ-агент для взыскания долгов",
+     "p": 0.869,
      "origin": "watchlist"
     },
     {
      "rank": 10,
-     "name": "agentic ai governance",
-     "name_ru": "управление агентными ai-системами",
-     "p": 0.986,
-     "origin": "discovered"
+     "name": "on-chain credit scoring",
+     "name_ru": "On-Chain Credit Scoring",
+     "p": 0.839,
+     "origin": "watchlist"
     },
     {
      "rank": 11,
-     "name": "voice AI agent debt collection",
-     "name_ru": "голосовой ИИ-агент для взыскания долгов",
-     "p": 0.876,
-     "origin": "watchlist"
+     "name": "pre-deployment assurance",
+     "name_ru": "Обеспечение готовности к развертыванию",
+     "p": 0.96,
+     "origin": "discovered"
     },
     {
      "rank": 12,
-     "name": "post-quantum cryptography migration financial",
-     "name_ru": "миграция на постквантовую криптографию в финансовом секторе",
-     "p": 0.903,
-     "origin": "watchlist"
+     "name": "data agents",
+     "name_ru": "агенты данных",
+     "p": 0.766,
+     "origin": "discovered"
     },
     {
      "rank": 13,
-     "name": "AI compliance agent KYC",
-     "name_ru": "агент искусственного интеллекта для комплаенс-контроля и проверки KYC",
-     "p": 0.877,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 14,
-     "name": "LLM trading agent benchmark",
-     "name_ru": "агент торговли на основе LLM",
-     "p": 0.994,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 15,
-     "name": "tokenized money market fund collateral",
-     "name_ru": "токенизированный денежный рынок фондов обеспечения",
-     "p": 0.827,
-     "origin": "watchlist"
+     "name": "agentic ai",
+     "name_ru": "Agentic AI",
+     "p": 0.635,
+     "origin": "discovered"
     }
    ],
    "exclusions": {
-    "reserve": 12,
+    "not_technology": 22,
     "hype": 1,
-    "mature": 3,
-    "broad": 2,
+    "mature": 2,
+    "low_evidence": 3,
     "low_probability": 5,
-    "low_evidence": 5,
-    "product": 3,
     "irrelevant": 4
    },
    "dataset_signals_in_domain": 17,
-   "dataset_hits_in_top15": 13,
-   "share_of_top15_from_dataset": 0.867,
-   "recall_of_domain": 0.765
-  },
-  {
-   "domain": "Финтех",
-   "mode": "только обнаружение",
-   "run_id": 7,
-   "query": "перспективные решения в финтехе",
-   "status": "done",
-   "options": {
-    "use_watchlist": false,
-    "eval": true
-   },
-   "seconds": 367,
-   "n_signals": 12,
-   "confident_75": 7,
-   "new_candidates_in_top": 12,
-   "top": [
-    {
-     "rank": 1,
-     "name": "agentic payments",
-     "name_ru": "агентские платежи",
-     "p": 0.974,
-     "origin": "discovered"
-    },
-    {
-     "rank": 2,
-     "name": "agent-payment-repro",
-     "name_ru": "агентская технология воспроизведения платежей",
-     "p": 1.0,
-     "origin": "discovered"
-    },
-    {
-     "rank": 3,
-     "name": "fintech engineering handbook",
-     "name_ru": "Финтех-инжиниринг",
-     "p": 0.999,
-     "origin": "discovered"
-    },
-    {
-     "rank": 4,
-     "name": "agentic ai governance",
-     "name_ru": "агентик ай ай госсайн",
-     "p": 0.986,
-     "origin": "discovered"
-    },
-    {
-     "rank": 5,
-     "name": "pre-deployment assurance",
-     "name_ru": "Предразвертывающая гарантия",
-     "p": 0.967,
-     "origin": "discovered"
-    },
-    {
-     "rank": 6,
-     "name": "biometric payment",
-     "name_ru": "Биометрические платежные системы",
-     "p": 0.8,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "bi-lstm hybrid network",
-     "name_ru": "би-лстм гибридная сеть",
-     "p": 0.862,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "real-world asset tokenization",
-     "name_ru": "токенизация реальных активов",
-     "p": 0.694,
-     "origin": "discovered"
-    },
-    {
-     "rank": 9,
-     "name": "stablecoin contagion",
-     "name_ru": "Распространение нестабильности стейблкоинов",
-     "p": 0.638,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "ai-driven payment security",
-     "name_ru": "AI-проведенная безопасность платежей",
-     "p": 0.628,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "asset-backed stablecoins",
-     "name_ru": "активно обеспеченные стейблкоины",
-     "p": 0.533,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "ai-enabled risk management",
-     "name_ru": "AI-управляемое управление рисками",
-     "p": 0.616,
-     "origin": "discovered"
-    }
-   ],
-   "exclusions": {
-    "mature": 8,
-    "broad": 4,
-    "low_probability": 6,
-    "low_evidence": 9,
-    "standard": 1,
-    "irrelevant": 7,
-    "product": 3
-   },
-   "dataset_signals_in_domain": 17,
-   "dataset_hits_in_top15": 1,
-   "share_of_top15_from_dataset": 0.083,
-   "recall_of_domain": 0.059
+   "dataset_hits_in_top15": 9,
+   "share_of_top15_from_dataset": 0.692,
+   "recall_of_domain": 0.529
   }
  ]
 }
