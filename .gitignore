@@ -26,3 +26,7 @@ data/private/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local runtime data
+backend/data/cache/
+backend/data/local.db
