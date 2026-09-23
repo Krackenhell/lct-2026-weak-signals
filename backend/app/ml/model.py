@@ -51,6 +51,7 @@ class SignalModel:
                 "label": FEATURE_RU.get(f, f),
                 "value": round(x.get(f, m), 3),
                 "contribution": round(c * v, 3),
+                "level": "высокое" if v > 0.25 else "низкое" if v < -0.25 else "среднее",
             }
             for f, m, c, v in zip(self.features, self.mean, self.coef, z)
         ]

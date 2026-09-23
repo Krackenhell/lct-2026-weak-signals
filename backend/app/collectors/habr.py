@@ -1,6 +1,5 @@
 """Хабр (RSS поиска): русскоязычное профессиональное IT-сообщество, в т.ч. корпоративные блоги компаний."""
 import re
-from datetime import datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote
 

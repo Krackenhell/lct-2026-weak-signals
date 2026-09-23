@@ -7,7 +7,6 @@
 import math
 
 from app.ml.model import SignalModel
-from app.pipeline.features import FEATURE_RU
 from app.pipeline.trust import classify
 
 EXCLUSION_RU = {
@@ -73,7 +72,7 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
             d.update(status="excluded", code=flt[0], reason=flt[1])
         elif a["prob"] is not None and a["prob"] < 0.5:
             neg = [c for c in contrib if c["contribution"] < 0][:3]
-            why = "; ".join(f"{c['label'].lower()} = {c['value']}" for c in neg)
+            why = "; ".join(f"{c['label'].lower()} — {c.get('level', '')} значение ({c['value']})" for c in neg)
             d.update(status="excluded", code="low_probability", reason=f"Модель оценивает вероятность слабого сигнала в {a['prob']:.0%}. Основные факторы против: {why}.")
         else:
             d.update(status="signal")
@@ -105,8 +104,8 @@ def template_dossier(a: dict, d: dict) -> dict:
         parts.append(f"за 12 месяцев создано ~{int(math.expm1(f['log_gh_repos_12m']))} репозиториев GitHub")
     stage = a["res"].answers.get("maturity", {}).get("value")
     contrib = d.get("contributions", [])
-    pos = [c["label"] for c in contrib if c["contribution"] > 0][:3]
-    neg = [c["label"] for c in contrib if c["contribution"] < 0][:2]
+    pos = [f"{c['label']} — {c.get('level', '')} значение" for c in contrib if c["contribution"] > 0][:3]
+    neg = [f"{c['label']} — {c.get('level', '')} значение" for c in contrib if c["contribution"] < 0][:2]
     conf = ""
     if a["prob"] is not None:
         conf = f"Уверенность модели {a['prob']:.0%}. Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}."

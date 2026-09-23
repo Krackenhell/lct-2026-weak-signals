@@ -1,5 +1,4 @@
 """Задачи для LLM с жёсткой привязкой к найденным документам, и шаблонные запасные варианты."""
-import json
 import re
 
 from app.llm.providers import BaseLLM, LLMResult, parse_json
@@ -99,19 +98,20 @@ def _salvage_candidates(text: str) -> list[dict]:
     return out
 
 
-async def write_dossier(llm: BaseLLM, query: str, name: str, evidence: list[dict], facts: dict) -> tuple[dict | None, LLMResult]:
+async def write_dossier(llm: BaseLLM, query: str, name: str, evidence: list[dict], facts: list[str]) -> tuple[dict | None, LLMResult]:
     listing = "\n".join(
         f"[{i + 1}] ({e['type']}, {e['source']}, {e.get('date') or 'без даты'}) {e['title']}. {e.get('snippet', '')[:500]}" for i, e in enumerate(evidence)
     )
     prompt = (
         f"Запрос аналитика: «{query}». Технология: «{name}».\n"
-        f"Наблюдаемые показатели: {json.dumps(facts, ensure_ascii=False)}\n"
+        "Наблюдаемые показатели (используй как есть, не пересчитывай):\n- " + "\n- ".join(facts) + "\n"
         f"Документы:\n{listing}\n\n"
         "Подготовь аналитическую справку на русском языке ТОЛЬКО по этим документам, со ссылками вида [n] на номера документов. "
         "Верни JSON: {\"name_ru\": название технологии на русском, "
         "\"description\": что это за технология (2-3 предложения), "
         "\"advantage\": потенциальное преимущество (1-2 предложения), "
-        "\"case_example\": конкретный пример применения или пилота из документов с указанием организации [n], "
+        "\"case_example\": конкретный пример применения или пилота, описанный в документах, с указанием организации [n]; "
+        "не придумывай организации и события — если конкретного примера в документах нет, напиши «В найденных документах описаны только исследовательские прототипы» и укажи [n], "
         "\"bank_application\": как это может применить банк или его клиенты (1-2 предложения, пометь как гипотезу), "
         "\"why_weak_signal\": почему это ранний сигнал, а не зрелый тренд (2-3 предложения с опорой на показатели и документы), "
         "\"risks\": что может помешать развитию (1 предложение)}."

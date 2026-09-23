@@ -182,12 +182,14 @@ async def execute(run_id: int) -> None:
 
         async def dossier(cand: Candidate):
             a = by_name[cand.name]
-            facts = {
-                "публикаций_всего": round(2.718 ** cand.features.get("log_total_works", 0) - 1),
-                "доля_публикаций_за_3_года": round(cand.features.get("recent_share", 0), 2),
-                "статья_в_википедии": bool(cand.features.get("wiki_exists")),
-                "вероятность_слабого_сигнала": round(cand.probability or 0, 2),
-            }
+            f = cand.features
+            total = round(2.718281828 ** f.get("log_total_works", 0) - 1)
+            facts = [
+                f"Научных работ с этим термином за всё время: {total}; из них за последние 3 года: {f.get('recent_share', 0):.0%}.",
+                f"Тема заметна в литературе около {f.get('age_years', 0):.0f} лет." if f.get("age_years") else "Устойчивой истории публикаций нет — тема новая.",
+                "Статья в англоязычной Википедии есть." if f.get("wiki_exists") else "Статьи в англоязычной Википедии нет.",
+                f"Модель оценивает вероятность того, что это слабый сигнал, в {cand.probability or 0:.0%} (это {'высокая' if (cand.probability or 0) >= 0.75 else 'средняя'} уверенность).",
+            ]
             data, res = await write_dossier(llm, query, cand.name, a["items"][:10], facts)
             return cand, data, res
 
