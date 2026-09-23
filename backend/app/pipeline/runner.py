@@ -119,6 +119,13 @@ async def execute(run_id: int) -> None:
                 if len(alt_ev.docs) > len(ev.docs):
                     ev = alt_ev
             numeric = numeric_features(ev)  # до добавления документов корпуса — как при обучении
+            missing = []
+            if "openalex" in ev.failed and model:
+                # Нет данных о публикациях: нейтральные значения (средние обучающей выборки) вместо нулей,
+                # иначе зрелая технология выглядела бы «молодой».
+                for k in ("log_total_works", "recent_share", "growth", "age_years"):
+                    numeric[k] = model.mean[model.features.index(k)]
+                missing.append("openalex")
             corpus_docs = [corpus[i] for i in c["doc_idx"][:6]]
             dataset_docs = [
                 RawDoc(url=w["url"], title=w["title"], source_name="Датасет организатора: ссылка на первоисточник", source_type="dataset", collector="dataset")
@@ -132,7 +139,7 @@ async def execute(run_id: int) -> None:
             prob = model.predict(feats) if model else None
             done += 1
             ctx.stage(f"Проверка кандидатов: {done}/{len(pool)} — «{c['name_en']}»", 32 + int(48 * done / len(pool)))
-            return {"c": c, "ev": ev, "items": items, "state": state, "res": res, "features": feats, "prob": prob}
+            return {"c": c, "ev": ev, "items": items, "state": state, "res": res, "features": feats, "prob": prob, "missing": missing}
 
         sem = asyncio.Semaphore(6)
 

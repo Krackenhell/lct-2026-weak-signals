@@ -12,7 +12,6 @@ from datetime import date, datetime, timedelta, timezone
 from app.collectors import arxiv, gdelt, github, hackernews, openalex, wikipedia
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
-from app.config import get_settings
 
 log = logging.getLogger(__name__)
 
@@ -41,13 +40,14 @@ async def _safe(name: str, coro, default, failed: list[str]):
 def search_phrase(name: str) -> str:
     """Поисковая фраза из названия: без скобок, кавычек и лишних слов (точный поиск по фразе)."""
     s = re.sub(r"\(.*?\)|\[.*?\]|[\"«»“”]", " ", name)
-    s = re.split(r"[:;/]| - | — ", s)[0]
+    s = re.split(r"[:;/]| - | — ", s)[0].replace("_", " ")
+    if " " not in s.strip() and s.count("-") >= 2:  # «slug»-названия вида behavior-aware-fraud-detection
+        s = s.replace("-", " ")
     words = s.split()
     return " ".join(words[:6]).strip() or name
 
 
 async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True) -> Evidence:
-    s = get_settings()
     phrase = search_phrase(phrase)
     today = today or date.today()
     year_ago = today - timedelta(days=365)
@@ -62,8 +62,6 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         "github": _safe("github", github.count_created(http, phrase, year_ago.isoformat(), today.isoformat()), None, f),
         "hn": _safe("hackernews", hackernews.search(http, phrase, since_ts, 10), ([], None), f),
     }
-    if s.openalex_api_key:
-        tasks["openalex_docs"] = _safe("openalex", openalex.search(http, phrase, (today - timedelta(days=3 * 365)).isoformat(), 12), [], f)
     if with_repos:
         tasks["github_top"] = _safe("github", github.top_repos(http, phrase, 3), [], f)
     if with_news:

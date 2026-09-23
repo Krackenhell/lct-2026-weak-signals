@@ -115,6 +115,8 @@ def template_dossier(a: dict, d: dict) -> dict:
     conf = ""
     if a["prob"] is not None:
         conf = f"Уверенность модели {a['prob']:.0%}. Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}."
+        if "openalex" in a.get("missing", []):
+            conf += " Внимание: статистика публикаций OpenAlex была недоступна, признаки публикаций заменены нейтральными значениями."
     first = a["items"][0] if a["items"] else None
     return {
         "description": f"«{a['c']['name_en']}» — технология, выявленная в документах по запросу. Подробное описание формируется LLM по найденным источникам.",

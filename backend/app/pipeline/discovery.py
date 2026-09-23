@@ -164,6 +164,7 @@ def merge(cands: list[dict]) -> list[dict]:
     """Склеивает дубли и синонимы по нормализованному названию и пересечению слов."""
     merged: list[dict] = []
     for c in cands:
+        c = {**c, "name_en": c["name_en"].replace("_", " ").strip()}
         key = _norm(c["name_en"])
         if not key or key in GENERIC:
             continue

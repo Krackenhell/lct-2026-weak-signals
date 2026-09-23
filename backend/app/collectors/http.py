@@ -111,6 +111,10 @@ class HttpClient:
                     reset = float(resp.headers.get("x-ratelimit-reset", time.time() + 30))
                     await asyncio.sleep(min(max(reset - time.time(), 1), 65))
                     raise SourceError("rate limit, waited for reset")
+                if resp.status_code == 429 and params and "api_key" in params:
+                    # Дневной бюджет ключа исчерпан — продолжаем в анонимной квоте источника.
+                    params = {k: v for k, v in params.items() if k != "api_key"}
+                    raise SourceError("HTTP 429 (ключ исчерпан, переход на анонимную квоту)")
                 if resp.status_code == 429 or resp.status_code >= 500:
                     raise SourceError(f"HTTP {resp.status_code}")
                 if resp.status_code >= 400:
@@ -136,5 +140,6 @@ class HttpClient:
                 await asyncio.sleep(1.5 * (attempt + 1) + self._interval.get(host, 0))
         self._bump(host, "failed")
         self._fails[host] = self._fails.get(host, 0) + 1
-        log.warning("source failed %s %s: %s", url, params, last_exc)
+        safe = {k: ("***" if "key" in k or "token" in k else v) for k, v in (params or {}).items()}
+        log.warning("source failed %s %s: %s", url, safe, last_exc)
         raise SourceError(str(last_exc))
