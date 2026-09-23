@@ -34,7 +34,8 @@ class HeuristicDecision:
         with Timer() as t:
             subject = (re.search(r"SUBJECT: (.*)", state) or [None, ""])[1].strip().lower()
             topic = (re.search(r"TOPIC OF INTEREST: (.*)", state) or [None, ""])[1].strip().lower()
-            text = state.lower()
+            # Оцениваем только текст доказательств: слова из названия («protocol», «standard») не должны влиять.
+            text = state.lower().split("evidence:", 1)[-1]
             n_ev = max(len(re.findall(r"^\[\d+\]", state, flags=re.M)), 1)
             answers = {}
             for qid, q in questions.items():
