@@ -1,0 +1,139 @@
+{
+ "_comment": "Сравнение decision-моделей на одних и тех же доказательствах (5-fold CV, 240 примеров)",
+ "heuristic_rules": {
+  "cv5": {
+   "precision": 0.855,
+   "recall": 0.94,
+   "f1": 0.895,
+   "accuracy": 0.908,
+   "roc_auc": 0.968,
+   "brier": 0.066
+  },
+  "decision_model_only": {
+   "precision": 0.699,
+   "recall": 0.79,
+   "f1": 0.742,
+   "accuracy": 0.771,
+   "roc_auc": 0.868,
+   "brier": 0.15
+  },
+  "lodo": {
+   "Edge": {
+    "precision": 0.882,
+    "recall": 0.938,
+    "f1": 0.909,
+    "accuracy": 0.912,
+    "roc_auc": 0.979,
+    "brier": 0.064
+   },
+   "Защита ИИ": {
+    "precision": 1.0,
+    "recall": 0.875,
+    "f1": 0.933,
+    "accuracy": 0.944,
+    "roc_auc": 0.981,
+    "brier": 0.054
+   },
+   "Индустриальный ИИ": {
+    "precision": 0.944,
+    "recall": 1.0,
+    "f1": 0.971,
+    "accuracy": 0.973,
+    "roc_auc": 0.997,
+    "brier": 0.023
+   },
+   "Инфраструктура ИИ": {
+    "precision": 0.944,
+    "recall": 1.0,
+    "f1": 0.971,
+    "accuracy": 0.974,
+    "roc_auc": 0.992,
+    "brier": 0.041
+   },
+   "Роботы": {
+    "precision": 0.933,
+    "recall": 0.824,
+    "f1": 0.875,
+    "accuracy": 0.879,
+    "roc_auc": 0.934,
+    "brier": 0.095
+   },
+   "Финтех": {
+    "precision": 0.63,
+    "recall": 1.0,
+    "f1": 0.773,
+    "accuracy": 0.767,
+    "roc_auc": 0.934,
+    "brier": 0.18
+   }
+  }
+ },
+ "jev": {
+  "cv5": {
+   "precision": 0.951,
+   "recall": 0.98,
+   "f1": 0.966,
+   "accuracy": 0.971,
+   "roc_auc": 0.994,
+   "brier": 0.027
+  },
+  "decision_model_only": {
+   "precision": 0.923,
+   "recall": 0.96,
+   "f1": 0.941,
+   "accuracy": 0.95,
+   "roc_auc": 0.986,
+   "brier": 0.041
+  },
+  "lodo": {
+   "Edge": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "accuracy": 1.0,
+    "roc_auc": 1.0,
+    "brier": 0.005
+   },
+   "Защита ИИ": {
+    "precision": 1.0,
+    "recall": 0.875,
+    "f1": 0.933,
+    "accuracy": 0.944,
+    "roc_auc": 0.991,
+    "brier": 0.05
+   },
+   "Индустриальный ИИ": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "accuracy": 1.0,
+    "roc_auc": 1.0,
+    "brier": 0.006
+   },
+   "Инфраструктура ИИ": {
+    "precision": 0.895,
+    "recall": 1.0,
+    "f1": 0.944,
+    "accuracy": 0.949,
+    "roc_auc": 0.992,
+    "brier": 0.037
+   },
+   "Роботы": {
+    "precision": 0.895,
+    "recall": 1.0,
+    "f1": 0.944,
+    "accuracy": 0.939,
+    "roc_auc": 0.989,
+    "brier": 0.037
+   },
+   "Финтех": {
+    "precision": 0.944,
+    "recall": 1.0,
+    "f1": 0.971,
+    "accuracy": 0.977,
+    "roc_auc": 0.995,
+    "brier": 0.034
+   }
+  }
+ }
+}
