@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 from pathlib import Path
 
-from app.collectors import arxiv, gdelt, openalex
+from app.collectors import arxiv, gdelt, habr, openalex
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -57,8 +57,9 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
         tasks.append(arxiv.search(http, sq, 20))
         tasks.append(openalex.search(http, sq, from_date, 20))
     tasks.append(gdelt.search(http, plan.get("topic_en", subs[0] if subs else ""), "6m", 30))
-    for ru in plan.get("ru_terms", [])[:2]:
+    for ru in plan.get("ru_terms", [])[:3]:
         tasks.append(gdelt.search(http, ru, "12m", 25, lang="russian"))
+        tasks.append(habr.search(http, ru, 15))
 
     docs: list[RawDoc] = []
     done = 0
@@ -168,7 +169,7 @@ def merge(cands: list[dict]) -> list[dict]:
             if not target["name_ru"] and c.get("name_ru"):
                 target["name_ru"] = c["name_ru"]
         else:
-            merged.append({**c, "_key": key, "support": 1, "methods": {c.get("method", "")}, "doc_idx": list(c.get("doc_idx", []))})
+            merged.append({"name_ru": "", **c, "_key": key, "support": 1, "methods": {c.get("method", "")}, "doc_idx": list(c.get("doc_idx", []))})
     for m in merged:
         m["methods"] = sorted(x for x in m["methods"] if x)
     return merged

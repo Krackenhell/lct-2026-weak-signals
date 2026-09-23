@@ -54,6 +54,10 @@ def classify(doc: RawDoc) -> tuple[str, str, str]:
         return "repository", "medium", "Открытый код: подтверждает инженерную активность, но не зрелость"
     if doc.source_type == "community":
         return "community", "low", "Обсуждение в сообществе: первичный индикатор, требует подтверждения"
+    if doc.collector == "habr":
+        if doc.source_type == "press":
+            return "press", "low", "Корпоративный блог на Хабре: материал компании о себе, нужен независимый источник"
+        return "news", "medium", "Профессиональное IT-сообщество Хабр: авторские технические статьи"
     if doc.source_type == "dataset":
         return "dataset", "medium", "Материал из датасета организатора; первоисточник по ссылке"
 
