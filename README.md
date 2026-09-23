@@ -33,6 +33,18 @@ docker compose up -d --build
 
 Проверка: `curl http://localhost/api/health` → `{"status":"ok"}`.
 
+## Развёртывание стенда на сервере
+
+Рекомендуемая конфигурация: Ubuntu 22.04/24.04, 4 vCPU, 8–16 ГБ RAM, 40 ГБ SSD, публичный IP, открыт порт 80. GPU не нужна.
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/Krackenhell/lct-2026-weak-signals/main/deploy/setup-ubuntu.sh
+bash setup-ubuntu.sh            # первый запуск создаст /opt/weak-signals/.env — заполните ключи
+bash setup-ubuntu.sh            # второй запуск соберёт и поднимет стенд
+```
+
+Контейнеры перезапускаются автоматически (`restart: unless-stopped`), в том числе после перезагрузки сервера.
+
 ## Локальная разработка без Docker
 
 ```bash
