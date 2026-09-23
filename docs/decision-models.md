@@ -24,13 +24,16 @@
 
 **Kev** ([GitHub](https://github.com/jaredpalmer/kev)). Первая версия (Kev-0.5B на Qwen2.5) — через 1–2 дня после Jev, текущие модели на Qwen3.5 — 21.09.2026.
 
-| | Точность (новые источники) | Brier (меньше — лучше) |
+Данные из [README Kev](https://github.com/jaredpalmer/kev) (тест, новые источники):
+
+| | Точность | Brier (меньше — лучше) |
 |---|---|---|
-| Kev-0.8B | 0.852 | 0.460 |
+| Kev-0.8B | 0.684 | 0.460 |
 | Kev-4B | 0.837 | 0.255 |
 | Kev-9B | 0.852 | 0.237 |
+| Jev (dev) | 0.857 | 0.211 |
 
-Kev-9B vs Jev на dev-сплите: 0.822 vs 0.857. Маленькая 0.8B угадывает так же, но хуже откалибрована, поэтому её вероятности нужно откалибровать на своей выборке. Запуск: `uv run python -m kev.serve --run jaredpalmer/kev-4b --port 8009`, API совместим с Jev SDK. Официально поддерживает CUDA/ROCm/MLX; работа на CPU не заявлена — проверить. Дообучение 0.8B возможно на GPU с 4 ГБ, обязательно от готового чекпойнта (`--init_from`).
+Kev-9B vs Jev на dev-сплите: 0.822 vs 0.857. Маленькая 0.8B заметно слабее на новых задачах; разумный минимум для замены Jev — Kev-4B (нужна GPU ~10 ГБ или Mac). Запуск: `uv run python -m kev.serve --run jaredpalmer/kev-4b --port 8009`, API совместим с Jev SDK. Официально поддерживает CUDA/ROCm/MLX; работа на CPU не заявлена — проверить. Дообучение 0.8B возможно на GPU с 4 ГБ, обязательно от готового чекпойнта (`--init_from`).
 
 **Laya** ([GitHub](https://github.com/NandhaKishorM/laya), [HF](https://huggingface.co/convaiinnovations/laya)), релиз 19.09.2026, `pip install -U laya`. Чекпойнты: английский 421M (ModernBERT-large, контекст 512), мультиязычный 322M (mmBERT, 1024), typed-decisions. ~33 мс на вопрос на T4, 0.2–0.5 с на CPU.
 
