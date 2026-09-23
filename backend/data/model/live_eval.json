@@ -1,0 +1,139 @@
+{
+ "runs": [
+  {
+   "domain": "Финтех",
+   "mode": "с базой отслеживания",
+   "run_id": 4,
+   "query": "перспективные решения в финтехе",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 509,
+   "n_signals": 15,
+   "confident_75": 15,
+   "new_candidates_in_top": 3,
+   "top": [
+    {
+     "rank": 1,
+     "name": "know your agent",
+     "name_ru": "Знай своего агента",
+     "p": 0.992,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 2,
+     "name": "zLend",
+     "name_ru": "zLend",
+     "p": 1.0,
+     "origin": "discovered"
+    },
+    {
+     "rank": 3,
+     "name": "injection attack liveness detection",
+     "name_ru": "инъекционные атаки для проверки подлинности личности",
+     "p": 0.996,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 4,
+     "name": "Agent Commerce",
+     "name_ru": "Agent Commerce",
+     "p": 0.986,
+     "origin": "discovered"
+    },
+    {
+     "rank": 5,
+     "name": "purpose bound money",
+     "name_ru": "Purpose-Bound Money (PBM) — программируемые целевые/условные деньги",
+     "p": 0.981,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 6,
+     "name": "HTTP 402 payments",
+     "name_ru": "HTTP 402 платежи",
+     "p": 0.983,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 7,
+     "name": "zero-knowledge KYC",
+     "name_ru": "нулевая осведомленность KYC",
+     "p": 0.976,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 8,
+     "name": "agent payments protocol",
+     "name_ru": "агентские платежные протоколы",
+     "p": 0.955,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 9,
+     "name": "tokenized deposits",
+     "name_ru": "токенизированные депозиты",
+     "p": 0.933,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 10,
+     "name": "AI-native core banking",
+     "name_ru": "AI-насыщенная платформа для ядра банковского дела",
+     "p": 0.932,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 11,
+     "name": "tokenized money market fund collateral",
+     "name_ru": "токенизированный денежный рынок фондов залога",
+     "p": 0.926,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 12,
+     "name": "post-quantum cryptography migration financial",
+     "name_ru": "миграция на постквантовую криптографию в финансовом секторе",
+     "p": 0.905,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 13,
+     "name": "voice AI agent debt collection",
+     "name_ru": "голосовой AI-ассистент для взыскания долгов",
+     "p": 0.878,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 14,
+     "name": "agentic ai governance",
+     "name_ru": "Agentic AI Governance",
+     "p": 0.987,
+     "origin": "discovered"
+    },
+    {
+     "rank": 15,
+     "name": "LLM trading agent benchmark",
+     "name_ru": "агент торгового представителя на основе LLM",
+     "p": 0.995,
+     "origin": "watchlist"
+    }
+   ],
+   "exclusions": {
+    "reserve": 10,
+    "hype": 1,
+    "mature": 4,
+    "irrelevant": 8,
+    "broad": 2,
+    "low_probability": 5,
+    "low_evidence": 5
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 12,
+   "share_of_top15_from_dataset": 0.8,
+   "recall_of_domain": 0.706
+  }
+ ]
+}

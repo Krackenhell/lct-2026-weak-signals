@@ -22,7 +22,7 @@ from app.models import Candidate, Document, ModelCall, Run
 from app.pipeline import discovery, evidence as evidence_mod
 from app.pipeline.decide import decide, template_dossier
 from app.pipeline.features import answer_features, numeric_features
-from app.pipeline.questions import EVIDENCE_MATCH, QUESTIONS, build_state, relevance_question
+from app.pipeline.questions import EVIDENCE_MATCH, PRODUCT_NAME, QUESTIONS, build_state, relevance_question
 from app.pipeline.trust import classify
 
 log = logging.getLogger(__name__)
@@ -104,7 +104,7 @@ async def execute(run_id: int) -> None:
         ctx.stage(f"Проверка {len(pool)} кандидатов по открытым источникам", 32)
 
         # 4. Доказательства, decision-модель, скоринг
-        questions = {**QUESTIONS, "relevance": relevance_question(plan.get("topic_en") or query), "evidence_match": EVIDENCE_MATCH}
+        questions = {**QUESTIONS, "relevance": relevance_question(plan.get("topic_en") or query), "evidence_match": EVIDENCE_MATCH, "product_name": PRODUCT_NAME}
         done = 0
         topic = plan.get("topic_en") or query
 

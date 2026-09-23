@@ -64,6 +64,11 @@ EVIDENCE_MATCH = {
     "instructions": "Do the EVIDENCE items actually discuss the SUBJECT as a technology (not just contain similar words)?",
 }
 
+PRODUCT_NAME = {
+    "type": "noul",
+    "instructions": "Is the SUBJECT the name of one specific company, product, app, token or project, rather than a type of technology that several organizations could build?",
+}
+
 
 # Вопрос о релевантности зависит от запроса и в классификатор не входит: используется для ранжирования.
 def relevance_question(topic: str) -> dict:
@@ -87,6 +92,7 @@ QUESTION_RU = {
     "maturity": "Зрелость (0 — исследование, 1 — мейнстрим)",
     "relevance": "Релевантность запросу",
     "evidence_match": "Источники действительно про эту технологию",
+    "product_name": "Название конкретного продукта / компании",
 }
 
 
