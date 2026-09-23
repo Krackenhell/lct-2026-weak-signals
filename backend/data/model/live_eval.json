@@ -1313,6 +1313,137 @@
    "dataset_hits_in_top15": 1,
    "share_of_top15_from_dataset": 0.067,
    "recall_of_domain": 0.059
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 25,
+   "query": "энергетика и накопители энергии",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 671,
+   "n_signals": 15,
+   "confident_75": 14,
+   "new_candidates_in_top": 9,
+   "top": [
+    {
+     "rank": 1,
+     "name": "cooperative control of BESS",
+     "name_ru": "кооперативный контроль накопителей энергии",
+     "p": 0.993,
+     "origin": "discovered"
+    },
+    {
+     "rank": 2,
+     "name": "AI virtual power plant battery trading",
+     "name_ru": "AI виртуальная энергетическая площадка с торговлей батареями накопления энергии",
+     "p": 0.981,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 3,
+     "name": "small modular reactor data center",
+     "name_ru": "Малые модульные реакторы (SMR) как выделенный источник питания ИИ-ЦОД",
+     "p": 0.996,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 4,
+     "name": "mixed-integer nonlinear differentiable predictive control",
+     "name_ru": "Смешанное-целочисленное нелинейное дифференцируемое прогнозирующее управление накопителями энергии",
+     "p": 0.999,
+     "origin": "discovered"
+    },
+    {
+     "rank": 5,
+     "name": "Bipolar Plates Topology Optimization",
+     "name_ru": "Топология пластин для электрохимических ячеек",
+     "p": 0.998,
+     "origin": "discovered"
+    },
+    {
+     "rank": 6,
+     "name": "reinforcement learning industrial controller real plant",
+     "name_ru": "усиление обучения контроллера промышленной энергетики с использованием reinforcement learning",
+     "p": 0.992,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 7,
+     "name": "economic dispatch schemes",
+     "name_ru": "Экономическое распределение мощностей в энергетике",
+     "p": 0.901,
+     "origin": "discovered"
+    },
+    {
+     "rank": 8,
+     "name": "green hydrogen electrolysis",
+     "name_ru": "электролиз зеленого водорода",
+     "p": 0.884,
+     "origin": "discovered"
+    },
+    {
+     "rank": 9,
+     "name": "behind-the-meter microgrid",
+     "name_ru": "микросеть за счетчиком",
+     "p": 0.831,
+     "origin": "discovered"
+    },
+    {
+     "rank": 10,
+     "name": "thermoelectric materials discovery",
+     "name_ru": "теплоэлектрические материалы",
+     "p": 0.856,
+     "origin": "discovered"
+    },
+    {
+     "rank": 11,
+     "name": "distributed consensus control",
+     "name_ru": "Распределённое управление согласованностью в энергетических системах",
+     "p": 0.823,
+     "origin": "discovered"
+    },
+    {
+     "rank": 12,
+     "name": "LLM PLC code generation",
+     "name_ru": "Энергия и накопители энергии",
+     "p": 0.998,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 13,
+     "name": "industrial time series foundation model",
+     "name_ru": "промышленная временная модель серии времени для энергетики и накопителей энергии",
+     "p": 0.994,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 14,
+     "name": "P&ID generation LLM",
+     "name_ru": "Агентная генерация технологической документации: P&ID и схемы процессов из текстового описания в машиночитаемом DEXPI",
+     "p": 0.948,
+     "origin": "watchlist"
+    },
+    {
+     "rank": 15,
+     "name": "battery energy storage dispatch",
+     "name_ru": "распределение накопителей энергии",
+     "p": 0.684,
+     "origin": "discovered"
+    }
+   ],
+   "exclusions": {
+    "low_evidence": 15,
+    "irrelevant": 7,
+    "hype": 1,
+    "reserve": 2,
+    "mature": 4,
+    "low_probability": 5,
+    "not_technology": 1
+   }
   }
  ]
 }

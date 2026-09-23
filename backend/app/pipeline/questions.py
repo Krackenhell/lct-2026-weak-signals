@@ -50,6 +50,10 @@ QUESTIONS = {
         "type": "noul",
         "instructions": "Does the evidence describe a concrete practical advantage of the SUBJECT, such as lower cost, higher accuracy or a new capability?",
     },
+    "textbook": {
+        "type": "noul",
+        "instructions": "Is the core idea of the SUBJECT a long-established concept in its field — covered in textbooks or in common use for more than 10 years — even if the evidence describes a new variant?",
+    },
     "maturity": {
         "type": "score",
         "instructions": "What is the development stage of the SUBJECT according to the evidence?",
@@ -94,6 +98,7 @@ QUESTION_RU = {
     "hype": "Маркетинговый шум",
     "novelty": "Новизна",
     "benefit": "Конкретное преимущество",
+    "textbook": "Устоявшаяся (учебниковая) идея",
     "maturity": "Зрелость (0 — исследование, 1 — мейнстрим)",
     "relevance": "Релевантность запросу",
     "evidence_match": "Источники действительно про эту технологию",

@@ -23,7 +23,7 @@ NUMERIC = [
     "share_science",
     "log_evidence",
 ]
-ANSWERS = ["specific_tech", "mass_adoption", "market_leaders", "standard", "early_stage", "independent", "hype", "novelty", "benefit", "maturity"]
+ANSWERS = ["specific_tech", "mass_adoption", "market_leaders", "standard", "early_stage", "independent", "hype", "novelty", "benefit", "textbook", "maturity"]
 FEATURES = NUMERIC + ANSWERS
 CORE_COLLECTORS = ("arxiv", "hackernews")
 
@@ -48,6 +48,7 @@ FEATURE_RU = {
     "hype": "Маркетинговый шум (decision-модель)",
     "novelty": "Новизна (decision-модель)",
     "benefit": "Конкретное преимущество (decision-модель)",
+    "textbook": "Устоявшаяся учебниковая идея (decision-модель)",
     "maturity": "Уровень зрелости (decision-модель)",
 }
 

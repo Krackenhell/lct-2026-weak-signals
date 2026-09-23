@@ -42,7 +42,7 @@ WATCHLIST_DOMAINS = {
     "Роботы": r"робот|robot",
     "Edge": r"edge|периферийн|iot|устройств|смартфон|device",
     "Инфраструктура ИИ": r"инфраструктур|дата-центр|цод|чип|полупровод|hardware|infrastructure|datacenter|вычисл",
-    "Индустриальный ИИ": r"индустр|промышлен|производств|завод|industrial|manufactur|энергет",
+    "Индустриальный ИИ": r"индустр|промышлен|производств|завод|industrial|manufactur",
 }
 AI_QUERY = r"\bии\b|искусственн|нейросет|\bai\b|artificial intelligence|машинн"
 
