@@ -90,6 +90,10 @@ async def main_async(args) -> None:
     plan = []
     if args.queries:
         plan = [(None, q, True) for q in args.queries.split(";")]
+    elif args.domains:
+        for dom in args.domains.split(";"):
+            plan += [(dom, DOMAIN_QUERIES[dom], True), (dom, DOMAIN_QUERIES[dom], False)]
+        plan += [(None, q, True) for q in EXTRA_QUERIES] if args.extras else []
     else:
         for dom, q in DOMAIN_QUERIES.items():
             if not args.only_discovery:
@@ -109,6 +113,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only-discovery", action="store_true")
     ap.add_argument("--queries", default="")
+    ap.add_argument("--domains", default="", help="области через «;» — прогон в обоих режимах")
+    ap.add_argument("--extras", action="store_true", help="добавить темы вне датасета")
     asyncio.run(main_async(ap.parse_args()))
 
 
