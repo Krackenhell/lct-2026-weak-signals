@@ -1,0 +1,317 @@
+{
+ "provider": "heuristic:rules-v1",
+ "n": 240,
+ "n_pos": 100,
+ "n_neg": 140,
+ "train_date": "2026-09-23",
+ "cv5": {
+  "precision": 0.856,
+  "recall": 0.95,
+  "f1": 0.9,
+  "accuracy": 0.912,
+  "roc_auc": 0.968,
+  "brier": 0.066
+ },
+ "confident_75": {
+  "share_of_positives_above_075": 0.87,
+  "precision_above_075": 0.879
+ },
+ "ablation": {
+  "numeric_only": {
+   "precision": 0.866,
+   "recall": 0.97,
+   "f1": 0.915,
+   "accuracy": 0.925,
+   "roc_auc": 0.969,
+   "brier": 0.062
+  },
+  "decision_model_only": {
+   "precision": 0.699,
+   "recall": 0.79,
+   "f1": 0.742,
+   "accuracy": 0.771,
+   "roc_auc": 0.868,
+   "brier": 0.15
+  },
+  "all": {
+   "precision": 0.856,
+   "recall": 0.95,
+   "f1": 0.9,
+   "accuracy": 0.912,
+   "roc_auc": 0.968,
+   "brier": 0.066
+  }
+ },
+ "leave_one_domain_out": {
+  "Edge": {
+   "precision": 0.889,
+   "recall": 1.0,
+   "f1": 0.941,
+   "accuracy": 0.941,
+   "roc_auc": 0.979,
+   "brier": 0.064
+  },
+  "Защита ИИ": {
+   "precision": 1.0,
+   "recall": 0.875,
+   "f1": 0.933,
+   "accuracy": 0.944,
+   "roc_auc": 0.984,
+   "brier": 0.054
+  },
+  "Индустриальный ИИ": {
+   "precision": 0.944,
+   "recall": 1.0,
+   "f1": 0.971,
+   "accuracy": 0.973,
+   "roc_auc": 0.997,
+   "brier": 0.023
+  },
+  "Инфраструктура ИИ": {
+   "precision": 0.944,
+   "recall": 1.0,
+   "f1": 0.971,
+   "accuracy": 0.974,
+   "roc_auc": 0.992,
+   "brier": 0.041
+  },
+  "Роботы": {
+   "precision": 0.933,
+   "recall": 0.824,
+   "f1": 0.875,
+   "accuracy": 0.879,
+   "roc_auc": 0.938,
+   "brier": 0.095
+  },
+  "Финтех": {
+   "precision": 0.63,
+   "recall": 1.0,
+   "f1": 0.773,
+   "accuracy": 0.767,
+   "roc_auc": 0.937,
+   "brier": 0.18
+  }
+ },
+ "recall_by_domain": {
+  "Edge": 0.938,
+  "Защита ИИ": 0.938,
+  "Индустриальный ИИ": 1.0,
+  "Инфраструктура ИИ": 0.882,
+  "Роботы": 0.941,
+  "Финтех": 1.0
+ },
+ "errors": [
+  {
+   "name": "Machine unlearning как средство ремедиации рисков модели (удаление данных/поведения без переобучения)",
+   "label": 1,
+   "code": "signal",
+   "p": 0.035
+  },
+  {
+   "name": "Автономные складские роботы",
+   "label": 0,
+   "code": "mature",
+   "p": 0.951
+  },
+  {
+   "name": "Распознавание лиц на смартфонах",
+   "label": 0,
+   "code": "mature",
+   "p": 0.928
+  },
+  {
+   "name": "Сообщения SWIFT",
+   "label": 0,
+   "code": "standard",
+   "p": 0.897
+  },
+  {
+   "name": "Биометрическая аутентификация в банках",
+   "label": 0,
+   "code": "mature",
+   "p": 0.894
+  },
+  {
+   "name": "Долларовые стейблкоины",
+   "label": 0,
+   "code": "mature",
+   "p": 0.887
+  },
+  {
+   "name": "Обработка изображений в камерах смартфонов",
+   "label": 0,
+   "code": "mature",
+   "p": 0.864
+  },
+  {
+   "name": "Чиповые карты EMV",
+   "label": 0,
+   "code": "standard",
+   "p": 0.855
+  },
+  {
+   "name": "Жидкостное охлаждение ЦОД",
+   "label": 0,
+   "code": "mature",
+   "p": 0.83
+  },
+  {
+   "name": "Кредитный скоринг на ML",
+   "label": 0,
+   "code": "mature",
+   "p": 0.806
+  },
+  {
+   "name": "Цифровая трансформация банков",
+   "label": 0,
+   "code": "hype",
+   "p": 0.796
+  },
+  {
+   "name": "Прогнозирование спроса с ML",
+   "label": 0,
+   "code": "mature",
+   "p": 0.792
+  },
+  {
+   "name": "Системы быстрых платежей",
+   "label": 0,
+   "code": "mature",
+   "p": 0.787
+  },
+  {
+   "name": "Архитектура трансформер",
+   "label": 0,
+   "code": "mature",
+   "p": 0.626
+  },
+  {
+   "name": "Стандарт безопасности роботов ISO 10218",
+   "label": 0,
+   "code": "standard",
+   "p": 0.607
+  },
+  {
+   "name": "Медицинские микророботы, доходящие до клиники",
+   "label": 1,
+   "code": "signal",
+   "p": 0.394
+  },
+  {
+   "name": "Банкинг в метавселенной",
+   "label": 0,
+   "code": "hype",
+   "p": 0.571
+  },
+  {
+   "name": "Аналоговые вычисления в памяти (analog in-memory computing)",
+   "label": 1,
+   "code": "signal",
+   "p": 0.447
+  },
+  {
+   "name": "In-sensor / processing-in-pixel вычисления (инференс внутри пиксельной матрицы)",
+   "label": 1,
+   "code": "signal",
+   "p": 0.482
+  },
+  {
+   "name": "Оптическая коммутация каналов (OCS) в ИИ-фабриках вместо пакетных свитчей",
+   "label": 1,
+   "code": "signal",
+   "p": 0.495
+  },
+  {
+   "name": "Ускорение на FPGA",
+   "label": 0,
+   "code": "mature",
+   "p": 0.504
+  }
+ ],
+ "weights": [
+  {
+   "feature": "log_total_works",
+   "weight": -1.572
+  },
+  {
+   "feature": "log_gh_repos_12m",
+   "weight": -1.334
+  },
+  {
+   "feature": "age_years",
+   "weight": -0.781
+  },
+  {
+   "feature": "growth",
+   "weight": 0.69
+  },
+  {
+   "feature": "market_leaders",
+   "weight": -0.669
+  },
+  {
+   "feature": "fresh_preprints",
+   "weight": 0.662
+  },
+  {
+   "feature": "log_wiki_views",
+   "weight": -0.593
+  },
+  {
+   "feature": "mass_adoption",
+   "weight": -0.493
+  },
+  {
+   "feature": "recent_share",
+   "weight": -0.404
+  },
+  {
+   "feature": "log_hn_12m",
+   "weight": -0.366
+  },
+  {
+   "feature": "wiki_exists",
+   "weight": -0.343
+  },
+  {
+   "feature": "hype",
+   "weight": -0.34
+  },
+  {
+   "feature": "novelty",
+   "weight": 0.257
+  },
+  {
+   "feature": "share_science",
+   "weight": 0.255
+  },
+  {
+   "feature": "log_evidence",
+   "weight": 0.238
+  },
+  {
+   "feature": "independent",
+   "weight": 0.214
+  },
+  {
+   "feature": "standard",
+   "weight": -0.159
+  },
+  {
+   "feature": "early_stage",
+   "weight": -0.158
+  },
+  {
+   "feature": "benefit",
+   "weight": -0.143
+  },
+  {
+   "feature": "specific_tech",
+   "weight": 0.036
+  },
+  {
+   "feature": "maturity",
+   "weight": 0.005
+  }
+ ]
+}
