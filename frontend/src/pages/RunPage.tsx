@@ -46,6 +46,7 @@ export default function RunPage() {
         {run.providers?.decision_model && <span>Decision-модель: <b>{run.providers.decision_model}</b></span>}
         {run.providers?.llm && <span>· LLM: <b>{run.providers.llm}</b></span>}
         {run.providers?.classifier && <span>· Классификатор: <b>{run.providers.classifier}</b></span>}
+        <span>· База отслеживания: <b>{run.options?.use_watchlist === false ? "выключена" : "включена"}</b></span>
       </div>
 
       {active && (

@@ -116,6 +116,10 @@ def model_info() -> dict:
     model = SignalModel.load()
     metrics_path = Path(s.model_dir) / "metrics.json"
     metrics = json.loads(metrics_path.read_text(encoding="utf-8")) if metrics_path.exists() else None
+    live_path = Path(s.model_dir) / "live_eval.json"
+    live = json.loads(live_path.read_text(encoding="utf-8")) if live_path.exists() else None
+    comp_path = Path(s.model_dir) / "decision_model_comparison.json"
+    comparison = json.loads(comp_path.read_text(encoding="utf-8")) if comp_path.exists() else None
     weights = []
     if model:
         weights = sorted(
@@ -124,6 +128,7 @@ def model_info() -> dict:
         )
     return {
         "trained": model is not None, "meta": model.meta if model else None, "weights": weights, "metrics": metrics,
+        "live_eval": live, "decision_comparison": comparison,
         "providers": {"decision": s.decision_provider, "llm": s.llm_provider},
         "exclusion_codes": EXCLUSION_RU, "confident_threshold": s.confident_threshold,
     }

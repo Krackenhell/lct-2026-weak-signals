@@ -17,6 +17,7 @@ const STATUS_RU: Record<string, string> = { queued: "в очереди", running
 export default function Home() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  const [watch, setWatch] = useState(true);
   const [err, setErr] = useState("");
   const [runs, setRuns] = useState<Run[]>([]);
   const nav = useNavigate();
@@ -30,7 +31,7 @@ export default function Home() {
     setBusy(true);
     setErr("");
     try {
-      const run = await api.search(query.trim());
+      const run = await api.search(query.trim(), watch);
       nav(`/runs/${run.id}`);
     } catch (e) {
       setErr(String(e));
@@ -57,6 +58,10 @@ export default function Home() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Например: перспективные решения в финтехе" autoFocus />
           <button disabled={busy || q.trim().length < 2}>{busy ? "Запуск…" : "Найти сигналы"}</button>
         </form>
+        <label className="small muted" style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
+          <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} />
+          Учитывать базу отслеживаемых сигналов (перепроверяются по живым источникам; снимите галочку для чистого обнаружения)
+        </label>
         <div className="chips">
           {EXAMPLES.map((ex) => (
             <button key={ex} className="chip" type="button" onClick={() => setQ(ex)}>

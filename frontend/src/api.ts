@@ -56,6 +56,7 @@ export type Run = {
   plan: { topic_en?: string; subqueries?: string[]; ru_terms?: string[]; generated_by?: string };
   stats: Record<string, number | object>;
   providers: Record<string, string>;
+  options?: { use_watchlist?: boolean };
   created_at: string | null;
   finished_at: string | null;
 };
@@ -82,7 +83,8 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  search: (query: string) => req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query }) }),
+  search: (query: string, use_watchlist: boolean) =>
+    req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query, use_watchlist }) }),
   runs: () => req<Run[]>("/api/runs"),
   run: (id: number | string) => req<RunFull>(`/api/runs/${id}`),
   log: (id: number | string) => req<ModelCall[]>(`/api/runs/${id}/log`),

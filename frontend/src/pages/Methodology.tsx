@@ -28,7 +28,7 @@ export default function Methodology() {
       <div className="panel">
         <h3 style={{ marginTop: 0 }}>Как система понимает, что это слабый сигнал</h3>
         <ol>
-          <li><b>Поиск.</b> Запрос расширяется до 10–12 подтем; по ним собираются свежие препринты (arXiv), научные работы (OpenAlex), мировые и российские новости (GDELT).</li>
+          <li><b>Поиск.</b> Запрос расширяется до 10–12 подтем; по ним собираются свежие препринты (arXiv), научные работы (OpenAlex), мировые и российские новости (GDELT), русскоязычные статьи Хабра.</li>
           <li><b>Кандидаты.</b> Из документов извлекаются названия конкретных технологий (LLM по тексту документов и статистический майнинг терминов), дубли и синонимы склеиваются.</li>
           <li><b>Доказательства.</b> По каждому кандидату отдельно собираются: годовая динамика публикаций, свежие препринты, новые репозитории GitHub, обсуждения инженеров, наличие и популярность статьи в Википедии, новости.</li>
           <li><b>Признаки.</b> Decision-модель (Jev / Kev) отвечает на 10 атомарных вопросов по тексту доказательств: конкретная ли это технология, есть ли массовое внедрение, рынок с лидерами, стандарт, ранняя стадия, независимые участники, маркетинговый шум, новизна, преимущество, уровень зрелости.</li>
@@ -69,6 +69,50 @@ export default function Methodology() {
               <tbody>
                 {Object.entries(m.leave_one_domain_out || {}).map(([k, v]: [string, any]) => (
                   <tr key={k}><td>{k}</td><MetricsRow m={v} /></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {info?.decision_comparison && (
+        <>
+          <h3>Вклад decision-модели Jev (те же доказательства, 5-кратная кросс-валидация)</h3>
+          <div className="tablewrap">
+            <table>
+              <thead><tr><th>Decision-модель</th><th>F1 (все признаки)</th><th>Precision</th><th>ROC-AUC</th><th>F1 (только ответы модели)</th></tr></thead>
+              <tbody>
+                {[["Словарные правила", info.decision_comparison.heuristic_rules], ["Jev (TypeSafe)", info.decision_comparison.jev]].map(([n, v]: any) => (
+                  <tr key={n}><td>{n}</td><td>{v.cv5.f1}</td><td>{v.cv5.precision}</td><td>{v.cv5.roc_auc}</td><td>{v.decision_model_only.f1}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {info?.live_eval?.runs?.length > 0 && (
+        <>
+          <h2>Живые запросы (этап 2)</h2>
+          <p className="muted small">
+            Для областей датасета — сколько сигналов организатора оказалось в топ-15. «Только обнаружение» — без базы отслеживания:
+            система находит их сама в открытых источниках.
+          </p>
+          <div className="tablewrap">
+            <table>
+              <thead><tr><th>Запрос</th><th>Режим</th><th>Время</th><th>Сигналов</th><th>≥ 75%</th><th>Из датасета в топ-15</th><th>Новых кандидатов</th></tr></thead>
+              <tbody>
+                {info.live_eval.runs.map((r: any, i: number) => (
+                  <tr key={i}>
+                    <td><a href={`/runs/${r.run_id}`}>{r.query}</a></td>
+                    <td className="small">{r.mode}</td>
+                    <td className="small">{r.seconds ? `${Math.round(r.seconds / 60)} мин` : "—"}</td>
+                    <td>{r.n_signals}</td>
+                    <td>{r.confident_75}</td>
+                    <td>{r.dataset_hits_in_top15 != null ? `${r.dataset_hits_in_top15} из ${r.dataset_signals_in_domain}` : "—"}</td>
+                    <td>{r.new_candidates_in_top}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>
