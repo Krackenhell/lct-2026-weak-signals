@@ -90,6 +90,11 @@ class HttpClient:
             await self._throttle(host)
             try:
                 resp = await self._client.get(url, params=params, headers=headers)
+                if resp.status_code == 403 and resp.headers.get("x-ratelimit-remaining") == "0":
+                    # Лимит GitHub: ждём сброса окна (не более минуты) и пробуем снова.
+                    reset = float(resp.headers.get("x-ratelimit-reset", time.time() + 30))
+                    await asyncio.sleep(min(max(reset - time.time(), 1), 65))
+                    raise SourceError("rate limit, waited for reset")
                 if resp.status_code == 429 or resp.status_code >= 500:
                     raise SourceError(f"HTTP {resp.status_code}")
                 resp.raise_for_status()
