@@ -89,7 +89,7 @@ async def execute(run_id: int) -> None:
         extracted, llm_res = await discovery.llm_candidates(llm, plan.get("topic_en", query), corpus)
         for r in llm_res:
             ctx.log_call(r.provider, r.model, "извлечение технологий из документов", query, {"docs": "пачка документов корпуса"}, {"text": r.text[:3000]}, r.latency_ms, r.ok)
-        watch = discovery.watchlist(query, plan)
+        watch = discovery.watchlist(query, plan, (ctx.run.options or {}).get("use_watchlist"))
         pool = discovery.merge(extracted + mined + watch)
         # Предварительный отбор: сначала подтверждённые несколькими документами/методами.
         # Сигналы из базы отслеживания получают зарезервированные места (до 20), остальное — новые кандидаты.

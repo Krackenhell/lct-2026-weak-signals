@@ -24,12 +24,13 @@ _tasks: set[asyncio.Task] = set()
 
 class SearchIn(BaseModel):
     query: str = Field(min_length=2, max_length=300)
+    use_watchlist: bool | None = None  # None — по настройке сервера
 
 
 def _run_out(r: Run) -> dict:
     return {
         "id": r.id, "query": r.query, "status": r.status, "stage": r.stage, "progress": r.progress, "error": r.error,
-        "plan": r.plan, "stats": r.stats, "providers": r.providers,
+        "plan": r.plan, "stats": r.stats, "providers": r.providers, "options": r.options or {},
         "created_at": r.created_at.isoformat() if r.created_at else None,
         "finished_at": r.finished_at.isoformat() if r.finished_at else None,
     }
@@ -63,7 +64,8 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
 
 @router.post("/search")
 async def start_search(body: SearchIn, db: Session = Depends(get_session)) -> dict:
-    run = Run(query=body.query.strip())
+    options = {} if body.use_watchlist is None else {"use_watchlist": body.use_watchlist}
+    run = Run(query=body.query.strip(), options=options)
     db.add(run)
     db.commit()
     task = asyncio.create_task(runner.execute(run.id))

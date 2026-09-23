@@ -54,7 +54,7 @@ def _norm(name: str) -> str:
 async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[RawDoc]:
     today = date.today()
     from_date = (today - timedelta(days=int(365 * 2.5))).isoformat()
-    subs = plan.get("subqueries", [])[:10]
+    subs = plan.get("subqueries", [])[:12]
     tasks = []
     for sq in subs:
         tasks.append(arxiv.search(http, sq, 20))
@@ -178,10 +178,10 @@ def merge(cands: list[dict]) -> list[dict]:
     return merged
 
 
-def watchlist(query: str, plan: dict) -> list[dict]:
+def watchlist(query: str, plan: dict, enabled: bool | None = None) -> list[dict]:
     """Сигналы из базы отслеживания, относящиеся к запросу (по области или по словам запроса)."""
     s = get_settings()
-    if not s.use_watchlist:
+    if not (s.use_watchlist if enabled is None else enabled):
         return []
     seed = Path(s.seed_dir)
     items = json.loads((seed / "weak_signals_2026.json").read_text(encoding="utf-8"))

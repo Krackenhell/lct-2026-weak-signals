@@ -38,14 +38,20 @@ class NotFound(SourceError):
     pass
 
 
+# Состояние ограничителя частоты общее для всех запусков в процессе: несколько
+# одновременных запросов жюри не должны вместе превышать лимиты источников.
+_LOCKS: dict[str, asyncio.Lock] = {}
+_LAST: dict[str, float] = {}
+
+
 class HttpClient:
     def __init__(self) -> None:
         s = get_settings()
         self._client = httpx.AsyncClient(
             timeout=s.http_timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True
         )
-        self._locks: dict[str, asyncio.Lock] = {}
-        self._last: dict[str, float] = {}
+        self._locks = _LOCKS
+        self._last = _LAST
         self._cache_dir = Path(s.cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._ttl = s.cache_ttl_hours * 3600

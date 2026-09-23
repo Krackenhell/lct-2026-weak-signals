@@ -56,7 +56,8 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
     data = parse_json(res.text) if res.ok else None
     if isinstance(data, dict) and data.get("subqueries"):
         base = fallback_plan(query)
-        subs = [s for s in data["subqueries"] if isinstance(s, str)][:10]
+        # Половина подтем — от LLM (новые узкие направления), половина — из проверенного словаря области.
+        subs = [s for s in data["subqueries"] if isinstance(s, str)][:6]
         data["subqueries"] = subs + [t for t in base["subqueries"] if t not in subs][: max(0, 12 - len(subs))]
         data["generated_by"] = f"{res.provider}:{res.model}"
         return data, res

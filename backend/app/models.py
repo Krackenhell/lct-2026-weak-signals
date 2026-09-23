@@ -25,6 +25,7 @@ class Run(Base):
     plan: Mapped[dict] = mapped_column(JSON, default=dict)  # расширение запроса: подтемы, термины
     stats: Mapped[dict] = mapped_column(JSON, default=dict)
     providers: Mapped[dict] = mapped_column(JSON, default=dict)
+    options: Mapped[dict] = mapped_column(JSON, default=dict)  # параметры запуска (например, use_watchlist)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
