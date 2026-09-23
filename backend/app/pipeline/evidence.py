@@ -38,8 +38,17 @@ async def _safe(name: str, coro, default, failed: list[str]):
         return default
 
 
+def search_phrase(name: str) -> str:
+    """Поисковая фраза из названия: без скобок, кавычек и лишних слов (точный поиск по фразе)."""
+    s = re.sub(r"\(.*?\)|\[.*?\]|[\"«»“”]", " ", name)
+    s = re.split(r"[:;/]| - | — ", s)[0]
+    words = s.split()
+    return " ".join(words[:6]).strip() or name
+
+
 async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True) -> Evidence:
     s = get_settings()
+    phrase = search_phrase(phrase)
     today = today or date.today()
     year_ago = today - timedelta(days=365)
     since_ts = int(datetime.combine(year_ago, datetime.min.time(), tzinfo=timezone.utc).timestamp())
