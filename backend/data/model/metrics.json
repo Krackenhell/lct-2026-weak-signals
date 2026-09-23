@@ -5,16 +5,16 @@
  "n_neg": 140,
  "train_date": "2026-09-23",
  "cv5": {
-  "precision": 0.856,
-  "recall": 0.95,
-  "f1": 0.9,
-  "accuracy": 0.912,
+  "precision": 0.855,
+  "recall": 0.94,
+  "f1": 0.895,
+  "accuracy": 0.908,
   "roc_auc": 0.968,
   "brier": 0.066
  },
  "confident_75": {
-  "share_of_positives_above_075": 0.87,
-  "precision_above_075": 0.879
+  "share_of_positives_above_075": 0.86,
+  "precision_above_075": 0.878
  },
  "ablation": {
   "numeric_only": {
@@ -34,20 +34,20 @@
    "brier": 0.15
   },
   "all": {
-   "precision": 0.856,
-   "recall": 0.95,
-   "f1": 0.9,
-   "accuracy": 0.912,
+   "precision": 0.855,
+   "recall": 0.94,
+   "f1": 0.895,
+   "accuracy": 0.908,
    "roc_auc": 0.968,
    "brier": 0.066
   }
  },
  "leave_one_domain_out": {
   "Edge": {
-   "precision": 0.889,
-   "recall": 1.0,
-   "f1": 0.941,
-   "accuracy": 0.941,
+   "precision": 0.882,
+   "recall": 0.938,
+   "f1": 0.909,
+   "accuracy": 0.912,
    "roc_auc": 0.979,
    "brier": 0.064
   },
@@ -56,7 +56,7 @@
    "recall": 0.875,
    "f1": 0.933,
    "accuracy": 0.944,
-   "roc_auc": 0.984,
+   "roc_auc": 0.981,
    "brier": 0.054
   },
   "Индустриальный ИИ": {
@@ -80,7 +80,7 @@
    "recall": 0.824,
    "f1": 0.875,
    "accuracy": 0.879,
-   "roc_auc": 0.938,
+   "roc_auc": 0.934,
    "brier": 0.095
   },
   "Финтех": {
@@ -88,13 +88,13 @@
    "recall": 1.0,
    "f1": 0.773,
    "accuracy": 0.767,
-   "roc_auc": 0.937,
+   "roc_auc": 0.934,
    "brier": 0.18
   }
  },
  "recall_by_domain": {
   "Edge": 0.938,
-  "Защита ИИ": 0.938,
+  "Защита ИИ": 0.875,
   "Индустриальный ИИ": 1.0,
   "Инфраструктура ИИ": 0.882,
   "Роботы": 0.941,
@@ -105,7 +105,7 @@
    "name": "Machine unlearning как средство ремедиации рисков модели (удаление данных/поведения без переобучения)",
    "label": 1,
    "code": "signal",
-   "p": 0.035
+   "p": 0.034
   },
   {
    "name": "Автономные складские роботы",
@@ -129,7 +129,7 @@
    "name": "Биометрическая аутентификация в банках",
    "label": 0,
    "code": "mature",
-   "p": 0.894
+   "p": 0.895
   },
   {
    "name": "Долларовые стейблкоины",
@@ -153,13 +153,13 @@
    "name": "Жидкостное охлаждение ЦОД",
    "label": 0,
    "code": "mature",
-   "p": 0.83
+   "p": 0.831
   },
   {
    "name": "Кредитный скоринг на ML",
    "label": 0,
    "code": "mature",
-   "p": 0.806
+   "p": 0.808
   },
   {
    "name": "Цифровая трансформация банков",
@@ -171,25 +171,25 @@
    "name": "Прогнозирование спроса с ML",
    "label": 0,
    "code": "mature",
-   "p": 0.792
+   "p": 0.79
   },
   {
    "name": "Системы быстрых платежей",
    "label": 0,
    "code": "mature",
-   "p": 0.787
+   "p": 0.788
+  },
+  {
+   "name": "Стандарт безопасности роботов ISO 10218",
+   "label": 0,
+   "code": "standard",
+   "p": 0.626
   },
   {
    "name": "Архитектура трансформер",
    "label": 0,
    "code": "mature",
    "p": 0.626
-  },
-  {
-   "name": "Стандарт безопасности роботов ISO 10218",
-   "label": 0,
-   "code": "standard",
-   "p": 0.607
   },
   {
    "name": "Медицинские микророботы, доходящие до клиники",
@@ -201,25 +201,31 @@
    "name": "Банкинг в метавселенной",
    "label": 0,
    "code": "hype",
-   "p": 0.571
+   "p": 0.574
   },
   {
    "name": "Аналоговые вычисления в памяти (analog in-memory computing)",
    "label": 1,
    "code": "signal",
-   "p": 0.447
+   "p": 0.442
   },
   {
    "name": "In-sensor / processing-in-pixel вычисления (инференс внутри пиксельной матрицы)",
    "label": 1,
    "code": "signal",
-   "p": 0.482
+   "p": 0.479
+  },
+  {
+   "name": "Сканеры безопасности MCP-серверов и защита от tool poisoning",
+   "label": 1,
+   "code": "signal",
+   "p": 0.48
   },
   {
    "name": "Оптическая коммутация каналов (OCS) в ИИ-фабриках вместо пакетных свитчей",
    "label": 1,
    "code": "signal",
-   "p": 0.495
+   "p": 0.493
   },
   {
    "name": "Ускорение на FPGA",
@@ -231,7 +237,7 @@
  "weights": [
   {
    "feature": "log_total_works",
-   "weight": -1.572
+   "weight": -1.573
   },
   {
    "feature": "log_gh_repos_12m",
@@ -243,15 +249,15 @@
   },
   {
    "feature": "growth",
-   "weight": 0.69
+   "weight": 0.682
   },
   {
    "feature": "market_leaders",
-   "weight": -0.669
+   "weight": -0.668
   },
   {
    "feature": "fresh_preprints",
-   "weight": 0.662
+   "weight": 0.667
   },
   {
    "feature": "log_wiki_views",
@@ -263,7 +269,7 @@
   },
   {
    "feature": "recent_share",
-   "weight": -0.404
+   "weight": -0.401
   },
   {
    "feature": "log_hn_12m",
@@ -271,47 +277,47 @@
   },
   {
    "feature": "wiki_exists",
-   "weight": -0.343
+   "weight": -0.351
   },
   {
    "feature": "hype",
-   "weight": -0.34
+   "weight": -0.339
   },
   {
    "feature": "novelty",
-   "weight": 0.257
+   "weight": 0.258
   },
   {
    "feature": "share_science",
-   "weight": 0.255
+   "weight": 0.254
   },
   {
    "feature": "log_evidence",
-   "weight": 0.238
+   "weight": 0.236
   },
   {
    "feature": "independent",
-   "weight": 0.214
-  },
-  {
-   "feature": "standard",
-   "weight": -0.159
+   "weight": 0.215
   },
   {
    "feature": "early_stage",
-   "weight": -0.158
+   "weight": -0.16
+  },
+  {
+   "feature": "standard",
+   "weight": -0.145
   },
   {
    "feature": "benefit",
-   "weight": -0.143
+   "weight": -0.144
   },
   {
    "feature": "specific_tech",
-   "weight": 0.036
+   "weight": 0.041
   },
   {
    "feature": "maturity",
-   "weight": 0.005
+   "weight": 0.007
   }
  ]
 }
