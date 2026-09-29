@@ -1,6 +1,10 @@
 import logging
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
@@ -24,3 +28,14 @@ def startup() -> None:
             r.status = "failed"
             r.error = "Обработка прервана перезапуском сервера"
         s.commit()
+
+
+# Режим без Docker/nginx: если рядом собран фронтенд (frontend/dist), backend отдаёт его сам.
+_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _DIST.exists():
+    app.mount("/assets", StaticFiles(directory=_DIST / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str) -> FileResponse:
+        f = _DIST / path
+        return FileResponse(f if path and f.is_file() else _DIST / "index.html")
