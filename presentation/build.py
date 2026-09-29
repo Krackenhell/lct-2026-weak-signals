@@ -92,6 +92,13 @@ for sid in (59, 60, 61, 62, 63, 64, 65, 66, 67, 4, 5, 6):
     el = shape(s9, sid)._element
     el.getparent().remove(el)
 s9.placeholders[0].text = "Команда «Агенты Москвы»"
+# Фото участников на месте пустых рамок шаблона (рамки удаляем, размер и позиция — по сетке карточек)
+for sid in (2, 3):
+    el = shape(s9, sid)._element
+    el.getparent().remove(el)
+PH = 1480000
+for card_left, photo in ((346076, "ivan.png"), (2651394, "mikhail.png")):
+    s9.shapes.add_picture(str(IMG / photo), Emu(card_left + (2192713 - PH) // 2), Emu(1760000), Emu(PH), Emu(PH))
 
 # ---------- Слайд 10: история ----------
 s10 = S[10]

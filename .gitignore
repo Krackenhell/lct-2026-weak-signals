@@ -31,4 +31,3 @@ Thumbs.db
 backend/data/cache/
 backend/data/local.db
 *.log
-.LLM/
