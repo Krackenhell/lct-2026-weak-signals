@@ -30,7 +30,7 @@ class SystemOneClient:
                         resp.raise_for_status()
                         data = resp.json()
                     except (httpx.HTTPError, ValueError) as exc:
-                        last = str(exc)
+                        last = f"{type(exc).__name__}: {exc}"  # у таймаутов httpx str(exc) пустой
                         await asyncio.sleep(1.5 * (attempt + 1))
                         continue
                 answers = {qid: normalize_answer(a) for qid, a in (data.get("answers") or {}).items()}

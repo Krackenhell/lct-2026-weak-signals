@@ -21,6 +21,7 @@ EXCLUSION_RU = {
     "low_trust": "Только источники с пониженным доверием",
     "low_probability": "Низкая вероятность слабого сигнала",
     "reserve": "Не вошёл в топ по итоговому баллу",
+    "no_decision": "Не проверен: decision-модель недоступна",
 }
 
 
@@ -30,6 +31,8 @@ def _ans(a: dict, key: str, default: float = 0.5) -> float:
 
 def _filters(a: dict) -> tuple[str, str] | None:
     f = a["features"]
+    if not a["res"].ok:
+        return "no_decision", "Decision-модель не ответила (сбой сети) — признаки не проверены, кандидат не ранжируется."
     rel = _ans(a, "relevance", 0.6)
     if rel < 0.34:
         return "irrelevant", f"Слабо связано с темой запроса (оценка релевантности {rel:.2f} из 1)."
@@ -50,7 +53,7 @@ def _filters(a: dict) -> tuple[str, str] | None:
         mature_reasons.append(f"признаки массового внедрения ({_ans(a, 'mass_adoption'):.0%})")
     if _ans(a, "market_leaders") >= 0.65:
         mature_reasons.append(f"сформированный рынок с лидерами ({_ans(a, 'market_leaders'):.0%})")
-    if f.get("wiki_exists") and views > 5000 and f.get("age_years", 0) >= 8:
+    if "wikipedia" not in a.get("missing", []) and f.get("wiki_exists") and views > 5000 and f.get("age_years", 0) >= 8:
         mature_reasons.append(f"устоявшаяся статья в Википедии (~{views:,.0f} просмотров в месяц) и {f['age_years']:.0f} лет в литературе".replace(",", " "))
     if works > 20000:
         mature_reasons.append(f"более {works:,.0f} научных работ".replace(",", " "))
@@ -96,6 +99,12 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
     return out
 
 
+def wiki_fact(f: dict, missing: list[str]) -> str:
+    if "wikipedia" in missing:
+        return "Данные Википедии недоступны"
+    return "Статья в англоязычной Википедии есть" if f.get("wiki_exists") else "Статьи в англоязычной Википедии нет"
+
+
 def template_dossier(a: dict, d: dict) -> dict:
     """Досье без LLM: собирается из признаков и заголовков источников (всегда доступно)."""
     f = a["features"]
@@ -105,7 +114,7 @@ def template_dossier(a: dict, d: dict) -> dict:
         parts.append(f"в научной литературе найдено около {works} работ, из них {f.get('recent_share', 0):.0%} — за последние 3 года")
     if f.get("age_years"):
         parts.append(f"тема заметна в публикациях около {f['age_years']:.0f} лет")
-    parts.append("статьи в англоязычной Википедии нет" if not f.get("wiki_exists") else "есть статья в Википедии")
+    parts.append(wiki_fact(f, a.get("missing", [])).lower())
     if f.get("log_gh_repos_12m"):
         parts.append(f"за 12 месяцев создано ~{int(math.expm1(f['log_gh_repos_12m']))} репозиториев GitHub")
     stage = a["res"].answers.get("maturity", {}).get("value")
@@ -117,6 +126,8 @@ def template_dossier(a: dict, d: dict) -> dict:
         conf = f"Уверенность модели {a['prob']:.0%}. Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}."
         if "openalex" in a.get("missing", []):
             conf += " Внимание: статистика публикаций OpenAlex была недоступна, признаки публикаций заменены нейтральными значениями."
+        if "wikipedia" in a.get("missing", []):
+            conf += " Внимание: Википедия была недоступна, признаки известности заменены нейтральными значениями."
     first = a["items"][0] if a["items"] else None
     return {
         "description": f"«{a['c']['name_en']}» — технология, выявленная в документах по запросу. Подробное описание формируется LLM по найденным источникам.",

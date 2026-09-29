@@ -20,7 +20,7 @@ from app.llm.tasks import plan_query, summarize_sources, write_dossier
 from app.ml.model import SignalModel
 from app.models import Candidate, Document, ModelCall, Run
 from app.pipeline import discovery, evidence as evidence_mod
-from app.pipeline.decide import decide, template_dossier
+from app.pipeline.decide import decide, template_dossier, wiki_fact
 from app.pipeline.features import answer_features, numeric_features
 from app.pipeline.questions import EVIDENCE_MATCH, IS_TECHNOLOGY, PRODUCT_NAME, QUESTIONS, build_state, relevance_question
 from app.pipeline.trust import classify
@@ -126,6 +126,11 @@ async def execute(run_id: int) -> None:
                 for k in ("log_total_works", "recent_share", "growth", "age_years"):
                     numeric[k] = model.mean[model.features.index(k)]
                 missing.append("openalex")
+            if "wikipedia" in ev.failed and model:
+                # То же для Википедии: ноль означал бы «статьи нет» и сдвигал бы кандидата к сигналу.
+                for k in ("wiki_exists", "log_wiki_views"):
+                    numeric[k] = model.mean[model.features.index(k)]
+                missing.append("wikipedia")
             corpus_docs = [corpus[i] for i in c["doc_idx"][:6]]
             dataset_docs = [
                 RawDoc(url=w["url"], title=w["title"], source_name="Датасет организатора: ссылка на первоисточник", source_type="dataset", collector="dataset")
@@ -148,6 +153,14 @@ async def execute(run_id: int) -> None:
                 return await assess(c)
 
         assessed = await asyncio.gather(*(guarded(c) for c in pool))
+
+        # Повторный опрос тех, по кому decision-модель не ответила (обычно таймаут под нагрузкой).
+        async def reask(a: dict) -> None:
+            a["res"] = await dm.ask(a["state"], questions)
+            a["features"] = {**a["features"], **answer_features(a["res"].answers)}
+            a["prob"] = model.predict(a["features"]) if model else None
+
+        await asyncio.gather(*(reask(a) for a in assessed if not a["res"].ok))
 
         for a in assessed:
             r = a["res"]
@@ -194,7 +207,7 @@ async def execute(run_id: int) -> None:
             facts = [
                 f"Научных работ с этим термином за всё время: {total}; из них за последние 3 года: {f.get('recent_share', 0):.0%}.",
                 f"Тема заметна в литературе около {f.get('age_years', 0):.0f} лет." if f.get("age_years") else "Устойчивой истории публикаций нет — тема новая.",
-                "Статья в англоязычной Википедии есть." if f.get("wiki_exists") else "Статьи в англоязычной Википедии нет.",
+                wiki_fact(f, a.get("missing", [])) + ".",
                 f"Модель оценивает вероятность того, что это слабый сигнал, в {cand.probability or 0:.0%} (это {'высокая' if (cand.probability or 0) >= 0.75 else 'средняя'} уверенность).",
             ]
             data, res = await write_dossier(llm, query, cand.name, a["items"][:10], facts)

@@ -2,13 +2,15 @@
 import asyncio
 import math
 
+import httpx
+
 from app.collectors.base import RawDoc
 from app.decision.base import DecisionResult
 from app.decision.heuristic import HeuristicDecision
 from app.llm.providers import parse_json
 from app.ml.model import SignalModel
 from app.pipeline import discovery
-from app.pipeline.decide import decide
+from app.pipeline.decide import decide, wiki_fact
 from app.pipeline.evidence import Evidence, _dedupe
 from app.pipeline.features import FEATURES, numeric_features
 from app.pipeline.questions import QUESTIONS, build_state
@@ -95,6 +97,76 @@ def test_decide_filters_and_ranking():
     assert status["offtopic"][1] == "irrelevant"
     assert status["thin"][1] == "low_evidence"
     assert status["unlikely"][1] == "low_probability"
+
+
+def test_decide_excludes_candidates_without_decision():
+    model = SignalModel(features=list(FEATURES), mean=[0.0] * len(FEATURES), scale=[1.0] * len(FEATURES), coef=[0.1] * len(FEATURES), intercept=0.0, meta={})
+    failed = _assessed("timeout", {}, {}, 0.9)
+    failed["res"] = DecisionResult({}, "jev", "jev-latest", 0, ok=False, error="ReadTimeout: ")
+    out = decide([failed], model, top_k=15)
+    assert (out[0]["status"], out[0]["code"]) == ("excluded", "no_decision")
+
+
+def test_decide_ignores_imputed_wikipedia():
+    model = SignalModel(features=list(FEATURES), mean=[0.0] * len(FEATURES), scale=[1.0] * len(FEATURES), coef=[0.1] * len(FEATURES), intercept=0.0, meta={})
+    base = {"relevance": 0.9, "specific_tech": 0.9, "standard": 0.1, "mass_adoption": 0.1, "market_leaders": 0.1, "hype": 0.1}
+    wiki = {"wiki_exists": 1.0, "log_wiki_views": math.log1p(20000), "age_years": 10.0}
+    real = _assessed("real", base, wiki, 0.9)
+    imputed = {**_assessed("imputed", base, wiki, 0.9), "missing": ["wikipedia"]}
+    out = decide([real, imputed], model, top_k=15)
+    assert out[0].get("code") == "mature"
+    assert out[1]["status"] == "signal"
+    assert wiki_fact(wiki, ["wikipedia"]) == "Данные Википедии недоступны"
+
+
+def _mock_http(monkeypatch, handler):
+    from app.collectors import http as http_mod
+
+    sleeps = []
+
+    async def fake_sleep(s):
+        sleeps.append(s)
+
+    monkeypatch.setattr(http_mod.asyncio, "sleep", fake_sleep)
+    h = http_mod.HttpClient()
+    h._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return h, sleeps, http_mod
+
+
+def test_rate_limit_backs_off_instead_of_failing(monkeypatch):
+    calls = []
+
+    def handler(request):
+        calls.append(1)
+        return httpx.Response(429, headers={"retry-after": "7"}) if len(calls) == 1 else httpx.Response(200, json={"ok": 1})
+
+    h, sleeps, _ = _mock_http(monkeypatch, handler)
+    assert asyncio.run(h.get("https://mock.test/a", cache=False)) == {"ok": 1}
+    assert 7.0 in sleeps
+
+
+def test_breaker_reopens_after_cooldown(monkeypatch):
+    state = {"up": False}
+    h, _, http_mod = _mock_http(monkeypatch, lambda r: httpx.Response(200, json={}) if state["up"] else httpx.Response(503))
+    now = [1000.0]
+    monkeypatch.setattr(http_mod.time, "monotonic", lambda: now[0])
+
+    async def scenario():
+        for _ in range(3):
+            try:
+                await h.get("https://mock.test/x", cache=False)
+            except http_mod.SourceError:
+                pass
+        state["up"] = True
+        try:
+            await h.get("https://mock.test/x", cache=False)
+            raise AssertionError("источник должен быть отключён")
+        except http_mod.SourceError as exc:
+            assert "отключён" in str(exc)
+        now[0] += http_mod.BREAKER_COOLDOWN + 1
+        return await h.get("https://mock.test/x", cache=False)
+
+    assert asyncio.run(scenario()) == {}
 
 
 def test_salvage_broken_llm_json():

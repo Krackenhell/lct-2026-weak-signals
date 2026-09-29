@@ -30,6 +30,16 @@ HOST_INTERVAL = {
 }
 
 
+BREAKER_COOLDOWN = 60.0
+
+
+def _retry_after(resp: httpx.Response) -> float | None:
+    try:
+        return min(max(float(resp.headers["retry-after"]), 1.0), 60.0)
+    except (KeyError, ValueError):
+        return None
+
+
 class SourceError(Exception):
     pass
 
@@ -58,9 +68,10 @@ class HttpClient:
         # Поиск GitHub без токена: 10 запросов/мин, с токеном: 30 запросов/мин.
         self._interval = {**HOST_INTERVAL, "api.github.com": 2.2 if s.github_token else 6.5}
         self.stats: dict[str, dict[str, int]] = {}
-        # Предохранитель: после 3 неудач подряд источник пропускается до конца запроса,
-        # чтобы недоступный сервис не съедал время обработки.
+        # Предохранитель: после 3 неудач подряд источник пропускается BREAKER_COOLDOWN секунд,
+        # чтобы недоступный сервис не съедал время обработки, но и не выпадал до конца запроса.
         self._fails: dict[str, int] = {}
+        self._open_until: dict[str, float] = {}
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -99,11 +110,16 @@ class HttpClient:
             return json.loads(path.read_text(encoding="utf-8"))
 
         if self._fails.get(host, 0) >= 3:
-            self._bump(host, "failed")
-            raise SourceError(f"{host} временно отключён после серии сбоев")
+            if time.monotonic() < self._open_until.get(host, 0.0):
+                self._bump(host, "failed")
+                raise SourceError(f"{host} временно отключён после серии сбоев")
+            # Пауза прошла: один пробный запрос без повторов, параллельные запросы ждут его исхода.
+            self._open_until[host] = time.monotonic() + BREAKER_COOLDOWN
+            retries = 1
         last_exc: Exception | None = None
         for attempt in range(retries):
             await self._throttle(host)
+            backoff = 1.5 * (attempt + 1) + self._interval.get(host, 0)
             try:
                 resp = await self._client.get(url, params=params, headers=headers)
                 if resp.status_code == 403 and resp.headers.get("x-ratelimit-remaining") == "0":
@@ -116,10 +132,14 @@ class HttpClient:
                     params = {k: v for k, v in params.items() if k != "api_key"}
                     raise SourceError("HTTP 429 (ключ исчерпан, переход на анонимную квоту)")
                 if resp.status_code == 429 or resp.status_code >= 500:
+                    if resp.status_code == 429:
+                        # Лимит частоты: ждём дольше (или сколько просит источник), а не отключаем его.
+                        backoff = _retry_after(resp) or 10.0 * (attempt + 1)
                     raise SourceError(f"HTTP {resp.status_code}")
                 if resp.status_code >= 400:
                     # Ошибка запроса (например, 404): источник исправен, повторять бессмысленно.
                     self._bump(host, "failed")
+                    self._fails[host] = 0
                     raise NotFound(f"HTTP {resp.status_code}")
                 if as_json:
                     try:
@@ -137,9 +157,12 @@ class HttpClient:
                 raise
             except (httpx.HTTPError, SourceError) as exc:
                 last_exc = exc
-                await asyncio.sleep(1.5 * (attempt + 1) + self._interval.get(host, 0))
+                if attempt < retries - 1:
+                    await asyncio.sleep(backoff)
         self._bump(host, "failed")
         self._fails[host] = self._fails.get(host, 0) + 1
+        if self._fails[host] >= 3:
+            self._open_until[host] = time.monotonic() + BREAKER_COOLDOWN
         safe = {k: ("***" if "key" in k or "token" in k else v) for k, v in (params or {}).items()}
         log.warning("source failed %s %s: %s", url, safe, last_exc)
         raise SourceError(str(last_exc))
