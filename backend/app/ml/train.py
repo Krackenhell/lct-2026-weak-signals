@@ -44,9 +44,10 @@ def load_examples() -> list[dict]:
     neg = json.loads((seed / "negatives.json").read_text(encoding="utf-8"))["items"]
     rows = []
     for p in pos:
-        rows.append({"key": f"pos-{p['id']}", "label": 1, "name": p["name"], "domain": p["domain"], "code": "signal", "phrase": terms[str(p["id"])][0]})
+        t = terms[str(p["id"])]
+        rows.append({"key": f"pos-{p['id']}", "label": 1, "name": p["name"], "domain": p["domain"], "code": "signal", "phrase": t[0], "alt_terms": t[1:]})
     for i, n in enumerate(neg):
-        rows.append({"key": f"neg-{i}", "label": 0, "name": n["name_ru"], "domain": n["domain"], "code": n["code"], "phrase": n["terms"][0]})
+        rows.append({"key": f"neg-{i}", "label": 0, "name": n["name_ru"], "domain": n["domain"], "code": n["code"], "phrase": n["terms"][0], "alt_terms": n["terms"][1:]})
     return rows
 
 
@@ -61,6 +62,14 @@ async def collect(rows: list[dict], concurrency: int = 6) -> tuple[list[dict], d
         nonlocal done
         async with sem:
             ev = await evidence_mod.gather(http, r["phrase"], TRAIN_DATE, with_news=False, with_repos=False)
+            # Как при живом поиске (runner.assess): мало документов — пробуем запасные термины.
+            for alt in r.get("alt_terms", []):
+                if len(ev.docs) >= 5:
+                    break
+                alt_ev = await evidence_mod.gather(http, alt, TRAIN_DATE, with_news=False, with_repos=False)
+                if len(alt_ev.docs) > len(ev.docs):
+                    ev = alt_ev
+        r["phrase_used"] = ev.phrase
         r["numeric"] = numeric_features(ev)
         r["failed_sources"] = sorted(set(ev.failed))
         r["n_docs"] = len(ev.docs)
@@ -177,6 +186,7 @@ def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # URL запросов содержат api_key источников
     ap = argparse.ArgumentParser()
     ap.add_argument("--refit", action="store_true")
     ap.add_argument("--reask", action="store_true")
