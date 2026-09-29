@@ -56,10 +56,16 @@ def add_para_like(sh, src_idx, text):
 # ---------- Слайд 7: титульный ----------
 s7 = S[7]
 s7.placeholders[0].text = "Радар слабых сигналов"
-s7.placeholders[12].text = "Команда «Агенты Москвы» · Задача №1 Газпромбанк.Тех · ЛЦТ 2026"
+s7.placeholders[12].text = "Команда «АГЕНТЫ МОСКВЫ» · Задача №1 Газпромбанк.Тех · ЛЦТ 2026"
+_lg = s7.placeholders[11].insert_picture(str(IMG / "logo.png"))
+_lg.crop_left = _lg.crop_right = _lg.crop_top = _lg.crop_bottom = 0
+_lg.left, _lg.top, _lg.width, _lg.height = Emu(420000), Emu(430000), Emu(4700000), Emu(1000000)
 
 # ---------- Слайд 8: о команде и суть ----------
 s8 = S[8]
+_hero = s8.placeholders[10].insert_picture(str(IMG / "hero.png"))
+_hero.crop_left = _hero.crop_right = _hero.crop_top = _hero.crop_bottom = 0
+_hero.left, _hero.top, _hero.width, _hero.height = Emu(250000), Emu(420000), Emu(5900000), Emu(2720000)
 set_para_text(shape(s8, 5), 0, "По открытому запросу сервис за 5–15 минут собирает свежие статьи, препринты, новости и сигналы разработчиков, "
               "выделяет конкретные технологии, отсекает зрелое, стандарты и хайп и выдаёт ТОП-15 ранних сигналов с уверенностью, объяснением и проверяемыми источниками.")
 set_para_text(shape(s8, 8), 0, "Decision-модель Jev (согласована с экспертами Газпромбанк.Тех) за один проход отвечает вероятностями на 15 вопросов о текстах источников. "
@@ -91,7 +97,7 @@ for k, (nm, lines) in zip((1, 2), people):
 for sid in (59, 60, 61, 62, 63, 64, 65, 66, 67, 4, 5, 6):
     el = shape(s9, sid)._element
     el.getparent().remove(el)
-s9.placeholders[0].text = "Команда «Агенты Москвы»"
+s9.placeholders[0].text = "АГЕНТЫ МОСКВЫ"
 # Фото участников на месте пустых рамок шаблона (рамки удаляем, размер и позиция — по сетке карточек)
 for sid in (2, 3):
     el = shape(s9, sid)._element
@@ -206,8 +212,13 @@ cols = [
 w = 3650000
 for i, (h, lines) in enumerate(cols):
     l = 346075 + i * (w + 275000)
-    card(s, l, CARD_T, w, CARD_H, WHITE if i != 1 else LIGHT)
-    text(s, l + 250000, CARD_T + 250000, w - 500000, CARD_H - 500000, [{"t": h, "size": 22, "bold": True, "color": PINK if i == 1 else VIOLET, "after": 14}] + [{"t": "• " + x, "after": 12} for x in lines], size=15)
+    card(s, l, CARD_T, w, 3450000, WHITE if i != 1 else LIGHT)
+    text(s, l + 250000, CARD_T + 250000, w - 500000, 3000000, [{"t": h, "size": 22, "bold": True, "color": PINK if i == 1 else VIOLET, "after": 14}] + [{"t": "• " + x, "after": 12} for x in lines], size=15)
+kpis = [("15", "ранних технологий на запрос"), ("5–17 мин", "время обработки запроса"), ("7", "открытых источников RU / EN")]
+for i, (big, small) in enumerate(kpis):
+    l = 346075 + i * (w + 275000)
+    card(s, l, CARD_T + 3600000, w, CARD_H - 3600000, PINK if i == 1 else WHITE)
+    text(s, l + 250000, CARD_T + 3700000, w - 500000, CARD_H - 3700000, [{"t": big, "size": 30, "bold": True, "color": WHITE if i == 1 else PINK, "after": 0}, {"t": small, "size": 13, "color": WHITE if i == 1 else DARK}])
 
 # 13. Как работает
 s = new_slide("Как это работает")
@@ -262,7 +273,8 @@ text(s, FULL_L + 250000, CARD_T + 1700000, 5100000, CARD_H - 1900000, [
     "Доказательства собраны тем же кодом, что и в живом поиске, на фиксированную дату.",
     f"Уверенность ≥ 75%: у {c75['share_of_positives_above_075']:.0%} сигналов, точность в этой зоне {c75['precision_above_075']:.0%}.",
     "Порог ТЗ 75–80% превышен.",
-], size=13)
+    "Отчёт: backend/data/model/metrics.json и страница «Методология» на стенде.",
+], size=14)
 card(s, FULL_L + 5700000, CARD_T, 5800000, CARD_H)
 text(s, FULL_L + 5950000, CARD_T + 150000, 5400000, 500000, [{"t": "Перенос на новую область", "size": 16, "bold": True, "color": VIOLET}])
 pic(s, "lodo.png", FULL_L + 5800000, CARD_T + 650000, w=5600000)
@@ -315,14 +327,16 @@ cols = [
 w = 3650000
 for i, (h, lines) in enumerate(cols):
     l = 346075 + i * (w + 275000)
-    card(s, l, CARD_T, w, 3000000, WHITE)
-    text(s, l + 250000, CARD_T + 250000, w - 500000, 2600000, [{"t": h, "size": 19, "bold": True, "color": [VIOLET, VIOLET, PINK][i], "after": 12}] + [{"t": "• " + x, "after": 8} for x in lines], size=14)
-card(s, FULL_L, CARD_T + 3200000, FULL_W, CARD_H - 3200000, LIGHT)
-text(s, FULL_L + 250000, CARD_T + 3350000, FULL_W - 500000, CARD_H - 3400000, [
+    card(s, l, CARD_T, w, 2500000, WHITE)
+    text(s, l + 250000, CARD_T + 250000, w - 500000, 2200000, [{"t": h, "size": 19, "bold": True, "color": [VIOLET, VIOLET, PINK][i], "after": 12}] + [{"t": "• " + x, "after": 8} for x in lines], size=14)
+card(s, FULL_L, CARD_T + 2700000, FULL_W, CARD_H - 2700000, LIGHT)
+text(s, FULL_L + 300000, CARD_T + 2900000, FULL_W - 600000, CARD_H - 3000000, [
+    {"t": "Проверяемость каждого вывода", "size": 18, "bold": True, "color": VIOLET, "after": 10},
     "У каждого источника: название, ссылка, дата публикации, тип, язык оригинала, уровень доверия и критерий. "
     "Иностранные материалы — с русским резюме и пометкой «автоматическое резюме (LLM)».",
     "Отказоустойчивость: кэш, повторы, общий ограничитель частоты для всех запросов, предохранитель для недоступных источников, нейтральная подстановка признаков с пометкой в досье.",
-], size=13)
+    "Журнал моделей: для каждого обращения к Jev и GigaChat видно, что спросили и что ответили.",
+], size=14)
 
 # 20. Бизнес-эффект и развитие
 s = new_slide("Эффект для банка и развитие")
@@ -333,8 +347,10 @@ cols = [
 ]
 for i, (h, lines) in enumerate(cols):
     l = 346075 + i * (w + 275000)
-    card(s, l, CARD_T, w, CARD_H, WHITE if i != 1 else LIGHT)
-    text(s, l + 250000, CARD_T + 250000, w - 500000, CARD_H - 500000, [{"t": h, "size": 22, "bold": True, "color": PINK if i == 1 else VIOLET, "after": 14}] + [{"t": "• " + x, "after": 12} for x in lines], size=15)
+    card(s, l, CARD_T, w, 3700000, WHITE if i != 1 else LIGHT)
+    text(s, l + 250000, CARD_T + 250000, w - 500000, 3300000, [{"t": h, "size": 22, "bold": True, "color": PINK if i == 1 else VIOLET, "after": 14}] + [{"t": "• " + x, "after": 12} for x in lines], size=15)
+card(s, FULL_L, CARD_T + 3850000, FULL_W, 850000, PINK)
+text(s, FULL_L + 300000, CARD_T + 3930000, FULL_W - 600000, 800000, [{"t": "От дней ручного поиска — к 10 минутам: ранние сигналы с доказательствами для техкомитета банка", "size": 18, "bold": True, "color": WHITE}])
 text(s, FULL_L, CARD_T + CARD_H + 60000, FULL_W, 400000, [{"t": "Стенд: http://89.169.170.106/   ·   Код: github.com/Krackenhell/lct-2026-weak-signals", "size": 14, "bold": True, "color": WHITE}])
 
 prs.save(str(OUT))
