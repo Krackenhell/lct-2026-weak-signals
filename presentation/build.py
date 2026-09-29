@@ -351,7 +351,7 @@ for i, (h, lines) in enumerate(cols):
     text(s, l + 250000, CARD_T + 250000, w - 500000, 3300000, [{"t": h, "size": 22, "bold": True, "color": PINK if i == 1 else VIOLET, "after": 14}] + [{"t": "• " + x, "after": 12} for x in lines], size=15)
 card(s, FULL_L, CARD_T + 3850000, FULL_W, 850000, PINK)
 text(s, FULL_L + 300000, CARD_T + 3930000, FULL_W - 600000, 800000, [{"t": "От дней ручного поиска — к 10 минутам: ранние сигналы с доказательствами для техкомитета банка", "size": 18, "bold": True, "color": WHITE}])
-text(s, FULL_L, CARD_T + CARD_H + 60000, FULL_W, 400000, [{"t": "Стенд: http://89.169.170.106/   ·   Код: github.com/Krackenhell/lct-2026-weak-signals", "size": 14, "bold": True, "color": WHITE}])
+text(s, FULL_L, CARD_T + CARD_H + 60000, FULL_W, 400000, [{"t": "Стенд: http://77.239.111.137:8080/   ·   Код: github.com/Krackenhell/lct-2026-weak-signals", "size": 14, "bold": True, "color": WHITE}])
 
 prs.save(str(OUT))
 print("saved", OUT, "slides:", len(prs.slides))

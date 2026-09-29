@@ -8,7 +8,7 @@
 - [Decision-модели: Jev, Kev, Laya](docs/decision-models.md)
 - [Разъяснения организатора](docs/organizer-clarifications.md)
 
-**Демо-стенд:** http://89.169.170.106/ · **Презентация:** [presentation/](presentation/)
+**Демо-стенд:** http://77.239.111.137:8080/ · **Презентация:** [presentation/](presentation/)
 
 ### Время работы
 | Этап | Время |
