@@ -9,7 +9,8 @@ APP_DIR="/opt/weak-signals"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "==> Установка Docker"
-  curl -fsSL https://get.docker.com | sh
+  # get.docker.com недоступен из части российских облаков — тогда пакеты Ubuntu.
+  curl -fsSL -m 20 https://get.docker.com | sh || { sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2; }
   sudo usermod -aG docker "$USER" || true
 fi
 
