@@ -44,6 +44,15 @@ FEEDS: list[tuple[str, str, str, str | None]] = [
     ("https://www.finextra.com/rss/headlines.aspx", "Finextra", "en", FIN),
     ("https://vc.ru/rss", "vc.ru", "ru", None),
     ("https://www.cnews.ru/inc/rss/news.xml", "CNews", "ru", None),
+    # Китай — крупнейший рынок ранних внедрений: англоязычные издания о китайских технологиях…
+    ("https://technode.com/feed/", "TechNode", "en", None),
+    ("https://pandaily.com/feed/", "Pandaily", "en", None),
+    ("https://www.scmp.com/rss/36/feed", "SCMP Tech", "en", None),
+    # …и китайские техно-СМИ (отбор по китайским фразам из плана запроса)
+    ("https://www.36kr.com/feed-article", "36Kr", "zh", None),
+    ("https://www.ithome.com/rss/", "IT之家", "zh", None),
+    ("https://www.cnbeta.com.tw/backend.php", "cnBeta", "zh", None),
+    ("https://www.infoq.cn/feed", "InfoQ China", "zh", None),
 ]
 # Ленты тегов WordPress (/tag/<тег>/feed/) разрешены robots.txt, в отличие от поиска TechCrunch (/?s=),
 # и уходят на годы назад: по тегу «stablecoins» — до 2022 года. Нет такого тега — сайт отвечает ошибкой, это не сбой.
@@ -53,10 +62,12 @@ TAG_FEEDS = [("https://techcrunch.com/tag/{slug}/feed/", "TechCrunch"), ("https:
 FUNDING = re.compile(
     r"\braise[sd]?\b|\braising\b|\bseries [a-e]\b|\bseed (round|funding)\b|\bpre-seed\b|\bfunding round\b|\bsecures? \$|"
     r"\b\$\d[\d.,]*\s?(m|mn|million|b|bn|billion)\b|\bbacked by\b|\bacquires?\b|\bacquisition\b|"
-    r"привлек\w*|раунд|инвестиц\w*|посевн\w*|сделк\w*|поглощ\w*|приобрет\w*",
+    r"привлек\w*|раунд|инвестиц\w*|посевн\w*|сделк\w*|поглощ\w*|приобрет\w*|"
+    r"融资|[A-E天种]轮|收购|获投|投资",
     re.I,
 )
-LAUNCH = re.compile(r"\blaunch(es|ed)?\b|\bunveil(s|ed)?\b|\brolls? out\b|\bpilot\b|запуска\w*|запусти\w*|представил\w*|пилот\w*", re.I)
+LAUNCH = re.compile(r"\blaunch(es|ed)?\b|\bunveil(s|ed)?\b|\brolls? out\b|\bpilot\b|запуска\w*|запусти\w*|представил\w*|пилот\w*|"
+                    r"发布|推出|上线|试点|量产", re.I)
 
 # Слова, которые есть почти в любой новости о технологиях: по ним запись к теме не относим.
 COMMON = {
@@ -92,6 +103,14 @@ def _stems(text: str) -> set[str]:
     """Основы слов: первые 5 букв, чтобы «платежи» и «платежей», «payment» и «payments» совпадали."""
     words = re.findall(r"[a-zа-яё0-9][a-zа-яё0-9\-]{2,}", (text or "").lower())
     return {w[:5] for w in words if w not in COMMON}
+
+
+CJK = re.compile(r"[一-鿿]")
+
+
+def _bigrams(text: str) -> set[str]:
+    chars = "".join(CJK.findall(text or ""))
+    return {chars[i : i + 2] for i in range(len(chars) - 1)} if len(chars) > 1 else set(chars)
 
 
 def _blocked(http: HttpClient, url: str) -> None:
@@ -163,11 +182,16 @@ async def tag_feeds(http: HttpClient, terms: list[str], n: int = 20) -> list[Raw
 def select(docs: list[RawDoc], terms: list[str], n: int = 20, min_score: int = 2) -> list[RawDoc]:
     """Записи лент, относящиеся к теме: у одного из терминов совпало не меньше min_score основ слов
     (у однословного термина — само слово). Выше — больше совпадений, затем новости о раундах и запусках."""
-    term_stems = [s for s in (_stems(t) for t in terms if t) if s]
+    term_stems = [s for s in (_stems(t) for t in terms if t and not CJK.search(t)) if s]
+    # В китайском нет пробелов: сравниваем пары соседних иероглифов, нужно совпадение 60% пар термина.
+    term_bigrams = [b for b in (_bigrams(t) for t in terms if t and CJK.search(t)) if b]
     scored = []
     for d in docs:
         text = _stems(f"{d.title} {d.snippet}")
         hits = [len(ts & text) for ts in term_stems if len(ts & text) >= min(min_score, len(ts))]
+        if term_bigrams:
+            zh = _bigrams(f"{d.title} {d.snippet}")
+            hits += [len(tb & zh) for tb in term_bigrams if len(tb & zh) >= max(1, round(0.6 * len(tb)))]
         if hits:
             scored.append((max(hits), bool(d.extra.get("event")), d.published or "", d))
     scored.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)

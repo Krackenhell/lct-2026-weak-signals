@@ -38,6 +38,13 @@ HOST_INTERVAL = {
     "www.prnewswire.com": 1.0,
     "vc.ru": 1.0,
     "www.cnews.ru": 1.0,
+    "technode.com": 1.0,
+    "pandaily.com": 1.0,
+    "www.scmp.com": 1.0,
+    "www.36kr.com": 1.0,
+    "www.ithome.com": 1.0,
+    "www.cnbeta.com.tw": 1.0,
+    "www.infoq.cn": 1.0,
 }
 
 

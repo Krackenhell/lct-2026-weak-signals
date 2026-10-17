@@ -111,6 +111,8 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
             tasks.append(news_search.siliconangle(http, sq, 15))
         if ru_terms:
             tasks.append(news_search.for_topic(http, topic_text, [plan.get("query", ""), *ru_terms], "ru", 30))
+        if plan.get("zh_terms"):  # китайские техно-СМИ: 36Kr, IT之家, cnBeta, InfoQ China
+            tasks.append(news_search.for_topic(http, topic_text, plan["zh_terms"], "zh", 30))
 
     docs: list[RawDoc] = []
     done = 0

@@ -115,9 +115,11 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
         "Верни JSON: {\"topic_en\": краткое название области на английском, "
         "\"subqueries\": 10 англоязычных поисковых фраз по 2-4 слова, каждая — узкое новое направление внутри области "
         "(например для финтеха: «agentic payments», «tokenized deposits», «zero-knowledge KYC»), "
-        "\"ru_terms\": 3 русскоязычные поисковые фразы так, как их пишут в российских научных статьях и на Хабре}. Не называй конкретные компании."
+        "\"ru_terms\": 3 русскоязычные поисковые фразы так, как их пишут в российских научных статьях и на Хабре, "
+        "\"zh_terms\": 3 короткие китайские поисковые фразы (упрощённые иероглифы) так, как их пишут китайские техно-СМИ}. "
+        "Не называй конкретные компании."
     )
-    res = await llm.complete(SYSTEM_ANALYST, prompt, temperature=0.3, max_tokens=600)
+    res = await llm.complete(SYSTEM_ANALYST, prompt, temperature=0.3, max_tokens=700)
     data = parse_json(res.text) if res.ok else None
     if isinstance(data, dict) and data.get("subqueries"):
         base = fallback_plan(query)
@@ -128,6 +130,8 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
         subs = [re.sub(r"\s+", " ", s.replace("-", " ")).strip() for s in data["subqueries"] if isinstance(s, str)][:6]
         data["ru_terms"] = [re.sub(r"\s+", " ", t.replace("-", " ")).strip() for t in data.get("ru_terms", []) if isinstance(t, str)]
         data["subqueries"] = subs + [t for t in base["subqueries"] if t not in subs][: max(0, 12 - len(subs))]
+        # Китайские фразы: только строки с иероглифами (модель иногда возвращает пиньинь или английский).
+        data["zh_terms"] = [t.strip() for t in data.get("zh_terms", []) if isinstance(t, str) and re.search(r"[一-鿿]", t)][:3]
         data["generated_by"] = f"{res.provider}:{res.model}"
         return data, res
     return fallback_plan(query), res if llm.provider != "none" else None

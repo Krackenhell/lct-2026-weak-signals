@@ -75,3 +75,9 @@ def test_dossier_failure_returns_none():
 def test_summaries_keep_only_numbered_items():
     out, _ = run(summarize_sources(ScriptedLLM('{"0": "Резюме один", "1": "Резюме два", "x": "мусор"}'), [{"title": "a"}, {"title": "b"}]))
     assert out == {0: "Резюме один", 1: "Резюме два"}
+
+
+def test_plan_keeps_only_chinese_zh_terms():
+    llm = ScriptedLLM('{"topic_en": "robotics", "subqueries": ["humanoid robot"], "ru_terms": [], "zh_terms": ["人形机器人", "renxing jiqiren", 5]}')
+    plan, _ = run(plan_query(llm, "робототехника"))
+    assert plan["zh_terms"] == ["人形机器人"]

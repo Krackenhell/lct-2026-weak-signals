@@ -177,3 +177,11 @@ def test_missing_tag_does_not_trip_breaker():
     http = _client(handler)
     assert run(news_search.tag_feeds(http, ["no such tag", "another", "third", "fourth"])) == []
     assert http._fails.get("techcrunch.com", 0) == 0  # 404 — «тега нет», а не сбой источника
+
+
+def test_chinese_terms_and_events():
+    mk = lambda t: RawDoc(url=f"https://x.cn/{abs(hash(t))}", title=t, language="zh", extra={"event": news_search.event_of(t)})  # noqa: E731
+    docs = [mk("某公司人形机器人完成A轮融资"), mk("手机新品发布会"), mk("人形机器人研发中心落地")]
+    got = news_search.select(docs, ["人形机器人研发"], n=10)
+    assert [d.title for d in got] == ["人形机器人研发中心落地", "某公司人形机器人完成A轮融资"]
+    assert docs[0].extra["event"] == "funding" and docs[1].extra["event"] == "launch"
