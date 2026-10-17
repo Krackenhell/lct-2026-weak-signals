@@ -60,7 +60,8 @@ class GigaChat(BaseLLM):
         self.model = s.gigachat_model
         self._auth_key = s.gigachat_auth_key
         self._scope = s.gigachat_scope
-        self._client = httpx.AsyncClient(timeout=120, verify=s.gigachat_verify_ssl)
+        # Соединение и токен — быстро (10 с), генерация длинного ответа — до 90 с.
+        self._client = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=10), verify=s.gigachat_verify_ssl)
         self._token = ""
         self._token_exp = 0.0
         self._lock = asyncio.Lock()

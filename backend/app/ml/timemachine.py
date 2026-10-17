@@ -193,13 +193,29 @@ async def as_of(http: HttpClient, phrase: str, c: int, companies: list[dict]) ->
     return feats, sorted(set(failed))
 
 
-def _fit(X: np.ndarray, y: np.ndarray, C: float = 0.3):
+C_MAIN = 0.3  # выбрано заранее, до просмотра результатов; другие варианты публикуются рядом (variants_tried)
+VARIANTS = {
+    "13 признаков, C=0.3 (основная)": (TM_FEATURES, 0.3),
+    "13 признаков, C=0.05": (TM_FEATURES, 0.05),
+    "13 признаков, C=1": (TM_FEATURES, 1.0),
+    "только динамика публикаций (4)": (["growth2", "accel", "recent_share3", "age_years"], 0.3),
+    "динамика + GitHub, HN, гранты (7)": (["growth2", "accel", "recent_share3", "age_years", "log_gh_repos_12m", "log_hn_12m", "log_nih_recent3"], 0.3),
+}
+
+
+def _fit(X: np.ndarray, y: np.ndarray, C: float = C_MAIN):
     sc = StandardScaler().fit(X)
     clf = LogisticRegression(C=C, max_iter=2000, class_weight="balanced").fit(sc.transform(X), y)
     return sc, clf
 
 
-def out_of_time(rows: list[dict], feats: list[str]) -> np.ndarray:
+def variants_tried(rows: list[dict]) -> dict[str, float]:
+    """Все опробованные варианты модели — без выбора лучшего задним числом."""
+    y = np.array([r["label"] for r in rows])
+    return {name: round(float(roc_auc_score(y, out_of_time(rows, feats, C))), 3) for name, (feats, C) in VARIANTS.items()}
+
+
+def out_of_time(rows: list[dict], feats: list[str], C: float = C_MAIN) -> np.ndarray:
     """Предсказание для каждой темы моделью, которая не видела ни одной темы того же года среза."""
     X = np.array([[r["features"][f] for f in feats] for r in rows])
     y = np.array([r["label"] for r in rows])
@@ -210,7 +226,7 @@ def out_of_time(rows: list[dict], feats: list[str]) -> np.ndarray:
         if len(set(y[tr])) < 2:
             p[te] = 0.5
             continue
-        sc, clf = _fit(X[tr], y[tr])
+        sc, clf = _fit(X[tr], y[tr], C)
         p[te] = clf.predict_proba(sc.transform(X[te]))[:, 1]
     return p
 
@@ -266,6 +282,15 @@ async def collect(limit: int | None = None) -> list[dict]:
     return rows
 
 
+def _previous() -> dict | None:
+    """Результат прежней проверки (один срез 2021, модель на данных 2026 года) — для сравнения."""
+    p = get_settings().model_dir / "backtest.json"
+    if not p.exists():
+        return None
+    m = (json.loads(p.read_text(encoding="utf-8")).get("metrics") or {})
+    return {"n": m.get("n"), "model_roc_auc": (m.get("model") or {}).get("roc_auc"), "growth_roc_auc": (m.get("baseline_growth") or {}).get("roc_auc")}
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -287,6 +312,8 @@ def main() -> None:
     coefs = sorted(({"feature": f, "label": FEATURE_RU[f], "weight": round(float(w), 3)} for f, w in zip(TM_FEATURES, clf.coef_[0], strict=True)),
                    key=lambda x: -abs(x["weight"]))
     report = {"method": __doc__.split("Запуск:")[0].strip(), "metrics": metrics, "weights_all_data": coefs,
+              "variants_tried": variants_tried(complete),
+              "previous_single_cutoff": _previous(),
               "incomplete": len(rows) - len(complete), "results": sorted(rows, key=lambda r: (r["cutoff"], -r.get("p_out_of_time", 0)))}
     path.write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps({k: v for k, v in metrics.items()}, ensure_ascii=False, indent=1))

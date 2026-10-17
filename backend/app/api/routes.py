@@ -239,7 +239,7 @@ def model_info() -> dict:
     comp_path = Path(s.model_dir) / "decision_model_comparison.json"
     comparison = json.loads(comp_path.read_text(encoding="utf-8")) if comp_path.exists() else None
     extra = {}
-    for key, fname in (("backtest", "backtest.json"), ("sources_check", "sources_check.json")):
+    for key, fname in (("backtest", "backtest.json"), ("timemachine", "timemachine.json"), ("sources_check", "sources_check.json")):
         p = Path(s.model_dir) / fname
         extra[key] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
     weights = []

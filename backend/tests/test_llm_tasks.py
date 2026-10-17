@@ -81,3 +81,20 @@ def test_plan_keeps_only_chinese_zh_terms():
     llm = ScriptedLLM('{"topic_en": "robotics", "subqueries": ["humanoid robot"], "ru_terms": [], "zh_terms": ["人形机器人", "renxing jiqiren", 5]}')
     plan, _ = run(plan_query(llm, "робототехника"))
     assert plan["zh_terms"] == ["人形机器人"]
+
+
+def test_hanging_llm_falls_back_within_deadline(monkeypatch):
+    import asyncio as _asyncio
+
+    from app.llm import tasks as t
+
+    class Hanging(ScriptedLLM):
+        async def complete(self, system, user, temperature=0.2, max_tokens=1500):
+            await _asyncio.sleep(60)
+
+    monkeypatch.setattr(t, "CHECK_DEADLINE", 0.05)
+    monkeypatch.setattr(t, "PLAN_DEADLINE", 0.05)
+    verdict, res = run(t.check_query(Hanging(""), "робототехника"))
+    assert verdict["by"] == "rules" and not res.ok and "нет ответа" in res.error
+    plan, res = run(t.plan_query(Hanging(""), "робототехника"))
+    assert plan["generated_by"] == "lexicon" and not res.ok

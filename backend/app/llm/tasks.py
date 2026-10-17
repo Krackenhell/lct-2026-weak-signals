@@ -1,7 +1,22 @@
 """Задачи для LLM с жёсткой привязкой к найденным документам, и шаблонные запасные варианты."""
+import asyncio
 import re
+import time
 
 from app.llm.providers import BaseLLM, LLMResult, parse_json
+
+# Лимиты на короткие шаги, у которых есть запасные правила: если GigaChat «завис» (замер: до 4 минут при сбое
+# сервиса — 3 попытки по 120 с), аналитик не ждёт, а запрос идёт дальше по правилам.
+CHECK_DEADLINE = 30.0
+PLAN_DEADLINE = 45.0
+
+
+async def _within(llm: BaseLLM, coro, seconds: float) -> LLMResult:
+    t = time.perf_counter()
+    try:
+        return await asyncio.wait_for(coro, seconds)
+    except asyncio.TimeoutError:
+        return LLMResult("", llm.provider, llm.model, int((time.perf_counter() - t) * 1000), ok=False, error=f"нет ответа за {seconds:.0f} с")
 
 # Направления банка для радара (тот же список, что в pipeline/passport.py — там же правила без LLM).
 BANK_AREA_NAMES = [
@@ -82,7 +97,7 @@ async def check_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]
         "Приветствия, бытовые вопросы, оценки организаций и людей, бессмысленный текст — не являются. "
         'Верни JSON: {"is_tech": true или false, "reason": "одно предложение на русском"}.'
     )
-    res = await llm.complete(SYSTEM_ANALYST, prompt, temperature=0.0, max_tokens=200)
+    res = await _within(llm, llm.complete(SYSTEM_ANALYST, prompt, temperature=0.0, max_tokens=200), CHECK_DEADLINE)
     data = parse_json(res.text) if res.ok else None
     if isinstance(data, dict) and isinstance(data.get("is_tech"), bool):
         rules = rule_check_query(query)
@@ -119,7 +134,7 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
         "\"zh_terms\": 3 короткие китайские поисковые фразы (упрощённые иероглифы) так, как их пишут китайские техно-СМИ}. "
         "Не называй конкретные компании."
     )
-    res = await llm.complete(SYSTEM_ANALYST, prompt, temperature=0.3, max_tokens=700)
+    res = await _within(llm, llm.complete(SYSTEM_ANALYST, prompt, temperature=0.3, max_tokens=700), PLAN_DEADLINE)
     data = parse_json(res.text) if res.ok else None
     if isinstance(data, dict) and data.get("subqueries"):
         base = fallback_plan(query)

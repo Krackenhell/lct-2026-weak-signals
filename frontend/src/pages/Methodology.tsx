@@ -14,6 +14,64 @@ function MetricsRow({ m }: { m: Record<string, number> }) {
   );
 }
 
+function TimeMachine({ t }: { t: any }) {
+  const m = t.metrics;
+  if (!m) return null;
+  const rows: [string, string][] = [
+    ["model_out_of_time", "Историческая модель (проверка «вне времени»)"],
+    ["model_out_of_time_without_yc", "Та же модель без признаков YC"],
+    ["baseline_growth", "Правило «быстрее рост — перспективнее»"],
+    ["baseline_more_grants", "Правило «больше грантов NIH — перспективнее»"],
+    ["baseline_more_works", "Правило «больше публикаций — перспективнее»"],
+  ];
+  const cutoffs = Object.keys(m.cutoffs);
+  const prev = t.previous_single_cutoff;
+  return (
+    <>
+      <h2>«Машина времени 2.0»: {m.n} тем, срезы {cutoffs.join(", ")}</h2>
+      <p className="muted small">
+        Признаки каждой темы посчитаны строго на 1 января года среза: публикации OpenAlex, гранты NIH, стартапы Y Combinator из наборов до среза,
+        GitHub, Hacker News, Википедия. Модель учится на темах одних лет среза и предсказывает темы года, которого не видела.
+        Стали трендом к 2026 году: {m.n_trend} из {m.n}. Разметка экспертная, открыта ниже.
+        {prev && <> Прежняя проверка (один срез 2021, {prev.n} тем, модель на данных 2026 года): AUC {prev.model_roc_auc}; новая модель на том же срезе — {m.model_out_of_time.by_cutoff["2021"]}.</>}
+      </p>
+      <div className="tablewrap">
+        <table>
+          <thead><tr><th>Способ</th><th>ROC-AUC [95% ДИ]</th><th>Точность в топ-{m.n_trend}</th>{cutoffs.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+          <tbody>
+            {rows.map(([key, label]) => m[key] && (
+              <tr key={key}>
+                <td>{label}</td><td>{m[key].roc_auc} [{m[key].ci95[0]}–{m[key].ci95[1]}]</td><td>{m[key].precision_at_k}</td>
+                {cutoffs.map((c) => <td key={c}>{m[key].by_cutoff?.[c] ?? "—"}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted small">
+        Все опробованные варианты модели (без выбора лучшего задним числом): {Object.entries(t.variants_tried || {}).map(([k, v]) => `${k} — ${v}`).join("; ")}.
+        Главные признаки: {(t.weights_all_data || []).slice(0, 4).map((w: any) => `${w.label} (${w.weight > 0 ? "+" : ""}${w.weight})`).join(", ")}.
+        Ограничение: темы выбраны задним числом (известные успехи и провалы), поэтому реальная задача сложнее.
+      </p>
+      <details className="small">
+        <summary>Все темы, срезы, оценки и разметка</summary>
+        <table>
+          <thead><tr><th>Тема</th><th>Срез</th><th>Оценка «вне времени»</th><th>Итог к 2026</th><th>Пояснение</th></tr></thead>
+          <tbody>
+            {t.results.map((r: any) => (
+              <tr key={r.phrase}>
+                <td>{r.phrase}</td><td>{r.cutoff}</td><td>{r.p_out_of_time != null ? `${Math.round(r.p_out_of_time * 100)}%` : "—"}</td>
+                <td>{r.label ? <span className="badge high">стало трендом</span> : <span className="badge neutral">ниша / заглохло</span>}</td>
+                <td className="muted">{r.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </>
+  );
+}
+
 function Backtest({ b }: { b: any }) {
   const m = b.metrics;
   if (!m) {
@@ -216,6 +274,7 @@ export default function Methodology() {
         </>
       )}
 
+      {info?.timemachine && <TimeMachine t={info.timemachine} />}
       {info?.backtest && <Backtest b={info.backtest} />}
 
       {info?.sources_check && (
