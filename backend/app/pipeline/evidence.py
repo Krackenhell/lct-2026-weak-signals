@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, crossref, gdelt, github, hackernews, news_search, openalex, semanticscholar, wikipedia
+from app.collectors import arxiv, crossref, gdelt, github, grants, hackernews, news_search, openalex, semanticscholar, wikipedia
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -81,6 +81,11 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # Ленты изданий кэшируются один раз за запуск, отбор по названию технологии — без новых запросов.
         tasks["gnews"] = _safe("rss", news_search.matching(http, [phrase], "en", 10, min_score=3), [], f)
         tasks["sa"] = _safe("siliconangle", news_search.siliconangle(http, phrase, 5), [], f)
+    if get_settings().grant_sources and with_news_search is not False:
+        # Госгранты за 3 года: NIH, NSF, UKRI (в числовые признаки не входят, событие «грант» — в паспорт).
+        tasks["nih"] = _safe("nih", grants.nih(http, phrase, n=4), [], f)
+        tasks["nsf"] = _safe("nsf", grants.nsf(http, phrase, n=4), [], f)
+        tasks["ukri"] = _safe("ukri", grants.ukri(http, phrase, n=4), [], f)
 
     results = dict(zip(tasks, await asyncio.gather(*tasks.values()), strict=False))
     ev.yearly = results["openalex_years"]
@@ -88,7 +93,8 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     ev.gh_repos_12m = results.get("github")
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
-               *results.get("news", []), *results.get("gnews", []), *results.get("sa", []), *results.get("github_top", []), *hn_docs]
+               *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),
+               *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("github_top", []), *hn_docs]
     ev.docs = _dedupe(ev.docs)
     return ev
 
@@ -111,7 +117,11 @@ def evidence_items(ev: Evidence, limit: int = 12) -> list[dict]:
     docs = sorted(ev.docs, key=lambda d: (order.get(d.source_type, 5), -(int((d.published or "0000")[:4]))))
     # Новости о раундах и запусках не должны вытесняться научными текстами: до трёх таких новостей идут
     # в доказательства обязательно (decision-модель видит событие, паспорт — независимое издание).
-    events = [d for d in docs if (d.extra or {}).get("event")][:3]
+    # Гранту — одно место из трёх, чтобы госфинансирование не вытесняло рынок (раунды, запуски).
+    market = [d for d in docs if (d.extra or {}).get("event") in ("funding", "launch")]
+    granted = [d for d in docs if (d.extra or {}).get("event") == "grant"]
+    events = market[:2] + granted[:1]
+    events += [d for d in market[2:] + granted[1:] if d not in events][: 3 - len(events)]
     rest = [d for d in docs if d not in events]
     docs = rest[: max(limit - len(events), 0)] + events
     return [

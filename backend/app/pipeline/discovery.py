@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, habr, hackernews, news_search, openalex, semanticscholar
+from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, news_search, openalex, semanticscholar
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -111,6 +111,13 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
             tasks.append(news_search.siliconangle(http, sq, 15))
         if ru_terms:
             tasks.append(news_search.for_topic(http, topic_text, [plan.get("query", ""), *ru_terms], "ru", 30))
+    if s.grant_sources:
+        # Проекты, которые фонды уже профинансировали: описывают направления за годы до продуктов.
+        for sq in subs[:3]:
+            tasks.append(grants.nih(http, sq, n=10))
+            tasks.append(grants.nsf(http, sq, n=10))
+            tasks.append(grants.ukri(http, sq, n=10))
+    if s.news_sources and topic:
         if plan.get("zh_terms"):  # китайские техно-СМИ: 36Kr, IT之家, cnBeta, InfoQ China
             tasks.append(news_search.for_topic(http, topic_text, plan["zh_terms"], "zh", 30))
 

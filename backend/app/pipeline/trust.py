@@ -15,6 +15,7 @@ TYPE_RU = {
     "community": "Профессиональное сообщество",
     "reference": "Энциклопедия / справочник",
     "patent": "Патент",
+    "grant": "Грант / госфинансирование",
     "regulator": "Госорган / регулятор",
     "dataset": "Датасет организатора",
 }
@@ -36,6 +37,8 @@ MEDIUM_DOMAINS = (
     "geekwire.com", "theaiinsider.tech", "eu-startups.com", "therobotreport.com", "datacenterdynamics.com", "eetimes.com",
     "tomshardware.com", "paymentsdive.com", "pymnts.com", "fintechfutures.com", "theblock.co", "axios.com", "cnbc.com",
     "theinformation.com", "crunchbase.com", "news.crunchbase.com", "sifted.eu", "techinasia.com", "pandaily.com",
+    # Китайские техно-СМИ и издания о технологиях Китая
+    "technode.com", "scmp.com", "36kr.com", "ithome.com", "cnbeta.com.tw", "infoq.cn",
 )
 PRESS_MARKERS = ("prnewswire", "businesswire", "globenewswire", "accesswire", "einpresswire", "newswire", "/press", "/news/press", "press-release", "pressrelease",
                  "pr newswire", "business wire")
@@ -56,6 +59,8 @@ def classify(doc: RawDoc) -> tuple[str, str, str]:
 
     if doc.source_type == "science":
         return "science", "high", "Научная публикация с метаданными OpenAlex/DOI"
+    if doc.source_type == "grant":
+        return "grant", "high", "Государственный грант: решение научного фонда после экспертизы заявки"
     if doc.source_type == "preprint":
         return "preprint", "medium", "Препринт: научный текст без рецензирования"
     if doc.source_type == "repository":

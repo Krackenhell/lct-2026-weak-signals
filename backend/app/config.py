@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     extra_sources: bool = True
     # Отраслевые новости и раунды инвестиций: RSS-ленты изданий (EN/RU) и поиск SiliconANGLE, с проверкой robots.txt
     news_sources: bool = True
+    # Госгранты NIH, NSF, UKRI: доказательства по кандидатам и проекты по подтемам в корпусе
+    grant_sources: bool = True
     http_timeout: float = 25.0
     cache_dir: Path = DATA_DIR / "cache"
     cache_ttl_hours: int = 72

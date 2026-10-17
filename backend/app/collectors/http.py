@@ -45,6 +45,9 @@ HOST_INTERVAL = {
     "www.ithome.com": 1.0,
     "www.cnbeta.com.tw": 1.0,
     "www.infoq.cn": 1.0,
+    "api.reporter.nih.gov": 1.0,  # NIH просит не чаще 1 запроса в секунду
+    "api.nsf.gov": 0.3,
+    "gtr.ukri.org": 0.5,
 }
 
 

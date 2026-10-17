@@ -52,6 +52,8 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         ev_level, ev_ru = event_label(1.0)
     elif "launch" in news_events and ev_level < 5:
         ev_level, ev_ru = event_label(5 / 6)
+    elif "grant" in news_events and ev_level < 3:  # подтверждённый госгрант (NIH, NSF, UKRI)
+        ev_level, ev_ru = event_label(3 / 6)
     n = len(confirmed)
     if n >= max(5, min_docs) and independent >= 3 and len(domains) >= 2 and (science >= 1 or ev_level >= HARD_EVENT_LEVEL):
         level = "A"
@@ -71,6 +73,7 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         "event": ev_ru,
         "hard_event": ev_level >= HARD_EVENT_LEVEL,
         "funding_news": sum(1 for e in news_events if e == "funding"),
+        "grants": sum(1 for e in news_events if e == "grant"),
     }
 
 

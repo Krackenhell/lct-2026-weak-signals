@@ -186,6 +186,12 @@ class FakeWeb:
                 [{"title": f"{t} startup raises $12M Series A", "link": f"https://{host}/2026/09/{_crc(host, t) % 999}/"} for t in live]
                 + [{"title": "Quarterly results beat expectations", "link": f"https://{host}/2026/09/earnings/"}]
             ))
+        if host == "api.reporter.nih.gov":
+            return httpx.Response(200, json={"meta": {"total": 0}, "results": []})
+        if host == "api.nsf.gov":
+            return httpx.Response(200, json={"response": {"award": []}})
+        if host == "gtr.ukri.org":
+            return httpx.Response(200, json={"facetedSearchResultBean": {"results": []}})
         if host == "siliconangle.com":
             return httpx.Response(200, text=habr_rss([]))
         if host == "cyberleninka.ru":
