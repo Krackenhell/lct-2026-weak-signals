@@ -286,7 +286,8 @@ async def execute(run_id: int) -> None:
                     total_docs += 1
                 ids.append(doc_ids_by_url[d.url])
             extra = {"passport": a["passport"], "dynamics": pp_mod.dynamics(a["ev"].yearly, date.today().year) if "openalex" not in a["ev"].failed else None,
-                     "missing": a.get("missing", []), "startups_by_year": a["ev"].yc_yearly or None}
+                     "missing": a.get("missing", []), "startups_by_year": a["ev"].yc_yearly or None,
+                     "geography": pp_mod.geography(a["ev"].countries)}
             if dcs["status"] == "signal":
                 extra["robustness"] = pp_mod.robustness(a["prob"], dcs["contributions"], model.intercept if model else None)
             cand = Candidate(
@@ -359,6 +360,8 @@ async def execute(run_id: int) -> None:
                 f"Паспорт доказательств: decision-модель подтвердила {a['passport']['confirmed']} документов из {a['passport']['domains']} разных источников; самое твёрдое событие — {a['passport']['event']}.",
                 *([f"Новостей о раундах или сделках среди подтверждений: {a['passport']['funding_news']}."] if a["passport"].get("funding_news") else []),
                 *([f"Госгрантов среди подтверждений: {a['passport']['grants']}."] if a["passport"].get("grants") else []),
+                *([f"География работ за 2 года (OpenAlex): лидер — {g['leader']}; доля Китая {g['china']:.0%}, США {g['usa']:.0%}, России {g['russia']:.1%}."]
+                  if (g := pp_mod.geography(a["ev"].countries)) else []),
                 *([f"Стартапов Y Combinator по годам набора: {', '.join(f'{y} — {n}' for y, n in list(a['ev'].yc_yearly.items())[-4:])}."]
                   if a["ev"].yc_yearly else []),
             ]

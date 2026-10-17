@@ -26,6 +26,7 @@ class Evidence:
     gh_repos_12m: int | None = None
     hn_12m: int | None = None
     yc_yearly: dict[str, int] = field(default_factory=dict)  # стартапы YC по году набора
+    countries: dict[str, int] = field(default_factory=dict)  # работы за 2 года по странам авторов (OpenAlex)
     failed: list[str] = field(default_factory=list)
     today: str = ""
 
@@ -82,6 +83,9 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # Ленты изданий кэшируются один раз за запуск, отбор по названию технологии — без новых запросов.
         tasks["gnews"] = _safe("rss", news_search.matching(http, [phrase], "en", 10, min_score=3), [], f)
         tasks["sa"] = _safe("siliconangle", news_search.siliconangle(http, phrase, 5), [], f)
+    if with_news_search is not False and (with_extra if with_extra is not None else get_settings().extra_sources):
+        # География работ за 2 года: доля Китая, США, России (один запрос group_by в OpenAlex).
+        tasks["countries"] = _safe("openalex_countries", openalex.country_counts(http, phrase, today.year - 2), {}, f)
     if get_settings().startup_sources and with_news_search is not False:
         # Стартапы YC, которые строят технологию: ранний рыночный сигнал (в числовые признаки не входит).
         tasks["yc"] = _safe("yc", yc.search(http, phrase, 3), [], f)
@@ -100,6 +104,7 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     ev.yearly = results["openalex_years"]
     ev.wiki = results["wiki"]
     ev.yc_yearly = results.get("yc_yearly") or {}
+    ev.countries = results.get("countries") or {}
     ev.gh_repos_12m = results.get("github")
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),

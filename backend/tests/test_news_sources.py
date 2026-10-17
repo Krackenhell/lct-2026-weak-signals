@@ -185,3 +185,23 @@ def test_chinese_terms_and_events():
     got = news_search.select(docs, ["人形机器人研发"], n=10)
     assert [d.title for d in got] == ["人形机器人研发中心落地", "某公司人形机器人完成A轮融资"]
     assert docs[0].extra["event"] == "funding" and docs[1].extra["event"] == "launch"
+
+
+def test_country_counts_and_geography():
+    import httpx as _httpx
+
+    from app.collectors import openalex
+
+    def handler(r):
+        assert r.url.params["group_by"] == "authorships.institutions.country_code"
+        assert "publication_year:2024-" in r.url.params["filter"]
+        return _httpx.Response(200, json={"group_by": [{"key": "https://openalex.org/countries/CN", "count": 50}, {"key": "US", "count": 30},
+                                                       {"key": "RU", "count": 2}, {"key": "unknown", "count": 9}]})
+
+    h = FakeWeb().client()
+    h._client = _httpx.AsyncClient(transport=_httpx.MockTransport(handler))
+    counts = asyncio.run(openalex.country_counts(h, "humanoid robot", 2024))
+    assert counts == {"CN": 50, "US": 30, "RU": 2}
+    g = pp.geography(counts)
+    assert g["leader"] == "Китай" and g["china"] == round(50 / 82, 3) and g["russia"] == round(2 / 82, 3)
+    assert pp.geography({"US": 3}) is None  # по трём работам доли не считаем

@@ -160,6 +160,21 @@ def russia_window(world_recent: int | None, ru_count: int | None) -> dict:
     return {"status": status, "label": label, "text": text, "world": world_recent, "ru": ru_count}
 
 
+COUNTRY_RU = {"CN": "Китай", "US": "США", "RU": "Россия", "IN": "Индия", "GB": "Великобритания", "DE": "Германия", "JP": "Япония",
+              "KR": "Южная Корея", "FR": "Франция", "IT": "Италия", "SG": "Сингапур", "CA": "Канада", "AU": "Австралия"}
+
+
+def geography(counts: dict[str, int]) -> dict | None:
+    """Где ведутся работы за 2 года: топ стран и доли Китая, США и России (от суммы участий стран)."""
+    total = sum(counts.values())
+    if total < 5:  # по нескольким работам доли ничего не говорят
+        return None
+    top = sorted(counts.items(), key=lambda x: -x[1])[:5]
+    share = lambda c: round(counts.get(c, 0) / total, 3)  # noqa: E731
+    return {"top": [{"country": c, "name": COUNTRY_RU.get(c, c), "share": round(n / total, 3)} for c, n in top],
+            "china": share("CN"), "usa": share("US"), "russia": share("RU"), "leader": COUNTRY_RU.get(top[0][0], top[0][0])}
+
+
 def world_recent_works(yearly: dict, year: int) -> int:
     c = {int(k): v for k, v in (yearly or {}).items()}
     return int(c.get(year, 0) + c.get(year - 1, 0))

@@ -113,6 +113,18 @@ export default function Insight() {
                 <tr><td className="small">Независимых источников (разные сайты; научные работы — каждая отдельно, но не больше 3)</td><td className="small"><b>{p.domains}</b>{p.domain_list.length > 0 && <span className="muted"> — сайты: {p.domain_list.join(", ")}</span>}</td></tr>
                 <tr><td className="small">Из них научных / препринтов</td><td className="small"><b>{p.science}</b></td></tr>
                 <tr><td className="small">Самое твёрдое событие</td><td className="small"><b>{p.event}</b>{p.hard_event && <span className="badge high" style={{ marginLeft: 6 }}>твёрдое</span>}</td></tr>
+                {(p.funding_news || p.grants) ? (
+                  <tr><td className="small">Деньги в направлении (подтверждённые документы)</td><td className="small">раунды и сделки: <b>{p.funding_news ?? 0}</b>; госгранты NIH / NSF / UKRI: <b>{p.grants ?? 0}</b></td></tr>
+                ) : null}
+                {c.startups_by_year && Object.keys(c.startups_by_year).length > 0 && (
+                  <tr><td className="small">Стартапы Y Combinator по году набора</td><td className="small">{Object.entries(c.startups_by_year).slice(-5).map(([y, n]) => `${y} — ${n}`).join("; ")}</td></tr>
+                )}
+                {c.geography && (
+                  <tr><td className="small">Где ведутся работы (2 года, OpenAlex)</td><td className="small">
+                    {c.geography.top.map((t) => `${t.name} ${Math.round(t.share * 100)}%`).join(", ")}
+                    <span className="muted"> · Китай {Math.round(c.geography.china * 100)}%, Россия {(c.geography.russia * 100).toFixed(1)}%</span>
+                  </td></tr>
+                )}
                 {p.links && (
                   <tr><td className="small">Ссылки проверены вживую</td><td className="small">открываются: <b>{p.links.ok}</b>; сайт ограничивает автопроверку: {p.links.restricted}; не открываются (убраны из подтверждений): {p.links.dead}</td></tr>
                 )}

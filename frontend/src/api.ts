@@ -12,7 +12,11 @@ export type Passport = {
   event: string;
   hard_event: boolean;
   links?: { ok: number; restricted: number; dead: number };
+  funding_news?: number;
+  grants?: number;
 };
+
+export type Geography = { top: { country: string; name: string; share: number }[]; china: number; usa: number; russia: number; leader: string };
 
 export type Radar = { area: string; ring: "Пилотировать" | "Изучать" | "Наблюдать"; horizon: string; by: string };
 export type YearPoint = { year: number; works: number; partial: boolean };
@@ -35,6 +39,8 @@ export type CandidateBrief = {
   window?: RussiaWindow | null;
   radar?: Radar | null;
   dynamics?: YearPoint[] | null;
+  geography?: Geography | null;
+  startups_by_year?: Record<string, number> | null;
   missing?: string[];
   rank: number | null;
   probability: number | null;
