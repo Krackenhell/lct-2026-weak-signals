@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, news_search, openalex, semanticscholar
+from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, news_search, openalex, semanticscholar, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -49,7 +49,7 @@ AI_QUERY = r"\bии\b|искусственн|нейросет|\bai\b|artificial 
 LIFE_SCIENCE = r"медиц|здрав|биотех|биолог|фарм|генн|геном|белк|клиник|диагност|health|medic|biotech|bio|pharma|gene|protein|clinic|drug|patholog"
 # Обрывки фраз, которые статистика выдаёт за технологии: заголовки Hacker News, биржевые новости,
 # фрагменты через «and» («detection and anti-money»), фразы, обрывающиеся на прилагательном («adoption of digital»).
-INDUSTRY_COLLECTORS = {"rss", "siliconangle"}
+INDUSTRY_COLLECTORS = {"rss", "siliconangle", "yc"}
 MAX_LLM_DOCS, INDUSTRY_DOCS = 240, 60
 JUNK_FIRST = {"show", "ask", "tell", "hn", "launch"}
 JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter",
@@ -117,6 +117,10 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
             tasks.append(grants.nih(http, sq, n=10))
             tasks.append(grants.nsf(http, sq, n=10))
             tasks.append(grants.ukri(http, sq, n=10))
+    if s.startup_sources:
+        # Стартапы YC последних двух лет по подтемам: описания продуктов, в которые уже вложены деньги.
+        for sq in subs[:6]:
+            tasks.append(yc.search(http, sq, 10, min_year=today.year - 2))
     if s.news_sources and topic:
         if plan.get("zh_terms"):  # китайские техно-СМИ: 36Kr, IT之家, cnBeta, InfoQ China
             tasks.append(news_search.for_topic(http, topic_text, plan["zh_terms"], "zh", 30))

@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, crossref, gdelt, github, grants, hackernews, news_search, openalex, semanticscholar, wikipedia
+from app.collectors import arxiv, crossref, gdelt, github, grants, hackernews, news_search, openalex, semanticscholar, wikipedia, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -25,6 +25,7 @@ class Evidence:
     wiki: dict = field(default_factory=dict)
     gh_repos_12m: int | None = None
     hn_12m: int | None = None
+    yc_yearly: dict[str, int] = field(default_factory=dict)  # стартапы YC по году набора
     failed: list[str] = field(default_factory=list)
     today: str = ""
 
@@ -81,6 +82,10 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # Ленты изданий кэшируются один раз за запуск, отбор по названию технологии — без новых запросов.
         tasks["gnews"] = _safe("rss", news_search.matching(http, [phrase], "en", 10, min_score=3), [], f)
         tasks["sa"] = _safe("siliconangle", news_search.siliconangle(http, phrase, 5), [], f)
+    if get_settings().startup_sources and with_news_search is not False:
+        # Стартапы YC, которые строят технологию: ранний рыночный сигнал (в числовые признаки не входит).
+        tasks["yc"] = _safe("yc", yc.search(http, phrase, 3), [], f)
+        tasks["yc_yearly"] = _safe("yc", yc.yearly(http, phrase), {}, f)
     if get_settings().grant_sources and with_news_search is not False:
         # Госгранты за 3 года: NIH, NSF, UKRI (в числовые признаки не входят, событие «грант» — в паспорт).
         tasks["nih"] = _safe("nih", grants.nih(http, phrase, n=4), [], f)
@@ -90,11 +95,12 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     results = dict(zip(tasks, await asyncio.gather(*tasks.values()), strict=False))
     ev.yearly = results["openalex_years"]
     ev.wiki = results["wiki"]
+    ev.yc_yearly = results.get("yc_yearly") or {}
     ev.gh_repos_12m = results.get("github")
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
                *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),
-               *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("github_top", []), *hn_docs]
+               *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("yc", []), *results.get("github_top", []), *hn_docs]
     ev.docs = _dedupe(ev.docs)
     return ev
 

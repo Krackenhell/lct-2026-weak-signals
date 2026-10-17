@@ -186,6 +186,11 @@ class FakeWeb:
                 [{"title": f"{t} startup raises $12M Series A", "link": f"https://{host}/2026/09/{_crc(host, t) % 999}/"} for t in live]
                 + [{"title": "Quarterly results beat expectations", "link": f"https://{host}/2026/09/earnings/"}]
             ))
+        if host == "yc-oss.github.io":
+            live = [t for t in TERMS if t.lower() not in self.empty]
+            return httpx.Response(200, json=[{"name": f"Startup{i}", "slug": f"s{i}", "one_liner": f"{t} for factories", "long_description": "",
+                                              "tags": ["B2B"], "batch": "Summer 2025", "status": "Active", "url": f"https://www.ycombinator.com/companies/s{i}"}
+                                             for i, t in enumerate(live)])
         if host == "api.reporter.nih.gov":
             return httpx.Response(200, json={"meta": {"total": 0}, "results": []})
         if host == "api.nsf.gov":

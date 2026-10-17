@@ -286,7 +286,7 @@ async def execute(run_id: int) -> None:
                     total_docs += 1
                 ids.append(doc_ids_by_url[d.url])
             extra = {"passport": a["passport"], "dynamics": pp_mod.dynamics(a["ev"].yearly, date.today().year) if "openalex" not in a["ev"].failed else None,
-                     "missing": a.get("missing", [])}
+                     "missing": a.get("missing", []), "startups_by_year": a["ev"].yc_yearly or None}
             if dcs["status"] == "signal":
                 extra["robustness"] = pp_mod.robustness(a["prob"], dcs["contributions"], model.intercept if model else None)
             cand = Candidate(
@@ -358,6 +358,9 @@ async def execute(run_id: int) -> None:
                 f"Модель оценивает вероятность того, что это слабый сигнал, {pp_mod.prob_text(cand.probability)} (это {'высокая' if (cand.probability or 0) >= 0.75 else 'средняя'} уверенность).",
                 f"Паспорт доказательств: decision-модель подтвердила {a['passport']['confirmed']} документов из {a['passport']['domains']} разных источников; самое твёрдое событие — {a['passport']['event']}.",
                 *([f"Новостей о раундах или сделках среди подтверждений: {a['passport']['funding_news']}."] if a["passport"].get("funding_news") else []),
+                *([f"Госгрантов среди подтверждений: {a['passport']['grants']}."] if a["passport"].get("grants") else []),
+                *([f"Стартапов Y Combinator по годам набора: {', '.join(f'{y} — {n}' for y, n in list(a['ev'].yc_yearly.items())[-4:])}."]
+                  if a["ev"].yc_yearly else []),
             ]
             data, res = await write_dossier(llm, query, cand.name, a["items"][:10], facts)
             check = None

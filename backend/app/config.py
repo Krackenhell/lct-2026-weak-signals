@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     news_sources: bool = True
     # Госгранты NIH, NSF, UKRI: доказательства по кандидатам и проекты по подтемам в корпусе
     grant_sources: bool = True
+    # Стартапы Y Combinator (открытый каталог): доказательства по кандидатам и стартапы по подтемам в корпусе
+    startup_sources: bool = True
     http_timeout: float = 25.0
     cache_dir: Path = DATA_DIR / "cache"
     cache_ttl_hours: int = 72

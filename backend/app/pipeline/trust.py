@@ -16,6 +16,7 @@ TYPE_RU = {
     "reference": "Энциклопедия / справочник",
     "patent": "Патент",
     "grant": "Грант / госфинансирование",
+    "startup": "Стартап (каталог акселератора)",
     "regulator": "Госорган / регулятор",
     "dataset": "Датасет организатора",
 }
@@ -61,6 +62,8 @@ def classify(doc: RawDoc) -> tuple[str, str, str]:
         return "science", "high", "Научная публикация с метаданными OpenAlex/DOI"
     if doc.source_type == "grant":
         return "grant", "high", "Государственный грант: решение научного фонда после экспертизы заявки"
+    if doc.source_type == "startup":
+        return "startup", "medium", "Стартап из каталога акселератора: компания получила инвестиции, но описание пишет она сама"
     if doc.source_type == "preprint":
         return "preprint", "medium", "Препринт: научный текст без рецензирования"
     if doc.source_type == "repository":

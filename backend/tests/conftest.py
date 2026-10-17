@@ -36,9 +36,10 @@ init_db()
 @pytest.fixture(autouse=True)
 def _fresh_robots():
     """Правила robots.txt кэшируются на процесс; в тестах у каждого своя поддельная сеть."""
-    from app.collectors import robots
+    from app.collectors import robots, yc
 
     robots._RULES.clear()
+    yc._DATA = None  # каталог YC тоже кэшируется на процесс
     yield
 
 
