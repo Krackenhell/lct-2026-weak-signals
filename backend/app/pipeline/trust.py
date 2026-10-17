@@ -32,8 +32,13 @@ MEDIUM_DOMAINS = (
     "techcrunch.com", "theverge.com", "wired.com", "zdnet.com", "siliconangle.com", "venturebeat.com",
     "theregister.com", "securityweek.com", "coindesk.com", "finextra.com", "habr.com", "cnews.ru", "tadviser.ru",
     "forbes.com", "forbes.ru", "spectrum.ieee.org", "technologyreview.com", "arstechnica.com", "semianalysis.com",
+    # Отраслевые и стартап-издания, на которые опирается датасет организатора
+    "geekwire.com", "theaiinsider.tech", "eu-startups.com", "therobotreport.com", "datacenterdynamics.com", "eetimes.com",
+    "tomshardware.com", "paymentsdive.com", "pymnts.com", "fintechfutures.com", "theblock.co", "axios.com", "cnbc.com",
+    "theinformation.com", "crunchbase.com", "news.crunchbase.com", "sifted.eu", "techinasia.com", "pandaily.com",
 )
-PRESS_MARKERS = ("prnewswire", "businesswire", "globenewswire", "accesswire", "einpresswire", "newswire", "/press", "/news/press", "press-release", "pressrelease")
+PRESS_MARKERS = ("prnewswire", "businesswire", "globenewswire", "accesswire", "einpresswire", "newswire", "/press", "/news/press", "press-release", "pressrelease",
+                 "pr newswire", "business wire")
 LOW_DOMAINS = ("medium.com", "substack.com", "linkedin.com", "twitter.com", "x.com", "reddit.com", "t.me", "youtube.com", "facebook.com", "vc.ru", "dzen.ru")
 
 
@@ -44,7 +49,10 @@ def _domain(url: str) -> str:
 def classify(doc: RawDoc) -> tuple[str, str, str]:
     """Возвращает (source_type, trust_level, trust_reason)."""
     url = doc.url.lower()
-    dom = _domain(url)
+    # Новости через Google News: ссылка ведёт на страницу перехода Google, доверие считаем по самому изданию.
+    dom = (doc.extra or {}).get("publisher_domain") or _domain(url)
+    if (doc.extra or {}).get("publisher_domain"):
+        url = f"https://{dom}/ {doc.source_name.lower()}"
 
     if doc.source_type == "science":
         return "science", "high", "Научная публикация с метаданными OpenAlex/DOI"

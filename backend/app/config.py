@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     # Дополнительные научные источники и языки: Crossref (все издатели), КиберЛенинка (RU), Europe PMC (науки о жизни),
     # новости на китайском (GDELT). Выключаются, если нужна максимальная скорость.
     extra_sources: bool = True
+    # Отраслевые новости и раунды инвестиций: поиск Google News (EN/RU) и SiliconANGLE
+    news_sources: bool = True
     http_timeout: float = 25.0
     cache_dir: Path = DATA_DIR / "cache"
     cache_ttl_hours: int = 72

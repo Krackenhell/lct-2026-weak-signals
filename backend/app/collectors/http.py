@@ -31,6 +31,8 @@ HOST_INTERVAL = {
     "cyberleninka.ru": 1.0,
     "www.ebi.ac.uk": 0.2,
     "api.semanticscholar.org": 1.1,
+    "news.google.com": 1.0,  # публичная RSS-лента: вежливый темп, чтобы не упереться в ограничения
+    "siliconangle.com": 1.5,
 }
 
 

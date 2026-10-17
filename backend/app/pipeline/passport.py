@@ -37,13 +37,21 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         a = answers.get(f"doc_{i}") or {}
         if float(a.get("value", 0.0)) >= 0.5:
             confirmed.append(it)
-    domains = sorted({_domain(it.get("url", "")) or it.get("source", "") for it in confirmed} - {""})
+    # Домен издания: у новостей через Google News — само издание, а не страница перехода Google.
+    dom = lambda it: it.get("domain") or _domain(it.get("url", "")) or it.get("source", "")  # noqa: E731
+    domains = sorted({dom(it) for it in confirmed} - {""})
     science = sum(1 for it in confirmed if it.get("type") in ("science", "preprint"))
     # Независимые источники: разные сайты; научные работы — каждая отдельно (разные исследовательские группы,
     # даже если все лежат на arXiv), но не больше трёх, чтобы один препринт-сервер не давал «A» в одиночку.
-    other = {_domain(it.get("url", "")) or it.get("source", "") for it in confirmed if it.get("type") not in ("science", "preprint")} - {""}
+    other = {dom(it) for it in confirmed if it.get("type") not in ("science", "preprint")} - {""}
     independent = len(other) + min(science, 3)
     ev_level, ev_ru = event_label((answers.get("event") or {}).get("value"))
+    # Подтверждённая новость о раунде или запуске — твёрдое событие, даже если модель оценила событие ниже.
+    news_events = [it.get("event") for it in confirmed if it.get("event")]
+    if "funding" in news_events and ev_level < 6:
+        ev_level, ev_ru = event_label(1.0)
+    elif "launch" in news_events and ev_level < 5:
+        ev_level, ev_ru = event_label(5 / 6)
     n = len(confirmed)
     if n >= max(5, min_docs) and independent >= 3 and len(domains) >= 2 and (science >= 1 or ev_level >= HARD_EVENT_LEVEL):
         level = "A"
@@ -62,6 +70,7 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         "event_level": ev_level,
         "event": ev_ru,
         "hard_event": ev_level >= HARD_EVENT_LEVEL,
+        "funding_news": sum(1 for e in news_events if e == "funding"),
     }
 
 

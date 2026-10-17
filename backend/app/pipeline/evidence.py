@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, crossref, gdelt, github, hackernews, openalex, semanticscholar, wikipedia
+from app.collectors import arxiv, crossref, gdelt, github, hackernews, news_search, openalex, semanticscholar, wikipedia
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -49,7 +49,7 @@ def search_phrase(name: str) -> str:
 
 
 async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True, with_extra: bool | None = None,
-                 with_gh_count: bool = True) -> Evidence:
+                 with_gh_count: bool = True, with_news_search: bool | None = None) -> Evidence:
     phrase = search_phrase(phrase)
     today = today or date.today()
     year_ago = today - timedelta(days=365)
@@ -76,6 +76,9 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         tasks["crossref"] = _safe("crossref", crossref.search(http, phrase, since, 8), [], f)
         if semanticscholar.enabled():
             tasks["s2"] = _safe("semanticscholar", semanticscholar.search(http, phrase, today.year - 3, 8), [], f)
+    if with_news_search if with_news_search is not None else get_settings().news_sources:
+        # Отраслевые новости о технологии: раунды, запуски, пилоты (в числовые признаки не входят).
+        tasks["gnews"] = _safe("googlenews", news_search.google_news(http, phrase, "en", 10), [], f)
 
     results = dict(zip(tasks, await asyncio.gather(*tasks.values()), strict=False))
     ev.yearly = results["openalex_years"]
@@ -83,7 +86,7 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     ev.gh_repos_12m = results.get("github")
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
-               *results.get("news", []), *results.get("github_top", []), *hn_docs]
+               *results.get("news", []), *results.get("gnews", []), *results.get("github_top", []), *hn_docs]
     ev.docs = _dedupe(ev.docs)
     return ev
 
@@ -104,7 +107,13 @@ def evidence_items(ev: Evidence, limit: int = 12) -> list[dict]:
     """Фрагменты для decision-модели: сначала научные, затем по свежести."""
     order = {"science": 0, "preprint": 1, "news": 2, "repository": 3, "community": 4}
     docs = sorted(ev.docs, key=lambda d: (order.get(d.source_type, 5), -(int((d.published or "0000")[:4]))))
+    # Новости о раундах и запусках не должны вытесняться научными текстами: до трёх таких новостей идут
+    # в доказательства обязательно (decision-модель видит событие, паспорт — независимое издание).
+    events = [d for d in docs if (d.extra or {}).get("event")][:3]
+    rest = [d for d in docs if d not in events]
+    docs = rest[: max(limit - len(events), 0)] + events
     return [
-        {"type": d.source_type, "source": d.source_name, "date": d.published, "title": d.title, "snippet": d.snippet, "url": d.url}
+        {"type": d.source_type, "source": d.source_name, "date": d.published, "title": d.title, "snippet": d.snippet, "url": d.url,
+         "domain": (d.extra or {}).get("publisher_domain"), "event": (d.extra or {}).get("event")}
         for d in docs[:limit]
     ]

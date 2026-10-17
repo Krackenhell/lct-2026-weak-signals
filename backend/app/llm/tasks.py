@@ -122,7 +122,11 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
     if isinstance(data, dict) and data.get("subqueries"):
         base = fallback_plan(query)
         # Половина подтем — от LLM (новые узкие направления), половина — из проверенного словаря области.
-        subs = [s for s in data["subqueries"] if isinstance(s, str)][:6]
+        # GigaChat иногда склеивает слова дефисом («synthetic-data credit-scoring») — точный поиск по фразе
+        # в arXiv и OpenAlex такое не находит. Дефис между словами заменяем пробелом (термины вроде «zero-knowledge» —
+        # тоже: поиск по словам их находит).
+        subs = [re.sub(r"\s+", " ", s.replace("-", " ")).strip() for s in data["subqueries"] if isinstance(s, str)][:6]
+        data["ru_terms"] = [re.sub(r"\s+", " ", t.replace("-", " ")).strip() for t in data.get("ru_terms", []) if isinstance(t, str)]
         data["subqueries"] = subs + [t for t in base["subqueries"] if t not in subs][: max(0, 12 - len(subs))]
         data["generated_by"] = f"{res.provider}:{res.model}"
         return data, res

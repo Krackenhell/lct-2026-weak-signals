@@ -32,6 +32,13 @@ def test_plan_mixes_llm_subtopics_with_checked_lexicon():
     assert "«перспективные решения в финтехе»" in llm.prompts[0]
 
 
+def test_plan_removes_hyphen_glue():
+    llm = ScriptedLLM('{"topic_en": "fintech", "subqueries": ["synthetic-data credit-scoring"], "ru_terms": ["синтетические-данные скоринг-кредитов"]}')
+    plan, _ = run(plan_query(llm, "финтех"))
+    assert plan["subqueries"][0] == "synthetic data credit scoring"
+    assert plan["ru_terms"] == ["синтетические данные скоринг кредитов"]
+
+
 def test_plan_falls_back_to_lexicon_on_bad_answer():
     plan, res = run(plan_query(ScriptedLLM("не JSON"), "робототехника"))
     assert plan["generated_by"] == "lexicon" and "humanoid robot" in plan["subqueries"]

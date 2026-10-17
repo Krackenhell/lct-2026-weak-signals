@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, habr, hackernews, openalex, semanticscholar
+from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, habr, hackernews, news_search, openalex, semanticscholar
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -97,6 +97,17 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
             tasks.append(cyberleninka.search(http, ru, 15, min_year=today.year - 3))  # русскоязычная наука
     if s.extra_sources and topic:
         tasks.append(gdelt.search(http, topic, "12m", 20, lang="chinese"))  # китайские СМИ — крупнейший рынок ранних внедрений
+    if s.news_sources and topic:
+        # Отраслевые новости и раунды: на них построена большая часть сигналов датасета организатора.
+        tasks.append(news_search.google_news(http, topic, "en", 40))
+        tasks.append(news_search.google_news(http, f"{topic} startup raises funding", "en", 40))
+        for sq in subs[:3]:
+            tasks.append(news_search.google_news(http, sq, "en", 20))
+        tasks.append(news_search.siliconangle(http, topic, 20))
+        for sq in subs[:2]:
+            tasks.append(news_search.siliconangle(http, sq, 15))
+        for ru in ru_terms[:2]:
+            tasks.append(news_search.google_news(http, ru, "ru", 20))
 
     docs: list[RawDoc] = []
     done = 0

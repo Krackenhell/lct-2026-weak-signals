@@ -19,7 +19,7 @@ from app.db import SessionLocal
 from app.decision import get_decision_model
 from app.decision.heuristic import HeuristicDecision
 from app.llm.providers import get_llm
-from app.collectors import cyberleninka, gdelt, habr
+from app.collectors import cyberleninka, gdelt, habr, news_search
 from app.llm.tasks import check_query, plan_query, summarize_sources, write_dossier
 from app.ml.model import SignalModel
 from app.models import Candidate, Document, ModelCall, Run
@@ -311,11 +311,14 @@ async def execute(run_id: int) -> None:
             hb = await evidence_mod._safe("habr", habr.search(http, ru_query, 15), [], failed)
             gd = await evidence_mod._safe("gdelt", gdelt.search(http, evidence_mod.search_phrase(cand.name), "24m", 20, lang="russian"), [], failed)
             sources = 2
-            cl = []
+            cl, gn = [], []
             if s.extra_sources:  # русскоязычная наука: упоминания в статьях КиберЛенинки за 3 года
-                sources = 3
+                sources += 1
                 cl = await evidence_mod._safe("cyberleninka", cyberleninka.search(http, ru_query, 15, min_year=year - 3), [], failed)
-            ru = None if len(failed) == sources else pp_mod.mentions(hb, terms) + pp_mod.mentions(gd, terms) + pp_mod.mentions(cl, terms)
+            if s.news_sources:  # русскоязычные СМИ через Google News (GDELT часто ограничивает запросы)
+                sources += 1
+                gn = await evidence_mod._safe("googlenews", news_search.google_news(http, ru_query, "ru", 20), [], failed)
+            ru = None if len(failed) == sources else sum(pp_mod.mentions(x, terms) for x in (hb, gd, cl, gn))
             world = None if "openalex" in a["ev"].failed else pp_mod.world_recent_works(a["ev"].yearly, year)
             w = pp_mod.russia_window(world, ru)
             w["failed"] = failed
@@ -349,6 +352,7 @@ async def execute(run_id: int) -> None:
                 wiki_fact(f, a.get("missing", [])) + ".",
                 f"Модель оценивает вероятность того, что это слабый сигнал, {pp_mod.prob_text(cand.probability)} (это {'высокая' if (cand.probability or 0) >= 0.75 else 'средняя'} уверенность).",
                 f"Паспорт доказательств: decision-модель подтвердила {a['passport']['confirmed']} документов из {a['passport']['domains']} разных источников; самое твёрдое событие — {a['passport']['event']}.",
+                *([f"Новостей о раундах или сделках среди подтверждений: {a['passport']['funding_news']}."] if a["passport"].get("funding_news") else []),
             ]
             data, res = await write_dossier(llm, query, cand.name, a["items"][:10], facts)
             check = None

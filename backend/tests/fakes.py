@@ -53,6 +53,16 @@ def habr_rss(items: list[dict]) -> str:
     return f'<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Хабр</title>{body}</channel></rss>'
 
 
+def google_news_rss(items: list[dict]) -> str:
+    """Формат ленты поиска Google News: заголовок «Новость - Издание», ссылка-переход, поле source с изданием."""
+    body = "".join(
+        f"<item><title>{i['title']} - {i['publisher']}</title><link>https://news.google.com/rss/articles/{abs(hash(i['title'])) % 10**8}</link>"
+        f"<pubDate>Mon, 01 Sep 2026 10:00:00 GMT</pubDate><source url=\"https://www.{i['domain']}\">{i['publisher']}</source></item>"
+        for i in items
+    )
+    return f'<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Google News</title>{body}</channel></rss>'
+
+
 def _phrase(q: str) -> str:
     """Поисковая фраза из параметра запроса источника (all:"x y", "x y", title_and_abstract.search:"x")."""
     q = unquote(q or "")
@@ -168,6 +178,16 @@ class FakeWeb:
             items = [{"DOI": f"10.5555/{_crc(p, i) % 9999}", "title": [f"{p} in practice {i}"], "published": {"date-parts": [[2025, 6, 1]]},
                       "container-title": ["Applied Systems"], "type": "journal-article", "abstract": f"<jats:p>{p} pilot</jats:p>"} for i in range(2)]
             return httpx.Response(200, json={"message": {"items": items}})
+        if host == "news.google.com":
+            p = unquote(params.get("q", "")).replace("+", " ")
+            if hit(self.empty, p) or not self._is_term(p) or params.get("hl") == "ru":  # в русскоязычных СМИ темы нет
+                return httpx.Response(200, text=google_news_rss([]))
+            return httpx.Response(200, text=google_news_rss([
+                {"title": f"{p} startup raises $12M Series A", "publisher": "TechCrunch", "domain": "techcrunch.com"},
+                {"title": f"Bank pilots {p}", "publisher": "Finextra", "domain": "finextra.com"},
+            ]))
+        if host == "siliconangle.com":
+            return httpx.Response(200, text=habr_rss([]))
         if host == "cyberleninka.ru":
             return httpx.Response(200, json={"found": 0, "articles": []})  # в русскоязычной науке тем нет — «окно открыто»
         if host == "www.ebi.ac.uk":
