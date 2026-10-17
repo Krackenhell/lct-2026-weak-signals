@@ -1,0 +1,655 @@
+{
+ "cutoff": "2021-01-01",
+ "model": "логистическая регрессия на наблюдаемых показателях (без decision-модели)",
+ "labels_note": "«стало трендом к 2026» — экспертная, сделана командой и открыта ниже вместе с критериями, чтобы её можно\nбыло оспорить:\n  1 — к 2026 году стало массовой практикой или рынком: продукты у многих вендоров, тысячи работ в год;\n  0 — к 2026 году осталось нишевым или заглохло после всплеска интереса.\nВ список вошли только темы, которые на дату среза уже существовали, но ещё не были мейнстримом.",
+ "status": "ok",
+ "metrics": {
+  "n": 30,
+  "n_trend": 15,
+  "model": {
+   "roc_auc": 0.611,
+   "precision_at_15": 0.6
+  },
+  "baseline_more_works": {
+   "roc_auc": 0.422,
+   "precision_at_15": 0.467
+  },
+  "baseline_growth": {
+   "roc_auc": 0.809,
+   "precision_at_15": 0.733
+  }
+ },
+ "results": [
+  {
+   "phrase": "voice commerce",
+   "label": 0,
+   "note": "ожидания 2018, к 2026 — ниша",
+   "p": 0.995,
+   "works_at_cutoff": 31,
+   "features": {
+    "log_total_works": 3.466,
+    "recent_share": 0.581,
+    "growth": 1.844,
+    "age_years": 10.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 1.099,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 0.067,
+    "share_science": 1.0,
+    "log_evidence": 0.693
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "retrieval-augmented generation",
+   "label": 1,
+   "note": "статья 2020 г.; к 2024–2026 — стандартная архитектура корпоративных LLM",
+   "p": 0.988,
+   "works_at_cutoff": 15,
+   "features": {
+    "log_total_works": 2.773,
+    "recent_share": 0.733,
+    "growth": 1.87,
+    "age_years": 0.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 1.099,
+    "log_hn_12m": 1.099,
+    "fresh_preprints": 0.133,
+    "share_science": 0.5,
+    "log_evidence": 1.609
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "deepfake detection",
+   "label": 1,
+   "note": "к 2026 — массовая задача банков и платформ",
+   "p": 0.988,
+   "works_at_cutoff": 106,
+   "features": {
+    "log_total_works": 4.673,
+    "recent_share": 0.943,
+    "growth": 3.929,
+    "age_years": 15.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 5.094,
+    "log_hn_12m": 2.708,
+    "fresh_preprints": 1.0,
+    "share_science": 0.6,
+    "log_evidence": 3.258
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "large language model",
+   "label": 1,
+   "note": "в 2020 термин редкий; к 2026 — массовый рынок",
+   "p": 0.979,
+   "works_at_cutoff": 156,
+   "features": {
+    "log_total_works": 5.056,
+    "recent_share": 0.526,
+    "growth": 1.608,
+    "age_years": 13.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 2.639,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 1.0,
+    "share_science": 1.0,
+    "log_evidence": 2.773
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "blockchain supply chain",
+   "label": 0,
+   "note": "волна пилотов 2018–2020, к 2026 — единичные внедрения",
+   "p": 0.975,
+   "works_at_cutoff": 36,
+   "features": {
+    "log_total_works": 3.611,
+    "recent_share": 0.639,
+    "growth": 1.48,
+    "age_years": 15.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 2.89,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 0.0,
+    "share_science": 1.0,
+    "log_evidence": 0.693
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "neural radiance fields",
+   "label": 1,
+   "note": "NeRF 2020; к 2026 — массовая технология 3D-реконструкции",
+   "p": 0.974,
+   "works_at_cutoff": 10,
+   "features": {
+    "log_total_works": 2.398,
+    "recent_share": 0.9,
+    "growth": 1.202,
+    "age_years": 0.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 2.773,
+    "log_hn_12m": 2.398,
+    "fresh_preprints": 0.867,
+    "share_science": 0.565,
+    "log_evidence": 3.178
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "liquid neural network",
+   "label": 0,
+   "note": "к 2026 — нишевое направление",
+   "p": 0.974,
+   "works_at_cutoff": 2,
+   "features": {
+    "log_total_works": 1.099,
+    "recent_share": 0.5,
+    "growth": 0.405,
+    "age_years": 0.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 0.0,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 0.0,
+    "share_science": 0.0,
+    "log_evidence": 0.0
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "capsule network",
+   "label": 0,
+   "note": "всплеск 2017–2019, к 2026 практически не используется",
+   "p": 0.953,
+   "works_at_cutoff": 867,
+   "features": {
+    "log_total_works": 6.766,
+    "recent_share": 0.97,
+    "growth": 1.742,
+    "age_years": 12.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 4.727,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 1.0,
+    "share_science": 1.0,
+    "log_evidence": 2.773
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "prompt engineering",
+   "label": 1,
+   "note": "в 2020 почти не встречалось; к 2026 — профессия и практика",
+   "p": 0.948,
+   "works_at_cutoff": 24,
+   "features": {
+    "log_total_works": 3.219,
+    "recent_share": 0.333,
+    "growth": 1.608,
+    "age_years": 9.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 1.099,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 0.0,
+    "share_science": 0.0,
+    "log_evidence": 0.0
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "DNA data storage",
+   "label": 0,
+   "note": "к 2026 — лабораторные демонстрации",
+   "p": 0.944,
+   "works_at_cutoff": 79,
+   "features": {
+    "log_total_works": 4.382,
+    "recent_share": 0.873,
+    "growth": 1.401,
+    "age_years": 3.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 2.079,
+    "log_hn_12m": 1.386,
+    "fresh_preprints": 0.2,
+    "share_science": 0.625,
+    "log_evidence": 2.197
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "biometric payment card",
+   "label": 0,
+   "note": "пилоты 2018–2020, к 2026 не стало массовым",
+   "p": 0.938,
+   "works_at_cutoff": 2,
+   "features": {
+    "log_total_works": 1.099,
+    "recent_share": 0.5,
+    "growth": -0.405,
+    "age_years": 0.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 0.0,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 0.0,
+    "share_science": 0.0,
+    "log_evidence": 0.0
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "confidential computing",
+   "label": 1,
+   "note": "консорциум 2019; к 2026 — во всех крупных облаках",
+   "p": 0.934,
+   "works_at_cutoff": 21,
+   "features": {
+    "log_total_works": 3.091,
+    "recent_share": 0.905,
+    "growth": 2.35,
+    "age_years": 1.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 2.89,
+    "log_hn_12m": 2.485,
+    "fresh_preprints": 0.133,
+    "share_science": 0.231,
+    "log_evidence": 2.639
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "edge AI",
+   "label": 1,
+   "note": "к 2026 — NPU в массовых смартфонах и ноутбуках",
+   "p": 0.899,
+   "works_at_cutoff": 208,
+   "features": {
+    "log_total_works": 5.342,
+    "recent_share": 0.904,
+    "growth": 2.402,
+    "age_years": 4.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 5.69,
+    "log_hn_12m": 2.708,
+    "fresh_preprints": 1.0,
+    "share_science": 0.6,
+    "log_evidence": 3.258
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "zero trust architecture",
+   "label": 1,
+   "note": "NIST SP 800-207 (2020); к 2026 — массовая практика ИБ",
+   "p": 0.876,
+   "works_at_cutoff": 66,
+   "features": {
+    "log_total_works": 4.205,
+    "recent_share": 0.924,
+    "growth": 1.861,
+    "age_years": 2.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 1.386,
+    "log_hn_12m": 2.398,
+    "fresh_preprints": 0.0,
+    "share_science": 0.0,
+    "log_evidence": 2.398
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "vision transformer",
+   "label": 1,
+   "note": "ViT, октябрь 2020; к 2026 — базовая архитектура компьютерного зрения",
+   "p": 0.806,
+   "works_at_cutoff": 42,
+   "features": {
+    "log_total_works": 3.761,
+    "recent_share": 0.405,
+    "growth": 0.824,
+    "age_years": 16.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 3.892,
+    "log_hn_12m": 0.693,
+    "fresh_preprints": 0.533,
+    "share_science": 0.9,
+    "log_evidence": 2.398
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "chiplet",
+   "label": 1,
+   "note": "к 2026 — основной подход в производстве процессоров",
+   "p": 0.692,
+   "works_at_cutoff": 243,
+   "features": {
+    "log_total_works": 5.497,
+    "recent_share": 0.745,
+    "growth": 1.67,
+    "age_years": 16.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 4.634,
+    "log_gh_repos_12m": 1.609,
+    "log_hn_12m": 2.708,
+    "fresh_preprints": 0.533,
+    "share_science": 0.524,
+    "log_evidence": 3.091
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "self-supervised learning",
+   "label": 1,
+   "note": "к 2026 — стандарт предобучения",
+   "p": 0.683,
+   "works_at_cutoff": 959,
+   "features": {
+    "log_total_works": 6.867,
+    "recent_share": 0.8,
+    "growth": 2.075,
+    "age_years": 30.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 5.043,
+    "log_hn_12m": 3.219,
+    "fresh_preprints": 1.0,
+    "share_science": 0.6,
+    "log_evidence": 3.258
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "smart contact lens",
+   "label": 0,
+   "note": "к 2026 проекты свёрнуты или в лабораториях",
+   "p": 0.581,
+   "works_at_cutoff": 154,
+   "features": {
+    "log_total_works": 5.043,
+    "recent_share": 0.481,
+    "growth": 0.404,
+    "age_years": 6.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 1.099,
+    "log_hn_12m": 1.386,
+    "fresh_preprints": 0.0,
+    "share_science": 0.25,
+    "log_evidence": 1.609
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "quantum supremacy",
+   "label": 0,
+   "note": "к 2026 нет массового прикладного эффекта",
+   "p": 0.555,
+   "works_at_cutoff": 288,
+   "features": {
+    "log_total_works": 5.666,
+    "recent_share": 0.788,
+    "growth": 0.703,
+    "age_years": 4.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 9.253,
+    "log_gh_repos_12m": 1.609,
+    "log_hn_12m": 3.401,
+    "fresh_preprints": 1.0,
+    "share_science": 0.6,
+    "log_evidence": 3.258
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "4D printing",
+   "label": 0,
+   "note": "интерес с 2014, к 2026 — лабораторная ниша",
+   "p": 0.529,
+   "works_at_cutoff": 764,
+   "features": {
+    "log_total_works": 6.64,
+    "recent_share": 0.774,
+    "growth": 0.753,
+    "age_years": 6.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 8.061,
+    "log_gh_repos_12m": 0.0,
+    "log_hn_12m": 1.609,
+    "fresh_preprints": 0.2,
+    "share_science": 0.636,
+    "log_evidence": 2.485
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "stablecoin",
+   "label": 1,
+   "note": "к 2026 — регулируемый платёжный инструмент в ряде юрисдикций",
+   "p": 0.515,
+   "works_at_cutoff": 169,
+   "features": {
+    "log_total_works": 5.136,
+    "recent_share": 0.988,
+    "growth": 2.888,
+    "age_years": 2.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 9.342,
+    "log_gh_repos_12m": 4.997,
+    "log_hn_12m": 2.89,
+    "fresh_preprints": 0.333,
+    "share_science": 0.565,
+    "log_evidence": 3.178
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "blockchain voting",
+   "label": 0,
+   "note": "к 2026 так и не вышло за пилоты",
+   "p": 0.497,
+   "works_at_cutoff": 46,
+   "features": {
+    "log_total_works": 3.85,
+    "recent_share": 0.935,
+    "growth": 0.943,
+    "age_years": 3.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 4.06,
+    "log_hn_12m": 2.197,
+    "fresh_preprints": 0.0,
+    "share_science": 0.2,
+    "log_evidence": 2.398
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "central bank digital currency",
+   "label": 1,
+   "note": "к 2026 — пилоты и запуски в десятках стран, включая цифровой рубль",
+   "p": 0.441,
+   "works_at_cutoff": 375,
+   "features": {
+    "log_total_works": 5.93,
+    "recent_share": 0.947,
+    "growth": 1.676,
+    "age_years": 3.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 9.091,
+    "log_gh_repos_12m": 1.609,
+    "log_hn_12m": 2.944,
+    "fresh_preprints": 0.2,
+    "share_science": 0.333,
+    "log_evidence": 2.773
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "vector database",
+   "label": 1,
+   "note": "в 2020 — единичные проекты; к 2026 — отдельный рынок",
+   "p": 0.393,
+   "works_at_cutoff": 246,
+   "features": {
+    "log_total_works": 5.509,
+    "recent_share": 0.187,
+    "growth": 0.031,
+    "age_years": 29.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 1.386,
+    "log_hn_12m": 0.693,
+    "fresh_preprints": 0.067,
+    "share_science": 0.9,
+    "log_evidence": 2.398
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "initial coin offering",
+   "label": 0,
+   "note": "пик 2018, к 2026 — почти исчезло",
+   "p": 0.315,
+   "works_at_cutoff": 852,
+   "features": {
+    "log_total_works": 6.749,
+    "recent_share": 0.942,
+    "growth": 0.422,
+    "age_years": 3.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 8.812,
+    "log_gh_repos_12m": 2.565,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 0.067,
+    "share_science": 1.0,
+    "log_evidence": 2.565
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "neuromorphic computing",
+   "label": 0,
+   "note": "к 2026 — исследовательская ниша",
+   "p": 0.229,
+   "works_at_cutoff": 2560,
+   "features": {
+    "log_total_works": 7.848,
+    "recent_share": 0.696,
+    "growth": 0.682,
+    "age_years": 11.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 5.906,
+    "log_gh_repos_12m": 2.944,
+    "log_hn_12m": 2.565,
+    "fresh_preprints": 1.0,
+    "share_science": 0.6,
+    "log_evidence": 3.258
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "drone delivery",
+   "label": 0,
+   "note": "к 2026 — ограниченные пилоты, не массовый сервис",
+   "p": 0.167,
+   "works_at_cutoff": 323,
+   "features": {
+    "log_total_works": 5.781,
+    "recent_share": 0.728,
+    "growth": 0.633,
+    "age_years": 10.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 4.779,
+    "log_hn_12m": 3.296,
+    "fresh_preprints": 0.267,
+    "share_science": 0.524,
+    "log_evidence": 3.091
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "diffusion model",
+   "label": 1,
+   "note": "DDPM 2020; к 2023 — основа генерации изображений и видео",
+   "p": 0.085,
+   "works_at_cutoff": 41642,
+   "features": {
+    "log_total_works": 10.637,
+    "recent_share": 0.168,
+    "growth": 0.158,
+    "age_years": 40.0,
+    "wiki_exists": 0.0,
+    "log_wiki_views": 0.0,
+    "log_gh_repos_12m": 4.317,
+    "log_hn_12m": 0.0,
+    "fresh_preprints": 1.0,
+    "share_science": 1.0,
+    "log_evidence": 2.773
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "holographic display",
+   "label": 0,
+   "note": "к 2026 — нишевые продукты",
+   "p": 0.039,
+   "works_at_cutoff": 1435,
+   "features": {
+    "log_total_works": 7.27,
+    "recent_share": 0.304,
+    "growth": 0.115,
+    "age_years": 40.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 7.746,
+    "log_gh_repos_12m": 2.079,
+    "log_hn_12m": 2.079,
+    "fresh_preprints": 0.6,
+    "share_science": 0.682,
+    "log_evidence": 3.135
+   },
+   "failed_sources": []
+  },
+  {
+   "phrase": "hyperloop",
+   "label": 0,
+   "note": "громкие анонсы, к 2026 проекты закрыты",
+   "p": 0.009,
+   "works_at_cutoff": 401,
+   "features": {
+    "log_total_works": 5.996,
+    "recent_share": 0.678,
+    "growth": 0.086,
+    "age_years": 7.0,
+    "wiki_exists": 1.0,
+    "log_wiki_views": 11.118,
+    "log_gh_repos_12m": 3.989,
+    "log_hn_12m": 3.584,
+    "fresh_preprints": 0.133,
+    "share_science": 0.231,
+    "log_evidence": 2.639
+   },
+   "failed_sources": []
+  }
+ ],
+ "incomplete": 0
+}

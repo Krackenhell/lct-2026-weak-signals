@@ -9,9 +9,10 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, gdelt, github, hackernews, openalex, wikipedia
+from app.collectors import arxiv, crossref, gdelt, github, hackernews, openalex, semanticscholar, wikipedia
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
+from app.config import get_settings
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +48,8 @@ def search_phrase(name: str) -> str:
     return " ".join(words[:6]).strip() or name
 
 
-async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True) -> Evidence:
+async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True, with_extra: bool | None = None,
+                 with_gh_count: bool = True) -> Evidence:
     phrase = search_phrase(phrase)
     today = today or date.today()
     year_ago = today - timedelta(days=365)
@@ -59,20 +61,29 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         "arxiv": _safe("arxiv", arxiv.search(http, phrase, 15), [], f),
         "openalex_years": _safe("openalex", openalex.yearly_counts(http, phrase), {}, f),
         "wiki": _safe("wikipedia", wikipedia.lookup(http, phrase), {}, f),
-        "github": _safe("github", github.count_created(http, phrase, year_ago.isoformat(), today.isoformat()), None, f),
         "hn": _safe("hackernews", hackernews.search(http, phrase, since_ts, 10), ([], None), f),
     }
+    if with_gh_count:
+        tasks["github"] = _safe("github", github.count_created(http, phrase, year_ago.isoformat(), today.isoformat()), None, f)
     if with_repos:
         tasks["github_top"] = _safe("github", github.top_repos(http, phrase, 3), [], f)
     if with_news:
         tasks["news"] = _safe("gdelt", gdelt.search(http, phrase, "12m", 12), [], f)
+    if with_extra if with_extra is not None else get_settings().extra_sources:
+        # Вторая научная база: независимое подтверждение для паспорта доказательств.
+        # В числовые признаки не входит (они считаются только по CORE_COLLECTORS), поэтому модель не смещается.
+        since = (today - timedelta(days=3 * 365)).isoformat()
+        tasks["crossref"] = _safe("crossref", crossref.search(http, phrase, since, 8), [], f)
+        if semanticscholar.enabled():
+            tasks["s2"] = _safe("semanticscholar", semanticscholar.search(http, phrase, today.year - 3, 8), [], f)
 
-    results = dict(zip(tasks, await asyncio.gather(*tasks.values())))
+    results = dict(zip(tasks, await asyncio.gather(*tasks.values()), strict=False))
     ev.yearly = results["openalex_years"]
     ev.wiki = results["wiki"]
-    ev.gh_repos_12m = results["github"]
+    ev.gh_repos_12m = results.get("github")
     hn_docs, ev.hn_12m = results["hn"]
-    ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("news", []), *results.get("github_top", []), *hn_docs]
+    ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
+               *results.get("news", []), *results.get("github_top", []), *hn_docs]
     ev.docs = _dedupe(ev.docs)
     return ev
 
@@ -94,6 +105,6 @@ def evidence_items(ev: Evidence, limit: int = 12) -> list[dict]:
     order = {"science": 0, "preprint": 1, "news": 2, "repository": 3, "community": 4}
     docs = sorted(ev.docs, key=lambda d: (order.get(d.source_type, 5), -(int((d.published or "0000")[:4]))))
     return [
-        {"type": d.source_type, "source": d.source_name, "date": d.published, "title": d.title, "snippet": d.snippet}
+        {"type": d.source_type, "source": d.source_name, "date": d.published, "title": d.title, "snippet": d.snippet, "url": d.url}
         for d in docs[:limit]
     ]

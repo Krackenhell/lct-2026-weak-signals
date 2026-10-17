@@ -12,11 +12,17 @@ def _phrase(q: str) -> str:
     return f'all:"{q}"' if " " in q else f"all:{q}"
 
 
-async def search(http: HttpClient, query: str, max_results: int = 50) -> list[RawDoc]:
+async def search_before(http: HttpClient, query: str, cutoff, max_results: int = 15) -> list[RawDoc]:
+    """Препринты, поданные до даты среза (для ретроспективной проверки без утечки будущего)."""
+    end = cutoff.strftime("%Y%m%d0000")
+    return await search(http, query, max_results, extra=f" AND submittedDate:[199101010000 TO {end}]")
+
+
+async def search(http: HttpClient, query: str, max_results: int = 50, extra: str = "") -> list[RawDoc]:
     text = await http.get(
         API,
         params={
-            "search_query": _phrase(query),
+            "search_query": _phrase(query) + extra,
             "start": 0,
             "max_results": max_results,
             "sortBy": "submittedDate",

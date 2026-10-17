@@ -31,3 +31,9 @@ Thumbs.db
 backend/data/cache/
 backend/data/local.db
 *.log
+
+# Tests, linters, local backups
+.ruff_cache/
+.coverage
+htmlcov/
+backend/data/model/backup_*/

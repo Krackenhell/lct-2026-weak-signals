@@ -55,8 +55,8 @@ class GigaChat(BaseLLM):
     provider = "gigachat"
 
     def __init__(self) -> None:
-        super().__init__(concurrency=1)  # бесплатный тариф: один поток запросов
         s = get_settings()
+        super().__init__(concurrency=max(1, s.gigachat_concurrency))  # бесплатный тариф — 1 поток, корпоративный — больше
         self.model = s.gigachat_model
         self._auth_key = s.gigachat_auth_key
         self._scope = s.gigachat_scope

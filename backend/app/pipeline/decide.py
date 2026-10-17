@@ -5,8 +5,10 @@
 Пороги фильтров зафиксированы в коде и описаны в методологии.
 """
 import math
+import re
 
 from app.ml.model import SignalModel
+from app.pipeline.passport import prob_text
 from app.pipeline.trust import classify
 
 EXCLUSION_RU = {
@@ -22,22 +24,53 @@ EXCLUSION_RU = {
     "low_probability": "Низкая вероятность слабого сигнала",
     "reserve": "Не вошёл в топ по итоговому баллу",
     "no_decision": "Не проверен: decision-модель недоступна",
+    "watch": "Наблюдать: мало подтверждённых документов",
+    "organization": "Организация, а не технология",
+    "duplicate": "Повтор: синоним технологии выше в списке",
 }
+
+# Названия организаций, а не технологий (работает и без decision-модели).
+ORG = re.compile(
+    r"\b(commission|agency|association|consortium|ministry|department|administration|authority|university|institute|foundation|"
+    r"inc|ltd|llc|corp|corporation|gmbh|plc|bank of|federal reserve)\b|министерств|комисси|ассоциаци|агентств|университет|институт|корпораци",
+    re.I,
+)
+# Слова-связки для сравнения названий: «in-orbit servicing» и «on-orbit servicing» — одно и то же.
+_LINK_WORDS = {"in", "on", "of", "for", "the", "and", "a", "an", "based", "driven", "enabled"}
+
+
+def _key_words(name: str) -> set[str]:
+    words = re.findall(r"[a-zа-яё0-9]+", name.lower().replace("-", " "))
+    return {w[:-1] if len(w) > 4 and w.endswith("s") else w for w in words if w not in _LINK_WORDS}
+
+
+def near_duplicate(a: str, b: str) -> bool:
+    wa, wb = _key_words(a), _key_words(b)
+    if not wa or not wb:
+        return False
+    return len(wa & wb) / len(wa | wb) >= 0.6
 
 
 def _ans(a: dict, key: str, default: float = 0.5) -> float:
     return float((a["res"].answers.get(key) or {}).get("value", default))
 
 
+def relevance(a: dict) -> float:
+    """Кандидат должен подходить и к теме плана, и к исходной формулировке запроса — берём меньшую оценку."""
+    return min(_ans(a, "relevance", 0.6), _ans(a, "relevance_query", 1.0))
+
+
 def _filters(a: dict) -> tuple[str, str] | None:
     f = a["features"]
     if not a["res"].ok:
         return "no_decision", "Decision-модель не ответила (сбой сети) — признаки не проверены, кандидат не ранжируется."
-    rel = _ans(a, "relevance", 0.6)
+    rel = relevance(a)
     if rel < 0.34:
-        return "irrelevant", f"Слабо связано с темой запроса (оценка релевантности {rel:.2f} из 1)."
+        return "irrelevant", f"Слабо связано с запросом (оценка релевантности {rel:.2f} из 1: к теме {_ans(a, 'relevance', 0.6):.2f}, к исходной формулировке {_ans(a, 'relevance_query', 1.0):.2f})."
     if _ans(a, "evidence_match", 1.0) < 0.4:
         return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {_ans(a, 'evidence_match', 1.0):.0%}) — вероятно, это случайное сочетание слов."
+    if ORG.search(a["c"]["name_en"]):
+        return "organization", "Название организации (комиссия, агентство, университет, компания), а не технологии."
     if _ans(a, "is_technology", 1.0) < 0.3:
         return "not_technology", f"Это не технологическая инновация, а документ, репозиторий, организация или общее рыночное явление (оценка {_ans(a, 'is_technology', 1.0):.0%})."
     if _ans(a, "product_name", 0.0) >= 0.6:
@@ -74,15 +107,24 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
     out: list[dict] = []
     for a in assessed:
         contrib = model.explain(a["features"]) if model else []
-        rel = _ans(a, "relevance", 0.6)
+        rel = relevance(a)
         d = {"relevance": rel, "contributions": contrib}
         flt = _filters(a)
+        pp = a.get("passport")
         if flt:
             d.update(status="excluded", code=flt[0], reason=flt[1])
         elif a["prob"] is not None and a["prob"] < 0.5:
             neg = [c for c in contrib if c["contribution"] < 0][:3]
             why = "; ".join(f"{c['label'].lower()} — {c.get('level', '')} значение ({c['value']})" for c in neg)
             d.update(status="excluded", code="low_probability", reason=f"Модель оценивает вероятность слабого сигнала в {a['prob']:.0%}. Основные факторы против: {why}.")
+        elif pp and pp["level"] == "C":
+            # Турникет: без подтверждённых документов высокая вероятность ничего не значит — признаки
+            # считались по пустым или чужим текстам. Кандидат не попадает в топ, а уходит в «Наблюдать».
+            d.update(
+                status="watch", code="watch",
+                reason=f"Decision-модель подтвердила {pp['confirmed']} из {pp['checked']} документов ({pp['domains']} разных источника) — "
+                       "этого мало для вывода. Вероятность модели без доказательств не учитывается.",
+            )
         else:
             d.update(status="signal")
         out.append(d)
@@ -91,6 +133,15 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
         [i for i, d in enumerate(out) if d["status"] == "signal"],
         key=lambda i: -((assessed[i]["prob"] or 0.5) * (0.6 + 0.4 * out[i]["relevance"])),
     )
+    # Синонимы не занимают два места в топе: остаётся вариант с более высоким баллом.
+    kept: list[int] = []
+    for i in ranked:
+        twin = next((k for k in kept if near_duplicate(assessed[i]["c"]["name_en"], assessed[k]["c"]["name_en"])), None)
+        if twin is None:
+            kept.append(i)
+        else:
+            out[i].update(status="excluded", code="duplicate", reason=f"Синоним технологии «{assessed[twin]['c']['name_en']}», которая уже в списке.")
+    ranked = kept
     for r, i in enumerate(ranked):
         if r < top_k:
             out[i]["rank"] = r + 1
@@ -123,7 +174,10 @@ def template_dossier(a: dict, d: dict) -> dict:
     neg = [f"{c['label']} — {c.get('level', '')} значение" for c in contrib if c["contribution"] < 0][:2]
     conf = ""
     if a["prob"] is not None:
-        conf = f"Уверенность модели {a['prob']:.0%}. Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}."
+        conf = f"Вероятность слабого сигнала по модели {prob_text(a['prob'])}. Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}."
+        pp = a.get("passport")
+        if pp:
+            conf += f" Паспорт доказательств {pp['level']}: подтверждено {pp['confirmed']} из {pp['checked']} документов, {pp['domains']} разных источника."
         if "openalex" in a.get("missing", []):
             conf += " Внимание: статистика публикаций OpenAlex была недоступна, признаки публикаций заменены нейтральными значениями."
         if "wikipedia" in a.get("missing", []):

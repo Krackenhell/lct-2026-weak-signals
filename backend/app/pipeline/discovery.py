@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, gdelt, habr, hackernews, openalex
+from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, habr, hackernews, openalex, semanticscholar
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -45,6 +45,17 @@ WATCHLIST_DOMAINS = {
     "Индустриальный ИИ": r"индустр|промышлен|производств|завод|industrial|manufactur",
 }
 AI_QUERY = r"\bии\b|искусственн|нейросет|\bai\b|artificial intelligence|машинн"
+# Europe PMC подключается только для наук о жизни: для финтеха или роботов он даёт шум.
+LIFE_SCIENCE = r"медиц|здрав|биотех|биолог|фарм|генн|геном|белк|клиник|диагност|health|medic|biotech|bio|pharma|gene|protein|clinic|drug|patholog"
+# Обрывки фраз, которые статистика выдаёт за технологии: заголовки Hacker News, биржевые новости,
+# фрагменты через «and» («detection and anti-money»), фразы, обрывающиеся на прилагательном («adoption of digital»).
+JUNK_FIRST = {"show", "ask", "tell", "hn", "launch"}
+JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter"}
+JUNK_LAST = {"digital", "financial", "technological", "sized", "driven", "aware", "enabled", "open-source", "related"}
+
+
+def _junk(low: list[str]) -> bool:
+    return low[0] in JUNK_FIRST or low[-1] in JUNK_LAST or any(t in JUNK_ANY for t in low) or "and" in low[1:-1]
 
 
 def _norm(name: str) -> str:
@@ -64,14 +75,28 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
         docs, _ = await hackernews.search(http, q, since_ts, 20)
         return docs
 
-    for sq in subs:
+    s = get_settings()
+    topic = plan.get("topic_en", subs[0] if subs else "")
+    for i, sq in enumerate(subs):
         tasks.append(arxiv.search(http, sq, 20))
         tasks.append(openalex.search(http, sq, from_date, 20))
         tasks.append(hn_docs(sq))  # ссылки на свежие статьи отраслевых изданий о стартапах и продуктах
-    tasks.append(gdelt.search(http, plan.get("topic_en", subs[0] if subs else ""), "6m", 30))
-    for ru in plan.get("ru_terms", [])[:3]:
-        tasks.append(gdelt.search(http, ru, "12m", 25, lang="russian"))
+        if s.extra_sources and i < 6:
+            tasks.append(crossref.search(http, sq, from_date, 15))  # все издатели с DOI, в т.ч. неанглоязычные журналы
+            if semanticscholar.enabled():
+                tasks.append(semanticscholar.search(http, sq, today.year - 2, 15))
+            if re.search(LIFE_SCIENCE, plan.get("query", "") + " " + topic, flags=re.I):
+                tasks.append(europepmc.search(http, sq, from_date, 15))
+    tasks.append(gdelt.search(http, topic, "6m", 30))
+    ru_terms = plan.get("ru_terms", [])[:3]
+    for j, ru in enumerate(ru_terms):
+        if j == 0:  # GDELT — 1 запрос / 5,5 с: одного русского запроса достаточно, остальное дают Хабр и КиберЛенинка
+            tasks.append(gdelt.search(http, ru, "12m", 25, lang="russian"))
         tasks.append(habr.search(http, ru, 15))
+        if s.extra_sources:
+            tasks.append(cyberleninka.search(http, ru, 15, min_year=today.year - 3))  # русскоязычная наука
+    if s.extra_sources and topic:
+        tasks.append(gdelt.search(http, topic, "12m", 20, lang="chinese"))  # китайские СМИ — крупнейший рынок ранних внедрений
 
     docs: list[RawDoc] = []
     done = 0
@@ -113,7 +138,7 @@ def mine_phrases(docs: list[RawDoc], limit: int = 40) -> list[dict]:
             for j in range(len(tokens) - n + 1):
                 gram = tokens[j : j + n]
                 low = [t.lower() for t in gram]
-                if low[0] in STOP or low[-1] in STOP or sum(t in STOP for t in low) > 1:
+                if low[0] in STOP or low[-1] in STOP or sum(t in STOP for t in low) > 1 or _junk(low):
                     continue
                 key = _norm(" ".join(low))
                 if key in GENERIC or len(key) < 8:

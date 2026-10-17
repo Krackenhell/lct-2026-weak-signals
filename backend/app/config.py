@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     gigachat_scope: str = "GIGACHAT_API_PERS"
     gigachat_model: str = "GigaChat-2"
     gigachat_verify_ssl: bool = False
+    # Параллельных запросов к GigaChat: 1 — бесплатный тариф физлица; для корпоративного тарифа можно 4–8,
+    # тогда 15 досье пишутся одновременно, а не по очереди.
+    gigachat_concurrency: int = 1
     yandex_api_key: str = ""
     yandex_folder_id: str = ""
     yandex_model: str = "yandexgpt-lite/latest"
@@ -43,15 +46,33 @@ class Settings(BaseSettings):
     openalex_api_key: str = ""
     openalex_email: str = ""
     github_token: str = ""
+    s2_api_key: str = ""  # Semantic Scholar: без ключа источник не используется (лимит 429)
+    # Дополнительные научные источники и языки: Crossref (все издатели), КиберЛенинка (RU), Europe PMC (науки о жизни),
+    # новости на китайском (GDELT). Выключаются, если нужна максимальная скорость.
+    extra_sources: bool = True
     http_timeout: float = 25.0
     cache_dir: Path = DATA_DIR / "cache"
     cache_ttl_hours: int = 72
 
+    # Доступ: если задан, запуск поиска и оценки аналитика требуют заголовок X-API-Token (чтение открыто)
+    api_token: str = ""
+
     # Пайплайн
     top_k: int = 15
-    max_candidates: int = 50
+    # Кандидатов на проверку: arXiv требует паузу 3,1 с между запросами, поэтому каждый кандидат — это ~3 с запроса.
+    max_candidates: int = 30
+    # Новости GDELT по каждому кандидату: лимит 1 запрос / 5,5 с и частые отказы делали этот шаг самым долгим.
+    # По умолчанию новости собираются в корпусе и для окна для России.
+    news_per_candidate: bool = False
+    # Живая проверка ссылок источников в итоговой выдаче
+    check_links: bool = True
     confident_threshold: float = 0.75
-    use_watchlist: bool = True
+    # База отслеживания подмешивает сигналы датасета в кандидаты — по умолчанию выключена (чистое обнаружение).
+    use_watchlist: bool = False
+    # Паспорт доказательств: сколько документов должна подтвердить decision-модель, чтобы кандидат попал в топ.
+    min_confirmed_docs: int = 3
+    # Окно для России: сверка с русскоязычными источниками для сигналов топа.
+    russia_window: bool = True
 
     model_dir: Path = DATA_DIR / "model"
     seed_dir: Path = DATA_DIR / "seed"

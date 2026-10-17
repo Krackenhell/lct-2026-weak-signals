@@ -126,3 +126,27 @@ details summary { cursor: pointer; }
   .topbar { flex-direction: column; align-items: flex-start; }
   .bar-row { grid-template-columns: 1fr 1fr 50px; }
 }
+
+/* Проверяемость: колонка бейджей паспорта, прочности и окна */
+.badges-col { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+
+
+/* Готовые прогоны на главной */
+.showcase { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.showcase-card { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; margin: 0; }
+.showcase-card:hover { outline: 2px solid var(--accent, #6b4fd8); }
+
+
+/* Оценки аналитика */
+.feedback { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip.active { background: var(--accent); color: #fff; }
+
+
+/* Научные работы по годам */
+.dyn { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding: 8px 0; }
+.dyn-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 28px; }
+.dyn-bar { width: 100%; max-width: 36px; background: var(--accent); border-radius: 4px 4px 0 0; }
+.dyn-bar.partial { opacity: 0.45; }
+.dyn-val, .dyn-year { font-size: 12px; }
+.dyn-year { color: var(--muted, #777); margin-top: 4px; }
+

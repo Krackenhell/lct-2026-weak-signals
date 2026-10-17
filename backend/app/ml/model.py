@@ -11,6 +11,8 @@ from pathlib import Path
 from app.config import get_settings
 from app.pipeline.features import FEATURE_RU, FEATURES
 
+Z_CLIP = 3.0
+
 
 @dataclass
 class SignalModel:
@@ -35,12 +37,15 @@ class SignalModel:
         path.write_text(json.dumps(self.__dict__, ensure_ascii=False, indent=1), encoding="utf-8")
 
     def _z(self, x: dict[str, float]) -> list[float]:
-        return [(x.get(f, m) - m) / (s or 1.0) for f, m, s in zip(self.features, self.mean, self.scale)]
+        # Отклонение ограничено ±Z_CLIP: значение далеко за пределами обучающей выборки (другая decision-модель,
+        # сбой источника) не должно в одиночку давать вероятность «100%».
+        return [max(-Z_CLIP, min(Z_CLIP, (x.get(f, m) - m) / (s or 1.0))) for f, m, s in zip(self.features, self.mean, self.scale, strict=False)]
+
+    def logit(self, x: dict[str, float]) -> float:
+        return self.intercept + sum(c * v for c, v in zip(self.coef, self._z(x), strict=False))
 
     def predict(self, x: dict[str, float]) -> float:
-        z = self._z(x)
-        logit = self.intercept + sum(c * v for c, v in zip(self.coef, z))
-        return 1.0 / (1.0 + math.exp(-max(min(logit, 30), -30)))
+        return 1.0 / (1.0 + math.exp(-max(min(self.logit(x), 30), -30)))
 
     def explain(self, x: dict[str, float]) -> list[dict]:
         """Вклады признаков в логит, отсортированные по модулю."""
@@ -53,7 +58,7 @@ class SignalModel:
                 "contribution": round(c * v, 3),
                 "level": "высокое" if v > 0.25 else "низкое" if v < -0.25 else "среднее",
             }
-            for f, m, c, v in zip(self.features, self.mean, self.coef, z)
+            for f, m, c, v in zip(self.features, self.mean, self.coef, z, strict=False)
         ]
         return sorted(rows, key=lambda r: -abs(r["contribution"]))
 

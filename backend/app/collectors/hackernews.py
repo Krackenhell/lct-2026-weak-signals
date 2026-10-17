@@ -7,11 +7,12 @@ from app.collectors.http import HttpClient
 API = "https://hn.algolia.com/api/v1/search_by_date"
 
 
-async def search(http: HttpClient, query: str, since_ts: int, n: int = 20) -> tuple[list[RawDoc], int]:
+async def search(http: HttpClient, query: str, since_ts: int, n: int = 20, until_ts: int | None = None) -> tuple[list[RawDoc], int]:
     q = query.replace('"', "")
+    flt = f"created_at_i>{since_ts}" + (f",created_at_i<{until_ts}" if until_ts else "")
     data = await http.get(
         API,
-        params={"query": f'"{q}"', "tags": "story", "numericFilters": f"created_at_i>{since_ts}", "hitsPerPage": n},
+        params={"query": f'"{q}"', "tags": "story", "numericFilters": flt, "hitsPerPage": n},
     )
     docs = []
     for h in data.get("hits", []):

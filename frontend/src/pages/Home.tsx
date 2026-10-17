@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, Run } from "../api";
+import { api, Run, Showcase } from "../api";
 
 const EXAMPLES = [
   "перспективные решения в финтехе",
@@ -12,18 +12,20 @@ const EXAMPLES = [
   "энергетика и накопители",
 ];
 
-const STATUS_RU: Record<string, string> = { queued: "в очереди", running: "выполняется", done: "готово", failed: "ошибка" };
+const STATUS_RU: Record<string, string> = { queued: "в очереди", running: "выполняется", done: "готово", failed: "ошибка", rejected: "отклонён" };
 
 export default function Home() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  const [watch, setWatch] = useState(true);
+  const [watch, setWatch] = useState(false);
   const [err, setErr] = useState("");
   const [runs, setRuns] = useState<Run[]>([]);
+  const [ready, setReady] = useState<Showcase[]>([]);
   const nav = useNavigate();
 
   useEffect(() => {
     api.runs().then(setRuns).catch(() => {});
+    api.showcase().then(setReady).catch(() => {});
   }, []);
 
   async function start(query: string) {
@@ -60,7 +62,7 @@ export default function Home() {
         </form>
         <label className="small muted" style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
           <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} />
-          Учитывать базу отслеживаемых сигналов (перепроверяются по живым источникам; снимите галочку для чистого обнаружения)
+          Режим мониторинга: добавить к поиску известные сигналы из базы отслеживания (по умолчанию — чистое обнаружение)
         </label>
         <div className="chips">
           {EXAMPLES.map((ex) => (
@@ -71,6 +73,25 @@ export default function Home() {
         </div>
         {err && <div className="error" style={{ marginTop: 12 }}>{err}</div>}
       </section>
+
+      {ready.length > 0 && (
+        <>
+          <h2>Готовые прогоны — открываются сразу</h2>
+          <p className="muted small">Последний завершённый анализ по каждой теме. Повторный запуск той же темы покажет, что появилось и что выпало (мониторинг).</p>
+          <div className="showcase">
+            {ready.map((r) => (
+              <Link key={r.run_id} to={`/runs/${r.run_id}`} className="panel showcase-card">
+                <b>{r.query}</b>
+                <div className="small muted">
+                  {r.date ? new Date(r.date).toLocaleDateString("ru-RU") : ""} · {r.mode} · сигналов {r.signals}
+                  {r.passport ? ` · доказательства A ${r.passport.A ?? 0} / B ${r.passport.B ?? 0}` : ""}
+                </div>
+                <div className="small muted">{r.providers?.decision_model} · {r.providers?.llm}</div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2>Последние запросы</h2>
       {runs.length === 0 ? (

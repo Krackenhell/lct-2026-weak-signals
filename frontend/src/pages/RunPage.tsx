@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, CandidateBrief, ModelCall, pct, RunFull } from "../api";
-import { OriginBadge, ScoreBadge } from "../components/ui";
+import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
+import { OriginBadge, PassportBadge, RadarBadge, RobustnessBadge, ScoreBadge, WindowBadge } from "../components/ui";
 
-type Tab = "signals" | "excluded" | "log";
+type Tab = "signals" | "radar" | "watch" | "excluded" | "log";
 
 export default function RunPage() {
   const { id } = useParams();
@@ -36,7 +36,9 @@ export default function RunPage() {
 
   const s = run.stats || {};
   const active = run.status === "queued" || run.status === "running";
-  const confident = run.signals.filter((c) => (c.probability ?? 0) >= 0.75).length;
+  const watch = run.watch ?? [];
+  const solid = run.signals.filter((c) => c.passport?.level === "A" || c.passport?.level === "B").length;
+  const changes = s.changes as Changes | undefined;
 
   return (
     <>
@@ -46,8 +48,20 @@ export default function RunPage() {
         {run.providers?.decision_model && <span>Decision-модель: <b>{run.providers.decision_model}</b></span>}
         {run.providers?.llm && <span>· LLM: <b>{run.providers.llm}</b></span>}
         {run.providers?.classifier && <span>· Классификатор: <b>{run.providers.classifier}</b></span>}
-        <span>· База отслеживания: <b>{run.options?.use_watchlist === false ? "выключена" : "включена"}</b></span>
+        <span>· Режим: <b>{run.options?.use_watchlist ? "мониторинг (с базой отслеживания)" : "чистое обнаружение"}</b></span>
       </div>
+
+      {run.status === "rejected" && (
+        <div className="panel" style={{ marginTop: 16, borderLeft: "4px solid var(--bad)" }}>
+          <h3 style={{ marginTop: 0 }}>Запрос не похож на технологическое направление</h3>
+          <p>{run.error}</p>
+          <p className="muted small">
+            Система ищет ранние технологии по направлениям вроде «финтех», «кибербезопасность ИИ», «edge AI», «микрофлюидика».
+            Проверку выполнил: {(s.query_check as { by?: string })?.by ?? "—"}. Сигналы не формируются — чтобы не выдавать уверенный ответ на бессмысленный вопрос.
+          </p>
+          <Link to="/">Задать другой запрос →</Link>
+        </div>
+      )}
 
       {active && (
         <div className="panel" style={{ marginTop: 16 }}>
@@ -58,7 +72,7 @@ export default function RunPage() {
       )}
       {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}
 
-      <div className="kpis">
+      {run.status !== "rejected" && <div className="kpis">
         <div className="kpi"><div className="label">Обработано источников</div><div className="value">{(s.sources_processed as number)?.toLocaleString("ru-RU") ?? "…"}</div></div>
         <div className="kpi">
           <div className="label">Кандидатов проверено</div>
@@ -67,8 +81,29 @@ export default function RunPage() {
           </div>
         </div>
         <div className="kpi"><div className="label">Слабых сигналов в топе</div><div className="value accent">{run.status === "done" ? run.signals.length : "…"}</div></div>
-        <div className="kpi"><div className="label">Уверенность модели &gt; 75%</div><div className="value good">{run.status === "done" ? confident : "…"}</div></div>
-      </div>
+        <div className="kpi"><div className="label">Доказательства A/B (подтверждено ≥ 3 док.)</div><div className="value good">{run.status === "done" ? solid : "…"}</div></div>
+        <div className="kpi"><div className="label">Наблюдать: мало данных</div><div className="value">{run.status === "done" ? watch.length : "…"}</div></div>
+      </div>}
+
+      {run.status === "done" && (
+        <div className="meta-row small" style={{ marginBottom: 12 }}>
+          <span className="muted">Скачать отчёт:</span>
+          {EXPORT_FORMATS.map(([f, label]) => (
+            <a key={f} className="chip" href={exportUrl(run.id, f)} download>{label}</a>
+          ))}
+          <span className="muted">Excel — в колонках датасета организатора, с листами «Наблюдать», «Исключённые», «Источники».</span>
+        </div>
+      )}
+
+      {run.status === "done" && changes && (
+        <div className="panel small">
+          <b>Мониторинг темы:</b> по сравнению с прогоном <Link to={`/runs/${changes.prev_run_id}`}>#{changes.prev_run_id}</Link>
+          {changes.prev_date ? ` от ${new Date(changes.prev_date).toLocaleDateString("ru-RU")}` : ""} — сохранилось {changes.kept},
+          новых {changes.new.length}, выпало {changes.dropped.length}.
+          {changes.new.length > 0 && <div style={{ marginTop: 6 }}>Новые: {changes.new.join(", ")}</div>}
+          {changes.dropped.length > 0 && <div className="muted" style={{ marginTop: 4 }}>Выпали: {changes.dropped.join(", ")}</div>}
+        </div>
+      )}
 
       {run.plan?.subqueries && (
         <div className="panel small">
@@ -84,10 +119,22 @@ export default function RunPage() {
         <>
           <div className="tabs" id="excluded">
             <button className={`tab ${tab === "signals" ? "active" : ""}`} onClick={() => setTab("signals")}>Топ слабых сигналов ({run.signals.length})</button>
+            <button className={`tab ${tab === "radar" ? "active" : ""}`} onClick={() => setTab("radar")}>Радар банка</button>
+            <button className={`tab ${tab === "watch" ? "active" : ""}`} onClick={() => setTab("watch")}>Наблюдать ({watch.length})</button>
             <button className={`tab ${tab === "excluded" ? "active" : ""}`} onClick={() => setTab("excluded")}>Исключённые кандидаты ({run.excluded.length})</button>
             <button className={`tab ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>Журнал моделей</button>
           </div>
           {tab === "signals" && <SignalsTable items={run.signals} />}
+          {tab === "radar" && <RadarTable items={[...run.signals, ...watch]} />}
+          {tab === "watch" && (
+            <>
+              <p className="muted small">
+                Кандидаты с высокой вероятностью по модели, но без достаточных доказательств: decision-модель подтвердила меньше 3 документов
+                из разных источников. Без доказательств вероятность ничего не значит, поэтому в топ они не попадают — их стоит перепроверить позже.
+              </p>
+              <ExcludedTable items={watch} />
+            </>
+          )}
           {tab === "excluded" && <ExcludedTable items={run.excluded} />}
           {tab === "log" && <LogTable items={log} />}
         </>
@@ -111,14 +158,18 @@ function SignalsTable({ items }: { items: CandidateBrief[] }) {
     <div className="tablewrap">
       <table>
         <thead>
-          <tr><th>#</th><th>Технология / тема</th><th>Скоринг (модель)</th><th>Ключевые предикторы</th><th>Источники</th><th>Статус</th></tr>
+          <tr><th>#</th><th>Технология / тема</th><th>Скоринг (модель)</th><th>Проверяемость</th><th>Ключевые предикторы</th><th>Источники</th><th>Статус</th></tr>
         </thead>
         <tbody>
           {items.map((c) => (
             <tr key={c.id}>
               <td>{c.rank}</td>
               <td>{name(c)}<div style={{ marginTop: 4 }}><OriginBadge origin={c.origin} /></div></td>
-              <td><ScoreBadge p={c.probability} /><div className="muted small" style={{ marginTop: 4 }}>релевантность {pct(c.relevance)}</div></td>
+              <td><ScoreBadge p={c.probability} /><div className="muted small" style={{ marginTop: 4 }}>релевантность {prob(c.relevance)}</div></td>
+              <td className="small">
+                <div className="badges-col"><RadarBadge r={c.radar} /><PassportBadge p={c.passport} /><RobustnessBadge r={c.robustness} /><WindowBadge w={c.window} /></div>
+                {c.passport && <div className="muted" style={{ marginTop: 4 }}>событие: {c.passport.event}</div>}
+              </td>
               <td className="small">{c.key_predictors.map((p) => <div key={p.feature}>+ {p.label} <span className="muted">({p.value})</span></div>)}</td>
               <td>{c.n_sources}</td>
               <td><Link to={`/insight/${c.id}`}>Смотреть инсайт →</Link></td>
@@ -127,6 +178,38 @@ function SignalsTable({ items }: { items: CandidateBrief[] }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function RadarTable({ items }: { items: CandidateBrief[] }) {
+  const grid = radarGrid(items);
+  if (!grid.length) return <p className="muted">Радар строится по сигналам и кандидатам «Наблюдать».</p>;
+  return (
+    <>
+      <p className="muted small">
+        Что делать банку с каждой технологией. <b>Пилотировать</b> — надёжные доказательства (паспорт A) и уже есть пилот, релиз или инвестиции;
+        <b> Изучать</b> — сигнал с достаточными доказательствами; <b>Наблюдать</b> — мало подтверждений, перепроверить позже. В скобках — горизонт.
+      </p>
+      <div className="tablewrap">
+        <table>
+          <thead><tr><th>Направление банка</th>{RINGS.map((r) => <th key={r}>{r}</th>)}</tr></thead>
+          <tbody>
+            {grid.map(([area, rings]) => (
+              <tr key={area}>
+                <td><b>{area}</b></td>
+                {RINGS.map((r) => (
+                  <td key={r} className="small">
+                    {rings[r].map((c) => (
+                      <div key={c.id}><Link to={`/insight/${c.id}`}>{c.name_ru || c.name}</Link> <span className="muted">({c.radar?.horizon})</span></div>
+                    ))}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -149,7 +232,7 @@ function ExcludedTable({ items }: { items: CandidateBrief[] }) {
               <tr key={c.id}>
                 <td>{name(c)}</td>
                 <td><span className="badge low">{c.exclusion_label}</span><div className="small" style={{ marginTop: 6 }}>{c.exclusion_reason}</div></td>
-                <td><ScoreBadge p={c.probability} /></td>
+                <td><ScoreBadge p={c.probability} />{c.passport && <div style={{ marginTop: 4 }}><PassportBadge p={c.passport} /></div>}</td>
                 <td><Link to={`/insight/${c.id}`}>Подробнее</Link></td>
               </tr>
             ))}

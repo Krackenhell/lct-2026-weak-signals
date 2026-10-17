@@ -1,5 +1,5 @@
 import logging
-
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,12 +14,6 @@ from app.models import Run
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-app = FastAPI(title="Слабые сигналы — API", version="0.1.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.include_router(router)
-
-
-@app.on_event("startup")
 def startup() -> None:
     init_db()
     # Запуски, прерванные перезапуском сервера, помечаем как неуспешные, а не «вечно выполняющиеся».
@@ -28,6 +22,17 @@ def startup() -> None:
             r.status = "failed"
             r.error = "Обработка прервана перезапуском сервера"
         s.commit()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    startup()
+    yield
+
+
+app = FastAPI(title="Слабые сигналы — API", version="0.1.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(router)
 
 
 # Режим без Docker/nginx: если рядом собран фронтенд (frontend/dist), backend отдаёт его сам.
