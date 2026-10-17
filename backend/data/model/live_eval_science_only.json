@@ -1,0 +1,820 @@
+{
+ "runs": [
+  {
+   "domain": null,
+   "mode": "только обнаружение",
+   "run_id": 12,
+   "query": "Привет",
+   "status": "rejected",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 9,
+   "n_signals": 0,
+   "confident_75": 0,
+   "new_candidates_in_top": 0,
+   "top": [],
+   "passport": {
+    "A": 0,
+    "B": 0
+   },
+   "watch": 0,
+   "exclusions": {}
+  },
+  {
+   "domain": null,
+   "mode": "только обнаружение",
+   "run_id": 13,
+   "query": "почему мирэа лучший вуз",
+   "status": "rejected",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 1,
+   "n_signals": 0,
+   "confident_75": 0,
+   "new_candidates_in_top": 0,
+   "top": [],
+   "passport": {
+    "A": 0,
+    "B": 0
+   },
+   "watch": 0,
+   "exclusions": {}
+  },
+  {
+   "domain": "Финтех",
+   "mode": "только обнаружение",
+   "run_id": 14,
+   "query": "перспективные решения в финтехе",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 252,
+   "n_signals": 7,
+   "confident_75": 3,
+   "new_candidates_in_top": 7,
+   "top": [
+    {
+     "rank": 1,
+     "name": "privacy-preserving KYC",
+     "name_ru": "Privacy-Preserving KYC",
+     "p": 0.937,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "real-world asset tokenization",
+     "name_ru": "токенизация реальных активов",
+     "p": 0.922,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
+    },
+    {
+     "rank": 3,
+     "name": "cryptographic framework",
+     "name_ru": "Криптографические фреймворки для финансовых технологий",
+     "p": 0.927,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 4,
+     "name": "agentic commerce",
+     "name_ru": "агентская коммерция",
+     "p": 0.726,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
+    },
+    {
+     "rank": 5,
+     "name": "hybrid credit scoring",
+     "name_ru": "гибридная система кредитного скоринга",
+     "p": 0.717,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 6,
+     "name": "transaction-based credit risk scoring",
+     "name_ru": "Оценка кредитного риска на основе транзакций",
+     "p": 0.717,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 7,
+     "name": "graph-based fraud detection",
+     "name_ru": "Графовая антифрод-декомпозиция",
+     "p": 0.639,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 4,
+    "B": 3
+   },
+   "watch": 1,
+   "exclusions": {
+    "mature": 8,
+    "broad": 3,
+    "low_probability": 4,
+    "not_technology": 2,
+    "irrelevant": 5
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 2,
+   "share_of_top15_from_dataset": 0.286,
+   "recall_of_domain": 0.118
+  },
+  {
+   "domain": "Защита ИИ",
+   "mode": "только обнаружение",
+   "run_id": 15,
+   "query": "слабые сигналы в кибербезопасности ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 251,
+   "n_signals": 9,
+   "confident_75": 7,
+   "new_candidates_in_top": 9,
+   "top": [
+    {
+     "rank": 1,
+     "name": "ml-assisted power side-channel attacks",
+     "name_ru": "ML-помощник при атаках методом анализа побочных каналов",
+     "p": 0.998,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 2,
+     "name": "red-teaming benchmarks",
+     "name_ru": "Прототипирование red-teaming benchmarks",
+     "p": 0.98,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "edge-deployed intrusion detection systems",
+     "name_ru": "Системы обнаружения вторжений на краях (Edge-Deployed Intrusion Detection Systems)",
+     "p": 0.939,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 4,
+     "name": "adversarial sql injection generation",
+     "name_ru": "генерация вредоносных SQL-инъекций с использованием технологий искусственного интеллекта",
+     "p": 0.993,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 5,
+     "name": "transferable adversarial attacks",
+     "name_ru": "Передаваемые атакующие вредоносные воздействия на основе искусственного интеллекта",
+     "p": 0.95,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 6,
+     "name": "robust ensemble",
+     "name_ru": "Robust Ensemble",
+     "p": 0.851,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 7,
+     "name": "gradient-based adversarial attacks",
+     "name_ru": "Градиенто-зависимые адверсариальные атаки",
+     "p": 0.868,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 8,
+     "name": "zero-trust frameworks",
+     "name_ru": "Zero-Trust Framework",
+     "p": 0.712,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 9,
+     "name": "secure aggregation",
+     "name_ru": "Secure Aggregation",
+     "p": 0.689,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 7,
+    "B": 2
+   },
+   "watch": 0,
+   "exclusions": {
+    "mature": 6,
+    "not_technology": 3,
+    "irrelevant": 10,
+    "low_probability": 1,
+    "standard": 1
+   },
+   "dataset_signals_in_domain": 16,
+   "dataset_hits_in_top15": 1,
+   "share_of_top15_from_dataset": 0.111,
+   "recall_of_domain": 0.062
+  },
+  {
+   "domain": "Роботы",
+   "mode": "только обнаружение",
+   "run_id": 16,
+   "query": "робототехника",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 254,
+   "n_signals": 10,
+   "confident_75": 10,
+   "new_candidates_in_top": 10,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Magnetically Controlled Microrobots",
+     "name_ru": "Магнитно управляемые микророботы",
+     "p": 0.989,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "world-action models",
+     "name_ru": "World-Action Models",
+     "p": 0.995,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "Actuator Health Estimation",
+     "name_ru": "Оценка здоровья актуаторов",
+     "p": 0.986,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 4,
+     "name": "gaussian process residual compensation",
+     "name_ru": "Гауссовские процессы для компенсации остаточных ошибок в робототехнике",
+     "p": 0.99,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 5,
+     "name": "Adaptive Neural Movement Primitives",
+     "name_ru": "Adaptive Neural Movement Primitives",
+     "p": 0.941,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 6,
+     "name": "Deep Reinforcement Learning for Autonomous Navigation",
+     "name_ru": "Глубокое подкрепляющее обучение для автономного навигац",
+     "p": 0.942,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 7,
+     "name": "procedural assistance memory",
+     "name_ru": "Procedural Assistance Memory",
+     "p": 0.999,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 8,
+     "name": "Soft Robotics Materials",
+     "name_ru": "Гибкая робототехника",
+     "p": 0.888,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 9,
+     "name": "selective preference elicitation",
+     "name_ru": "избирательное извлечение предпочтений",
+     "p": 0.999,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 10,
+     "name": "ai-driven augmented reality systems",
+     "name_ru": "AI-питаемая дополненная реальность",
+     "p": 0.972,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    }
+   ],
+   "passport": {
+    "A": 3,
+    "B": 7
+   },
+   "watch": 12,
+   "exclusions": {
+    "low_probability": 6,
+    "product": 1,
+    "irrelevant": 1
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  },
+  {
+   "domain": "Edge",
+   "mode": "только обнаружение",
+   "run_id": 17,
+   "query": "edge AI и вычисления на устройствах",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 268,
+   "n_signals": 15,
+   "confident_75": 12,
+   "new_candidates_in_top": 15,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Second-Order Algorithm for Federated Edge Learning",
+     "name_ru": "Алгоритм второго порядка для федеративного обучения на краевых устройствах",
+     "p": 0.999,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 2,
+     "name": "Blockchain-enabled Federated Edge Learning",
+     "name_ru": "Блокчейн-поддерживаемое федеративное машинное обучение на краях устройств",
+     "p": 0.988,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 3,
+     "name": "on-device LLM inference",
+     "name_ru": "инференс больших языковых моделей на устройстве",
+     "p": 0.971,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 4,
+     "name": "near-sensor computing",
+     "name_ru": "Near-Sensor Computing",
+     "p": 0.983,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 5,
+     "name": "reconfigurable neuromorphic architecture",
+     "name_ru": "Переменная нейроморфная архитектура",
+     "p": 0.995,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 6,
+     "name": "over-the-air federated learning",
+     "name_ru": "Over-the-Air Federated Learning",
+     "p": 0.981,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 7,
+     "name": "massive digital over-the-air computation",
+     "name_ru": "Масштабируемая цифровая удалённая вычислительная обработка",
+     "p": 1.0,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 8,
+     "name": "high granularity quantization",
+     "name_ru": "Высокозернистая квантизация",
+     "p": 0.999,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 9,
+     "name": "over-the-air (OTA) computing",
+     "name_ru": "вычисления через воздух (Over-the-Air computing)",
+     "p": 0.982,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 10,
+     "name": "sparsely connected spiking neural networks",
+     "name_ru": "Разреженные нейронные сети на основе импульсного кодирования",
+     "p": 0.924,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 11,
+     "name": "diffractive vibration monitoring",
+     "name_ru": "Diffractive Vibration Monitoring",
+     "p": 1.0,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 12,
+     "name": "speculative decoding",
+     "name_ru": "Спекулятивное декодирование",
+     "p": 0.787,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
+    },
+    {
+     "rank": 13,
+     "name": "ultra-low-power neural networks",
+     "name_ru": "Ultra-Low-Power Neural Networks для Edge AI",
+     "p": 0.671,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 14,
+     "name": "adaptive quantization",
+     "name_ru": "адаптивная квантизация",
+     "p": 0.635,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 15,
+     "name": "in-memory computing",
+     "name_ru": "вычисления в памяти (In-Memory Computing)",
+     "p": 0.506,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 7,
+    "B": 8
+   },
+   "watch": 5,
+   "exclusions": {
+    "duplicate": 2,
+    "mature": 5,
+    "low_probability": 2,
+    "irrelevant": 1
+   },
+   "dataset_signals_in_domain": 16,
+   "dataset_hits_in_top15": 4,
+   "share_of_top15_from_dataset": 0.267,
+   "recall_of_domain": 0.25
+  },
+  {
+   "domain": "Инфраструктура ИИ",
+   "mode": "только обнаружение",
+   "run_id": 18,
+   "query": "инфраструктура для ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 278,
+   "n_signals": 11,
+   "confident_75": 10,
+   "new_candidates_in_top": 11,
+   "top": [
+    {
+     "rank": 1,
+     "name": "KV-cache offloading",
+     "name_ru": "выгрузка кеша KV для ИИ",
+     "p": 0.996,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "Analog Compute-in-Memory",
+     "name_ru": "Аналоговый вычисления в памяти (Compute-in-Memory)",
+     "p": 0.966,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "High Granularity Quantization",
+     "name_ru": "Высокозернистая квантизация",
+     "p": 1.0,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 4,
+     "name": "Asynchronous Federated Learning",
+     "name_ru": "Асинхронное федеративное обучение",
+     "p": 0.968,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 5,
+     "name": "FPGAs for ML Acceleration",
+     "name_ru": "FPGAs для ускорения машинного обучения",
+     "p": 0.929,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 6,
+     "name": "programmable diffractive optical processors",
+     "name_ru": "Программируемые дифракционные оптические процессоры",
+     "p": 1.0,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 7,
+     "name": "Hardware Accelerators for Large Language Models",
+     "name_ru": "Аппаратные ускорители для больших языковых моделей",
+     "p": 0.866,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 8,
+     "name": "Ultra-Low-Power Neural Networks",
+     "name_ru": "Сверхнизкопотребляющие нейронные сети",
+     "p": 0.923,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 9,
+     "name": "Quantum-Classical Hybrid Models",
+     "name_ru": "Квантово-классические гибридные модели",
+     "p": 0.998,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 10,
+     "name": "Intelligent Edge",
+     "name_ru": "Интеллектуальный край (Intelligent Edge)",
+     "p": 0.792,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 11,
+     "name": "Edge Computing Paradigm",
+     "name_ru": "Эдж-компьютинг в парадигме искусственного интеллекта",
+     "p": 0.551,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 5,
+    "B": 6
+   },
+   "watch": 8,
+   "exclusions": {
+    "mature": 1,
+    "low_probability": 2,
+    "low_evidence": 7,
+    "irrelevant": 1
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 2,
+   "share_of_top15_from_dataset": 0.182,
+   "recall_of_domain": 0.118
+  },
+  {
+   "domain": "Индустриальный ИИ",
+   "mode": "только обнаружение",
+   "run_id": 19,
+   "query": "индустриальный ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 281,
+   "n_signals": 12,
+   "confident_75": 8,
+   "new_candidates_in_top": 12,
+   "top": [
+    {
+     "rank": 1,
+     "name": "industrial llms",
+     "name_ru": "Индустриальные большие языковые модели",
+     "p": 0.997,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "predictive quality control",
+     "name_ru": "прогнозирующий контроль качества",
+     "p": 0.99,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "autonomous manufacturing system",
+     "name_ru": "автономные производственные системы",
+     "p": 0.972,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 4,
+     "name": "intelligent analytics framework",
+     "name_ru": "интеллектуальная аналитическая платформа",
+     "p": 0.991,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 5,
+     "name": "ai-driven process optimization",
+     "name_ru": "AI-управляемая оптимизация бизнес-процессов",
+     "p": 0.855,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 6,
+     "name": "fermatean fuzzy logic",
+     "name_ru": "Fermatean Fuzzy Logic",
+     "p": 0.993,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 7,
+     "name": "fuzzy adaptive finite-time command-filtered backstepping",
+     "name_ru": "FussyAdaptiveFiniteTimeCommandFilteredBackstepping",
+     "p": 0.999,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 8,
+     "name": "adaptive control allocation",
+     "name_ru": "адаптивное распределение управления (адаптивный контроль распределения)",
+     "p": 0.84,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 9,
+     "name": "multisensor deep learning",
+     "name_ru": "Мультисенсорный глубокий обучающийся ИИ",
+     "p": 0.669,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 10,
+     "name": "plug-and-produce",
+     "name_ru": "Plug-and-Produce",
+     "p": 0.676,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 11,
+     "name": "distributed adaptive control",
+     "name_ru": "распределённое адаптивное управление",
+     "p": 0.677,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 12,
+     "name": "resilient industrial control systems",
+     "name_ru": "Устойчивые системы промышленного контроля",
+     "p": 0.533,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 7,
+    "B": 5
+   },
+   "watch": 0,
+   "exclusions": {
+    "mature": 5,
+    "broad": 3,
+    "low_probability": 5,
+    "irrelevant": 2,
+    "organization": 1,
+    "low_evidence": 1,
+    "product": 1
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 1,
+   "share_of_top15_from_dataset": 0.083,
+   "recall_of_domain": 0.059
+  }
+ ]
+}

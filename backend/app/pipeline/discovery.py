@@ -49,8 +49,12 @@ AI_QUERY = r"\bии\b|искусственн|нейросет|\bai\b|artificial 
 LIFE_SCIENCE = r"медиц|здрав|биотех|биолог|фарм|генн|геном|белк|клиник|диагност|health|medic|biotech|bio|pharma|gene|protein|clinic|drug|patholog"
 # Обрывки фраз, которые статистика выдаёт за технологии: заголовки Hacker News, биржевые новости,
 # фрагменты через «and» («detection and anti-money»), фразы, обрывающиеся на прилагательном («adoption of digital»).
+INDUSTRY_COLLECTORS = {"rss", "siliconangle"}
+MAX_LLM_DOCS, INDUSTRY_DOCS = 240, 60
 JUNK_FIRST = {"show", "ask", "tell", "hn", "launch"}
-JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter"}
+JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter",
+            # заголовки новостей о раундах: «X startup raises $12M Series A» — событие, а не технология
+            "raises", "raised", "raise", "series", "funding", "startup", "startups", "round", "nabs", "secures", "valuation"}
 JUNK_LAST = {"digital", "financial", "technological", "sized", "driven", "aware", "enabled", "open-source", "related"}
 
 
@@ -99,15 +103,14 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
         tasks.append(gdelt.search(http, topic, "12m", 20, lang="chinese"))  # китайские СМИ — крупнейший рынок ранних внедрений
     if s.news_sources and topic:
         # Отраслевые новости и раунды: на них построена большая часть сигналов датасета организатора.
-        tasks.append(news_search.google_news(http, topic, "en", 40))
-        tasks.append(news_search.google_news(http, f"{topic} startup raises funding", "en", 40))
-        for sq in subs[:3]:
-            tasks.append(news_search.google_news(http, sq, "en", 20))
+        # Ленты изданий (TechCrunch, The Block, PR Newswire, vc.ru, CNews) — только разрешённые robots.txt.
+        topic_text = f"{plan.get('query', '')} {topic}"
+        tasks.append(news_search.for_topic(http, topic_text, [*subs, topic], "en", 100))
         tasks.append(news_search.siliconangle(http, topic, 20))
-        for sq in subs[:2]:
+        for sq in subs[:3]:
             tasks.append(news_search.siliconangle(http, sq, 15))
-        for ru in ru_terms[:2]:
-            tasks.append(news_search.google_news(http, ru, "ru", 20))
+        if ru_terms:
+            tasks.append(news_search.for_topic(http, topic_text, [plan.get("query", ""), *ru_terms], "ru", 30))
 
     docs: list[RawDoc] = []
     done = 0
@@ -180,9 +183,18 @@ def mine_phrases(docs: list[RawDoc], limit: int = 40) -> list[dict]:
 async def llm_candidates(llm: BaseLLM, topic: str, docs: list[RawDoc], batch: int = 30) -> tuple[list[dict], list[LLMResult]]:
     if llm.provider == "none":
         return [], []
-    # Приоритет — свежие научные документы.
-    order = sorted(range(len(docs)), key=lambda i: (docs[i].source_type not in ("science", "preprint"), -(int((docs[i].published or "0")[:4] or 0))))
-    chunks = [order[k : k + batch] for k in range(0, min(len(order), 240), batch)]
+    # Модели отдаётся не более 240 документов: до 180 — свежая наука и прочее, до 60 — отраслевые новости
+    # (сначала о раундах и запусках). Без квоты научных документов хватает на все пачки и новости не читаются.
+    def year(i):
+        return -(int((docs[i].published or "0")[:4] or 0))
+
+    industry = [i for i in range(len(docs)) if docs[i].collector in INDUSTRY_COLLECTORS]
+    industry.sort(key=lambda i: (not docs[i].extra.get("event"), year(i)))
+    industry = industry[:INDUSTRY_DOCS]
+    taken = set(industry)
+    rest = sorted((i for i in range(len(docs)) if i not in taken), key=lambda i: (docs[i].source_type not in ("science", "preprint"), year(i)))
+    rest = rest[: MAX_LLM_DOCS - len(industry)]
+    chunks = [rest[k : k + batch] for k in range(0, len(rest), batch)] + [industry[k : k + batch] for k in range(0, len(industry), batch)]
 
     async def one(idx):
         payload = [{"title": docs[i].title, "snippet": docs[i].snippet} for i in idx]

@@ -49,7 +49,7 @@ def _domain(url: str) -> str:
 def classify(doc: RawDoc) -> tuple[str, str, str]:
     """Возвращает (source_type, trust_level, trust_reason)."""
     url = doc.url.lower()
-    # Новости через Google News: ссылка ведёт на страницу перехода Google, доверие считаем по самому изданию.
+    # Новости из лент: доверие считаем по изданию (домен и название), а не по адресу ленты или перехода.
     dom = (doc.extra or {}).get("publisher_domain") or _domain(url)
     if (doc.extra or {}).get("publisher_domain"):
         url = f"https://{dom}/ {doc.source_name.lower()}"

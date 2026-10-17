@@ -83,7 +83,8 @@ def test_all_sources_down_gives_empty_but_honest_result(monkeypatch):
 
     monkeypatch.setattr(http_mod.asyncio, "sleep", no_sleep)
     down = {"export.arxiv.org", "api.openalex.org", "hn.algolia.com", "api.github.com", "en.wikipedia.org", "api.gdeltproject.org",
-            "habr.com", "api.crossref.org", "cyberleninka.ru", "www.ebi.ac.uk", "news.google.com", "siliconangle.com"}
+            "habr.com", "api.crossref.org", "cyberleninka.ru", "www.ebi.ac.uk", "siliconangle.com", "techcrunch.com", "www.theblock.co", "www.prnewswire.com", "vc.ru", "www.cnews.ru",
+            "www.finextra.com"}
     monkeypatch.setattr(runner, "HttpClient", FakeWeb(down=down).client)
     rid = _new_run("робототехника")
     asyncio.run(runner.execute(rid))

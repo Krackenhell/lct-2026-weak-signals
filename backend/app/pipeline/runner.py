@@ -159,7 +159,12 @@ async def execute(run_id: int) -> None:
             (c for c in pool if "watchlist" not in c["methods"]),
             key=lambda c: (-("llm-extraction" in c["methods"]), -(len(c["doc_idx"]) + 2 * c["support"])),
         )
-        pool = watched + fresh[: max(s.max_candidates - len(watched), 0)]
+        # Отраслевым событиям (раунд, запуск) — до 8 мест: у них мало документов, и по числу ссылок
+        # они проигрывают научным темам, хотя именно такие события лежат в основе большинства сигналов датасета.
+        slots = max(s.max_candidates - len(watched), 0)
+        events = [c for c in fresh if any(corpus[i].extra.get("event") for i in c["doc_idx"] if i < len(corpus))][: min(8, slots)]
+        ev_ids = {id(c) for c in events}
+        pool = watched + events + [c for c in fresh if id(c) not in ev_ids][: slots - len(events)]
         ctx.run.stats = {**ctx.run.stats, "corpus_docs": len(corpus), "raw_candidates": len(extracted) + len(mined) + len(watch)}
         ctx.stage(f"Проверка {len(pool)} кандидатов по открытым источникам", 32)
 
@@ -315,9 +320,9 @@ async def execute(run_id: int) -> None:
             if s.extra_sources:  # русскоязычная наука: упоминания в статьях КиберЛенинки за 3 года
                 sources += 1
                 cl = await evidence_mod._safe("cyberleninka", cyberleninka.search(http, ru_query, 15, min_year=year - 3), [], failed)
-            if s.news_sources:  # русскоязычные СМИ через Google News (GDELT часто ограничивает запросы)
+            if s.news_sources:  # русскоязычные СМИ: ленты vc.ru и CNews (GDELT часто ограничивает запросы)
                 sources += 1
-                gn = await evidence_mod._safe("googlenews", news_search.google_news(http, ru_query, "ru", 20), [], failed)
+                gn = await evidence_mod._safe("rss", news_search.matching(http, [t for t in terms if t], "ru", 20), [], failed)
             ru = None if len(failed) == sources else sum(pp_mod.mentions(x, terms) for x in (hb, gd, cl, gn))
             world = None if "openalex" in a["ev"].failed else pp_mod.world_recent_works(a["ev"].yearly, year)
             w = pp_mod.russia_window(world, ru)

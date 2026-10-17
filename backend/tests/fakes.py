@@ -53,14 +53,9 @@ def habr_rss(items: list[dict]) -> str:
     return f'<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Хабр</title>{body}</channel></rss>'
 
 
-def google_news_rss(items: list[dict]) -> str:
-    """Формат ленты поиска Google News: заголовок «Новость - Издание», ссылка-переход, поле source с изданием."""
-    body = "".join(
-        f"<item><title>{i['title']} - {i['publisher']}</title><link>https://news.google.com/rss/articles/{abs(hash(i['title'])) % 10**8}</link>"
-        f"<pubDate>Mon, 01 Sep 2026 10:00:00 GMT</pubDate><source url=\"https://www.{i['domain']}\">{i['publisher']}</source></item>"
-        for i in items
-    )
-    return f'<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Google News</title>{body}</channel></rss>'
+FEED_HOSTS = {"techcrunch.com", "www.theblock.co", "www.prnewswire.com", "vc.ru", "www.cnews.ru", "www.finextra.com"}
+# Как у настоящих изданий: Finextra закрывает /rss/, TechCrunch — поиск.
+ROBOTS = {"www.finextra.com": "User-agent: *\nCrawl-delay: 60\nDisallow: /rss/\n", "techcrunch.com": "User-agent: *\nDisallow: /?s=\nDisallow: /wp-json/\n"}
 
 
 def _phrase(q: str) -> str:
@@ -99,6 +94,7 @@ class FakeWeb:
         self.vague = {p.lower() for p in vague}
         self.down = set(down)
         self.calls: list[str] = []
+        self.feed_paths: list[str] = []
 
     def _corpus_title(self, p: str, i: int) -> str:
         """Документ разведочного корпуса (поиск по подтеме): упоминает одну из технологий TERMS."""
@@ -178,14 +174,18 @@ class FakeWeb:
             items = [{"DOI": f"10.5555/{_crc(p, i) % 9999}", "title": [f"{p} in practice {i}"], "published": {"date-parts": [[2025, 6, 1]]},
                       "container-title": ["Applied Systems"], "type": "journal-article", "abstract": f"<jats:p>{p} pilot</jats:p>"} for i in range(2)]
             return httpx.Response(200, json={"message": {"items": items}})
-        if host == "news.google.com":
-            p = unquote(params.get("q", "")).replace("+", " ")
-            if hit(self.empty, p) or not self._is_term(p) or params.get("hl") == "ru":  # в русскоязычных СМИ темы нет
-                return httpx.Response(200, text=google_news_rss([]))
-            return httpx.Response(200, text=google_news_rss([
-                {"title": f"{p} startup raises $12M Series A", "publisher": "TechCrunch", "domain": "techcrunch.com"},
-                {"title": f"Bank pilots {p}", "publisher": "Finextra", "domain": "finextra.com"},
-            ]))
+        if url.path == "/robots.txt":
+            return httpx.Response(200, text=ROBOTS[host]) if host in ROBOTS else httpx.Response(404)
+        if host in FEED_HOSTS:
+            self.feed_paths.append(f"{host}{url.path}")
+            if host in ("vc.ru", "www.cnews.ru"):  # в русскоязычных СМИ темы нет — «окно открыто»
+                return httpx.Response(200, text=habr_rss([]))
+            # Ленты не зависят от запроса: в них новости обо всех темах, кроме «пустых».
+            live = [t for t in TERMS if t.lower() not in self.empty]
+            return httpx.Response(200, text=habr_rss(
+                [{"title": f"{t} startup raises $12M Series A", "link": f"https://{host}/2026/09/{_crc(host, t) % 999}/"} for t in live]
+                + [{"title": "Quarterly results beat expectations", "link": f"https://{host}/2026/09/earnings/"}]
+            ))
         if host == "siliconangle.com":
             return httpx.Response(200, text=habr_rss([]))
         if host == "cyberleninka.ru":

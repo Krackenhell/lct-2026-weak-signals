@@ -37,7 +37,7 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         a = answers.get(f"doc_{i}") or {}
         if float(a.get("value", 0.0)) >= 0.5:
             confirmed.append(it)
-    # Домен издания: у новостей через Google News — само издание, а не страница перехода Google.
+    # Домен издания: у новостей из лент — само издание (поле domain), а не адрес ленты.
     dom = lambda it: it.get("domain") or _domain(it.get("url", "")) or it.get("source", "")  # noqa: E731
     domains = sorted({dom(it) for it in confirmed} - {""})
     science = sum(1 for it in confirmed if it.get("type") in ("science", "preprint"))

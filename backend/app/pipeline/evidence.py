@@ -78,7 +78,9 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
             tasks["s2"] = _safe("semanticscholar", semanticscholar.search(http, phrase, today.year - 3, 8), [], f)
     if with_news_search if with_news_search is not None else get_settings().news_sources:
         # Отраслевые новости о технологии: раунды, запуски, пилоты (в числовые признаки не входят).
-        tasks["gnews"] = _safe("googlenews", news_search.google_news(http, phrase, "en", 10), [], f)
+        # Ленты изданий кэшируются один раз за запуск, отбор по названию технологии — без новых запросов.
+        tasks["gnews"] = _safe("rss", news_search.matching(http, [phrase], "en", 10, min_score=3), [], f)
+        tasks["sa"] = _safe("siliconangle", news_search.siliconangle(http, phrase, 5), [], f)
 
     results = dict(zip(tasks, await asyncio.gather(*tasks.values()), strict=False))
     ev.yearly = results["openalex_years"]
@@ -86,7 +88,7 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     ev.gh_repos_12m = results.get("github")
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
-               *results.get("news", []), *results.get("gnews", []), *results.get("github_top", []), *hn_docs]
+               *results.get("news", []), *results.get("gnews", []), *results.get("sa", []), *results.get("github_top", []), *hn_docs]
     ev.docs = _dedupe(ev.docs)
     return ev
 
