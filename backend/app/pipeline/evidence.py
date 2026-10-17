@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, crossref, gdelt, github, grants, hackernews, ml_papers, news_search, openalex, semanticscholar, wikipedia, yc
+from app.collectors import arxiv, crossref, epo, gdelt, github, grants, hackernews, ml_papers, news_search, openalex, semanticscholar, wikipedia, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -27,6 +27,7 @@ class Evidence:
     hn_12m: int | None = None
     yc_yearly: dict[str, int] = field(default_factory=dict)  # стартапы YC по году набора
     countries: dict[str, int] = field(default_factory=dict)  # работы за 2 года по странам авторов (OpenAlex)
+    patents: dict | None = None  # патентные публикации за 3 года и доля Китая (EPO OPS, если есть ключ)
     failed: list[str] = field(default_factory=list)
     today: str = ""
 
@@ -86,6 +87,10 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     if with_news_search is not False and (with_extra if with_extra is not None else get_settings().extra_sources):
         # География работ за 2 года: доля Китая, США, России (один запрос group_by в OpenAlex).
         tasks["countries"] = _safe("openalex_countries", openalex.country_counts(http, phrase, today.year - 2), {}, f)
+    if epo.enabled() and with_news_search is not False:
+        # Патенты за 3 года и доля Китая (EPO OPS, только при наличии ключа).
+        tasks["patents"] = _safe("epo", epo.patent_counts(http, phrase), None, f)
+        tasks["patent_docs"] = _safe("epo", epo.search(http, phrase, 3), [], f)
     if get_settings().startup_sources and with_news_search is not False:
         # Стартапы YC, которые строят технологию: ранний рыночный сигнал (в числовые признаки не входит).
         tasks["yc"] = _safe("yc", yc.search(http, phrase, 3), [], f)
@@ -105,12 +110,13 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     ev.wiki = results["wiki"]
     ev.yc_yearly = results.get("yc_yearly") or {}
     ev.countries = results.get("countries") or {}
+    ev.patents = results.get("patents")
     ev.gh_repos_12m = results.get("github")
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
                *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),
                *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("yc", []),
-               *results.get("hf", []), *results.get("or", []), *results.get("github_top", []), *hn_docs]
+               *results.get("hf", []), *results.get("or", []), *results.get("patent_docs", []), *results.get("github_top", []), *hn_docs]
     ev.docs = _dedupe(ev.docs)
     return ev
 

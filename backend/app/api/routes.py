@@ -69,7 +69,7 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
         # Проверяемость вывода (новое): паспорт доказательств, запас прочности, окно для России.
         "passport": extra.get("passport"), "robustness": extra.get("robustness"), "window": extra.get("window"),
         "radar": extra.get("radar"), "dynamics": extra.get("dynamics"), "missing": extra.get("missing", []),
-        "geography": extra.get("geography"), "startups_by_year": extra.get("startups_by_year"),
+        "geography": extra.get("geography"), "startups_by_year": extra.get("startups_by_year"), "patents": extra.get("patents"),
     }
     if not brief:
         fb = sorted(c.feedback, key=lambda f: f.id)[-1] if getattr(c, "feedback", None) else None

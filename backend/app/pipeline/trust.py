@@ -62,6 +62,8 @@ def classify(doc: RawDoc) -> tuple[str, str, str]:
         return "science", "high", "Научная публикация с метаданными OpenAlex/DOI"
     if doc.source_type == "grant":
         return "grant", "high", "Государственный грант: решение научного фонда после экспертизы заявки"
+    if doc.source_type == "patent":
+        return "patent", "high", "Патентная публикация ведомства (EPO OPS): заявка прошла формальную экспертизу"
     if doc.source_type == "startup":
         return "startup", "medium", "Стартап из каталога акселератора: компания получила инвестиции, но описание пишет она сама"
     if doc.source_type == "preprint":

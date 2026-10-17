@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     startup_sources: bool = True
     # Ранние исследования в ИИ: Hugging Face Papers и OpenReview (для запросов про ИИ, роботов, вычисления, данные)
     ml_sources: bool = True
+    # Патенты (в т.ч. Китай) через EPO OPS: бесплатный ключ на developers.epo.org; без ключа источник выключен
+    epo_ops_key: str = ""
+    epo_ops_secret: str = ""
     http_timeout: float = 25.0
     cache_dir: Path = DATA_DIR / "cache"
     cache_ttl_hours: int = 72
