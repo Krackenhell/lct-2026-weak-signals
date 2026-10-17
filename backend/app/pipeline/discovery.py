@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, news_search, openalex, semanticscholar, yc
+from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, ml_papers, news_search, openalex, semanticscholar, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -117,6 +117,11 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
             tasks.append(grants.nih(http, sq, n=10))
             tasks.append(grants.nsf(http, sq, n=10))
             tasks.append(grants.ukri(http, sq, n=10))
+    if s.ml_sources and re.search(AI_QUERY + r"|robot|робот|edge|вычисл|comput|данн|data|агент|agent", plan.get("query", "") + " " + topic, flags=re.I):
+        # Ранние исследования в ИИ: обсуждаемые статьи (HF Papers) и поданные на конференции (OpenReview).
+        for sq in subs[:6]:
+            tasks.append(ml_papers.hf_papers(http, sq, 10, min_year=today.year - 2))
+            tasks.append(ml_papers.openreview(http, sq, 10, min_year=today.year - 2))
     if s.startup_sources:
         # Стартапы YC последних двух лет по подтемам: описания продуктов, в которые уже вложены деньги.
         for sq in subs[:6]:

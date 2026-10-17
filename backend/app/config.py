@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     grant_sources: bool = True
     # Стартапы Y Combinator (открытый каталог): доказательства по кандидатам и стартапы по подтемам в корпусе
     startup_sources: bool = True
+    # Ранние исследования в ИИ: Hugging Face Papers и OpenReview (для запросов про ИИ, роботов, вычисления, данные)
+    ml_sources: bool = True
     http_timeout: float = 25.0
     cache_dir: Path = DATA_DIR / "cache"
     cache_ttl_hours: int = 72

@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, crossref, gdelt, github, grants, hackernews, news_search, openalex, semanticscholar, wikipedia, yc
+from app.collectors import arxiv, crossref, gdelt, github, grants, hackernews, ml_papers, news_search, openalex, semanticscholar, wikipedia, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -86,6 +86,10 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # Стартапы YC, которые строят технологию: ранний рыночный сигнал (в числовые признаки не входит).
         tasks["yc"] = _safe("yc", yc.search(http, phrase, 3), [], f)
         tasks["yc_yearly"] = _safe("yc", yc.yearly(http, phrase), {}, f)
+    if get_settings().ml_sources and with_news_search is not False:
+        # Обсуждаемые ML-статьи и поданные на конференции: независимые от arXiv-поиска подтверждения.
+        tasks["hf"] = _safe("hfpapers", ml_papers.hf_papers(http, phrase, 3, min_year=today.year - 3), [], f)
+        tasks["or"] = _safe("openreview", ml_papers.openreview(http, phrase, 3, min_year=today.year - 3), [], f)
     if get_settings().grant_sources and with_news_search is not False:
         # Госгранты за 3 года: NIH, NSF, UKRI (в числовые признаки не входят, событие «грант» — в паспорт).
         tasks["nih"] = _safe("nih", grants.nih(http, phrase, n=4), [], f)
@@ -100,7 +104,8 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
                *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),
-               *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("yc", []), *results.get("github_top", []), *hn_docs]
+               *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("yc", []),
+               *results.get("hf", []), *results.get("or", []), *results.get("github_top", []), *hn_docs]
     ev.docs = _dedupe(ev.docs)
     return ev
 

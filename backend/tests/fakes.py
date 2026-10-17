@@ -191,6 +191,10 @@ class FakeWeb:
             return httpx.Response(200, json=[{"name": f"Startup{i}", "slug": f"s{i}", "one_liner": f"{t} for factories", "long_description": "",
                                               "tags": ["B2B"], "batch": "Summer 2025", "status": "Active", "url": f"https://www.ycombinator.com/companies/s{i}"}
                                              for i, t in enumerate(live)])
+        if host == "huggingface.co":
+            return httpx.Response(200, json=[])
+        if host == "api2.openreview.net":
+            return httpx.Response(200, json={"notes": [], "count": 0})
         if host == "api.reporter.nih.gov":
             return httpx.Response(200, json={"meta": {"total": 0}, "results": []})
         if host == "api.nsf.gov":

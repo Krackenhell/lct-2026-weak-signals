@@ -48,6 +48,8 @@ HOST_INTERVAL = {
     "api.reporter.nih.gov": 1.0,  # NIH просит не чаще 1 запроса в секунду
     "api.nsf.gov": 0.3,
     "gtr.ukri.org": 0.5,
+    "huggingface.co": 0.5,
+    "api2.openreview.net": 0.5,
 }
 
 
