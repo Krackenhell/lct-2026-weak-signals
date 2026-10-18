@@ -148,3 +148,14 @@ def test_repeat_query_opens_recent_result_instantly(monkeypatch):
         r2 = c.post("/api/search", json={"query": "квантовые сенсоры"}).json()
         assert r2["id"] == r["id"] and r2["status"] == "queued"  # тот же запрос уже в работе — второй не запускается
         assert len(started) == 2
+
+
+def test_precompute_runs_topics_once(monkeypatch):
+    from app import precompute
+
+    monkeypatch.setattr(runner, "HttpClient", FakeWeb().client)
+    first = asyncio.run(precompute.refresh_once(["edge AI предрасчёт", "робототехника предрасчёт"]))
+    assert len(first) == 2
+    with SessionLocal() as s:
+        assert all(s.get(Run, i).status == "done" for i in first)
+    assert asyncio.run(precompute.refresh_once(["edge AI предрасчёт", "робототехника предрасчёт"])) == []  # свежие — не пересчитываются

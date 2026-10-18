@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -33,7 +34,15 @@ def startup() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     startup()
+    every = get_settings().precompute_every_hours
+    task = None
+    if every > 0:
+        from app import precompute
+
+        task = asyncio.create_task(precompute.loop(every))
     yield
+    if task:
+        task.cancel()
 
 
 app = FastAPI(title="Слабые сигналы — API", version="0.1.0", lifespan=lifespan)
