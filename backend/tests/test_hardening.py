@@ -214,3 +214,24 @@ def test_paper_titles_and_crowded_themes_do_not_fill_top():
     assert status["Quantum NLP"] == ("excluded", "crowded")
     assert status["Stackelberg Model of AI Security"] == ("excluded", "paper_title")
     assert sum(1 for s, _ in status.values() if s == "signal") == 5
+
+
+def test_link_check_skips_internal_addresses():
+    from app.pipeline import links
+
+    seen = []
+
+    def handler(request):
+        seen.append(str(request.url))
+        if request.url.host == "evil.example":
+            return httpx.Response(302, headers={"location": "http://127.0.0.1:8000/api/runs"})
+        return httpx.Response(200)
+
+    redirect = asyncio.run(links.check_all(["https://evil.example/r"], transport=httpx.MockTransport(handler)))
+    assert redirect == {"https://evil.example/r": "restricted"} and seen == ["https://evil.example/r"]
+    seen.clear()
+    urls = ["http://127.0.0.1:8000/api/runs", "http://10.0.0.5/admin", "http://localhost/x", "http://[::1]/", "http://169.254.169.254/latest/meta-data",
+            "https://arxiv.org/abs/1"]
+    res = asyncio.run(links.check_all(urls, transport=httpx.MockTransport(handler)))
+    assert res["https://arxiv.org/abs/1"] == "ok" and seen == ["https://arxiv.org/abs/1"]
+    assert all(res[u] == "restricted" for u in urls[:-1])
