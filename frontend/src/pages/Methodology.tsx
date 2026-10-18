@@ -32,7 +32,7 @@ function TimeMachine({ t }: { t: any }) {
       <p className="muted small">
         Признаки каждой темы посчитаны строго на 1 января года среза: публикации OpenAlex, гранты NIH, стартапы Y Combinator из наборов до среза,
         GitHub, Hacker News, Википедия. Модель учится на темах одних лет среза и предсказывает темы года, которого не видела.
-        Стали трендом к 2026 году: {m.n_trend} из {m.n}. Разметка экспертная, открыта ниже.
+        Стали массовыми к 2026 году: {m.n_trend} из {m.n}. Разметка экспертная, открыта ниже.
         {prev && <> Прежняя проверка (один срез 2021, {prev.n} тем, модель на данных 2026 года): AUC {prev.model_roc_auc}; новая модель на том же срезе — {m.model_out_of_time.by_cutoff["2021"]}.</>}
       </p>
       <div className="tablewrap">
@@ -61,7 +61,7 @@ function TimeMachine({ t }: { t: any }) {
             {t.results.map((r: any) => (
               <tr key={r.phrase}>
                 <td>{r.phrase}</td><td>{r.cutoff}</td><td>{r.p_out_of_time != null ? `${Math.round(r.p_out_of_time * 100)}%` : "—"}</td>
-                <td>{r.label ? <span className="badge high">стало трендом</span> : <span className="badge neutral">ниша / заглохло</span>}</td>
+                <td>{r.label ? <span className="badge high">стало массовым</span> : <span className="badge neutral">осталось нишевым</span>}</td>
                 <td className="muted">{r.note}</td>
               </tr>
             ))}
@@ -92,8 +92,8 @@ function Backtest({ b }: { b: any }) {
     <>
       <h2>«Машина времени»: ретроспективная проверка</h2>
       <p className="muted small">
-        Система смотрит на {m.n} тем «глазами» {b.cutoff}: данные после этой даты отрезаны. Затем сравниваем с тем, что стало трендом к 2026 году
-        ({k} из {m.n}). {b.model}. Разметка «стало трендом» — экспертная, список и критерии открыты ниже.
+        Система смотрит на {m.n} тем «глазами» {b.cutoff}: данные после этой даты отрезаны. Затем сравниваем с тем, что стало массовым к 2026 году
+        ({k} из {m.n}). {b.model}. Разметка «стало массовым» — экспертная, список и критерии открыты ниже.
         {b.incomplete > 0 && <b> Внимание: по {b.incomplete} темам ряды OpenAlex недоступны (нужен ключ) — результат неполный.</b>}
       </p>
       <div className="tablewrap">
@@ -114,7 +114,7 @@ function Backtest({ b }: { b: any }) {
             {b.results.map((r: any) => (
               <tr key={r.phrase}>
                 <td>{r.phrase}</td><td>{Math.round(r.p * 100)}%</td><td>{r.works_at_cutoff}</td>
-                <td>{r.label ? <span className="badge high">стало трендом</span> : <span className="badge neutral">ниша / заглохло</span>}</td>
+                <td>{r.label ? <span className="badge high">стало массовым</span> : <span className="badge neutral">осталось нишевым</span>}</td>
                 <td className="muted">{r.note}</td>
               </tr>
             ))}
@@ -149,7 +149,7 @@ export default function Methodology() {
           <table>
             <thead><tr><th>#</th><th>Этап</th><th>Кто выполняет</th><th>Что получается</th></tr></thead>
             <tbody>
-              <tr><td>1</td><td>Проверка запроса</td><td>GigaChat (за 30 с), иначе правила</td><td>отказ на «Привет», мусор, бытовые вопросы — с причиной</td></tr>
+              <tr><td>1</td><td>Проверка запроса</td><td>GigaChat (за 30 с), иначе правила</td><td>отказ на приветствия, бессмысленный ввод и бытовые вопросы — с причиной</td></tr>
               <tr><td>2</td><td>Расширение запроса</td><td>GigaChat + словарь областей</td><td>10–12 узких подтем на английском, фразы на русском и китайском</td></tr>
               <tr><td>3</td><td>Сбор корпуса</td><td>наш код: 30 источников, robots.txt, лимиты, кэш</td><td>400–700 документов: наука, препринты, СМИ, гранты, стартапы</td></tr>
               <tr><td>4</td><td>Кандидаты</td><td>GigaChat (названия по тексту) + наш майнинг терминов</td><td>~150 названий технологий со ссылками на документы; синонимы склеены</td></tr>
@@ -189,7 +189,7 @@ export default function Methodology() {
         <>
           <p className="muted small">
             Положительные примеры: {m.n_pos} слабых сигналов организатора. Отрицательные: {m.n_neg} — зрелые технологии, стандарты,
-            хайп и общие области (наш набор). Оценка — 5-кратная стратифицированная кросс-валидация, порог 0.5. Decision-модель при обучении: <b>{m.provider}</b>.
+            темы с завышенными ожиданиями и общие области (наш набор). Оценка — 5-кратная стратифицированная кросс-валидация, порог 0.5. Decision-модель при обучении: <b>{m.provider}</b>.
           </p>
           {m.dropped_no_evidence && (
             <div className="panel small">
@@ -373,7 +373,7 @@ export default function Methodology() {
         <>
           <h2>Веса признаков (интерпретация модели)</h2>
           <div className="panel">
-            <p className="muted small">Положительный вес — признак повышает вероятность слабого сигнала; отрицательный — указывает на зрелость или шум.</p>
+            <p className="muted small">Положительный вес — признак повышает вероятность слабого сигнала; отрицательный — указывает на зрелость или недостаток подтверждений.</p>
             <table>
               <tbody>
                 {info.weights.map((w: any) => (

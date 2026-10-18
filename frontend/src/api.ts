@@ -41,6 +41,11 @@ export type CandidateBrief = {
   dynamics?: YearPoint[] | null;
   geography?: Geography | null;
   score?: { probability: number | null; relevance: number; final: number | null; outside_training: string[] } | null;
+  stage?: { label: string; trl: string } | null;
+  first_year?: number | null;
+  works_2y?: number | null;
+  growth_x?: number | null;
+  summary?: string;
   startups_by_year?: Record<string, number> | null;
   missing?: string[];
   rank: number | null;
@@ -113,7 +118,10 @@ export type Run = {
   stage: string;
   progress: number;
   error: string | null;
-  plan: { topic_en?: string; subqueries?: string[]; ru_terms?: string[]; generated_by?: string };
+  plan: {
+    topic_en?: string; subqueries?: string[]; ru_terms?: string[]; generated_by?: string; core_term?: string;
+    emerging?: { keyword: string; recent: number; prior: number; growth: number; specificity: number }[];
+  };
   stats: Record<string, number | object>;
   providers: Record<string, string>;
   options?: { use_watchlist?: boolean };
@@ -181,7 +189,7 @@ export type Feedback = { verdict: "signal" | "mature" | "noise" | "not_tech"; la
 export const VERDICTS: [Exclude<Feedback, null>["verdict"], string][] = [
   ["signal", "Слабый сигнал"],
   ["mature", "Зрелая технология"],
-  ["noise", "Хайп / шум"],
+  ["noise", "Завышенные ожидания"],
   ["not_tech", "Не технология"],
 ];
 

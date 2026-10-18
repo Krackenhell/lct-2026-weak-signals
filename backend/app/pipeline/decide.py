@@ -18,7 +18,7 @@ EXCLUSION_RU = {
     "not_technology": "Не инновация (документ, явление, организация)",
     "standard": "Отраслевой стандарт",
     "mature": "Зрелая технология / сформированный рынок",
-    "hype": "Маркетинговый шум",
+    "hype": "Преобладают рекламные материалы",
     "low_evidence": "Недостаточно подтверждений",
     "low_trust": "Только источники с пониженным доверием",
     "low_probability": "Низкая вероятность слабого сигнала",
@@ -29,7 +29,20 @@ EXCLUSION_RU = {
     "duplicate": "Повтор: синоним технологии выше в списке",
     "paper_title": "Название статьи, а не технологии",
     "crowded": "Тема уже представлена в топе",
+    "topic_itself": "Сама тема запроса, а не направление внутри неё",
 }
+
+# Общие слова в конце названия: «multilayer graphene technologies» — это та же «multilayer graphene».
+_TOPIC_TAIL = {"technology", "technologies", "technique", "techniques", "device", "devices", "application", "applications", "system",
+               "systems", "material", "materials", "method", "methods", "research", "innovation", "innovations", "solution", "solutions"}
+
+
+def is_topic_itself(name: str, topic_terms: list[str]) -> bool:
+    """Кандидат совпадает с темой запроса с точностью до общих слов: тема не может быть слабым сигналом внутри себя."""
+    def core(s: str) -> set[str]:
+        return {w for w in _key_words(s) if w not in _TOPIC_TAIL and w.rstrip("s") not in _TOPIC_TAIL}
+    cand = core(name)
+    return bool(cand) and any(cand == core(t) for t in topic_terms if t and core(t))
 
 # Формулировки научных статей, а не технологий: «Stackelberg Model of AI Security», «Stablecoin under stress».
 PAPER_TITLE = re.compile(
@@ -75,10 +88,12 @@ def relevance(a: dict) -> float:
     return min(_ans(a, "relevance", 0.6), _ans(a, "relevance_query", 1.0))
 
 
-def _filters(a: dict) -> tuple[str, str] | None:
+def _filters(a: dict, topic_terms: list[str] | None = None) -> tuple[str, str] | None:
     f = a["features"]
     if not a["res"].ok:
         return "no_decision", "Decision-модель не ответила (сбой сети) — признаки не проверены, кандидат не ранжируется."
+    if topic_terms and is_topic_itself(a["c"]["name_en"], topic_terms):
+        return "topic_itself", "Совпадает с темой запроса — в выдаче показываются конкретные направления внутри темы."
     rel = relevance(a)
     # Шкала вопроса: 0 — не связано, 0,33 — слабо связано, 0,67 — связано, 1 — ядро темы. В топ попадает только
     # то, что ближе к «связано», чем к «слабо связано» (≥ 0,5): иначе при «уехавшем» плане запроса в выдачу
@@ -86,7 +101,10 @@ def _filters(a: dict) -> tuple[str, str] | None:
     # (минимум 0,4 без совпадений слов темы), для них порог прежний.
     if rel < (0.34 if getattr(a["res"], "provider", "") == "heuristic" else RELEVANT):
         return "irrelevant", f"Слабо связано с запросом (оценка релевантности {rel:.2f} из 1: к теме {_ans(a, 'relevance', 0.6):.2f}, к исходной формулировке {_ans(a, 'relevance_query', 1.0):.2f})."
-    if _ans(a, "evidence_match", 1.0) < 0.4:
+    # Общий вопрос «обсуждают ли источники предмет как технологию» строже поэлементной проверки документов: для научных
+    # направлений («rhombohedral graphene», «chiral superconductivity») он давал 0,3 при 10 из 10 подтверждённых документов.
+    # Поэтому отсев только если и паспорт доказательств не набрал уровень A/B.
+    if _ans(a, "evidence_match", 1.0) < 0.4 and (a.get("passport") or {}).get("level") not in ("A", "B"):
         return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {_ans(a, 'evidence_match', 1.0):.0%}) — вероятно, это случайное сочетание слов."
     if ORG.search(a["c"]["name_en"]):
         return "organization", "Название организации (комиссия, агентство, университет, компания), а не технологии."
@@ -114,7 +132,7 @@ def _filters(a: dict) -> tuple[str, str] | None:
     if mature_reasons:
         return "mature", "Зрелая технология: " + "; ".join(mature_reasons) + "."
     if _ans(a, "hype") >= 0.75 and f.get("share_science", 0) < 0.2:
-        return "hype", f"Доказательства состоят в основном из рекламных материалов (оценка шума {_ans(a, 'hype'):.0%}), научных подтверждений мало."
+        return "hype", f"Доказательства состоят в основном из рекламных материалов (доля рекламных формулировок {_ans(a, 'hype'):.0%}), научных подтверждений мало."
     docs = a["ev"].docs
     if len(docs) < 3:
         return "low_evidence", f"В открытых источниках найдено только {len(docs)} подтверждения — недостаточно для вывода."
@@ -124,7 +142,7 @@ def _filters(a: dict) -> tuple[str, str] | None:
     return None
 
 
-def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[dict]:
+def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_terms: list[str] | None = None) -> list[dict]:
     out: list[dict] = []
     for a in assessed:
         contrib = model.explain(a["features"]) if model else []
@@ -136,7 +154,7 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
                  "final": None if p is None else round(p * (0.6 + 0.4 * rel), 4),
                  "outside_training": model.outside(a["features"]) if model else []}
         d = {"relevance": rel, "contributions": contrib, "score": score}
-        flt = _filters(a)
+        flt = _filters(a, topic_terms)
         pp = a.get("passport")
         if flt:
             d.update(status="excluded", code=flt[0], reason=flt[1])
@@ -165,17 +183,20 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
     # «инфраструктуре для ИИ» превращается в список вариантов квантового машинного обучения.
     kept: list[int] = []
     themes: dict[str, int] = {}
+    # Слова самой темы запроса («graphene» в запросе о многослойном графене) есть у всех кандидатов — темой их не считаем.
+    topic_words = set().union(*(_key_words(t) for t in topic_terms)) if topic_terms else set()
+    ignore = _GENERIC_WORDS | topic_words
     for i in ranked:
         name = assessed[i]["c"]["name_en"]
         twin = next((k for k in kept if near_duplicate(name, assessed[k]["c"]["name_en"])), None)
-        theme = next((w for w in sorted(_key_words(name) - _GENERIC_WORDS) if len(w) > 3 and themes.get(w, 0) >= MAX_PER_THEME), None)
+        theme = next((w for w in sorted(_key_words(name) - ignore) if len(w) > 3 and themes.get(w, 0) >= MAX_PER_THEME), None)
         if twin is not None:
             out[i].update(status="excluded", code="duplicate", reason=f"Синоним технологии «{assessed[twin]['c']['name_en']}», которая уже в списке.")
         elif theme and len(kept) < top_k:
             out[i].update(status="excluded", code="crowded", reason=f"В топе уже {MAX_PER_THEME} технологии на тему «{theme}» — место отдано другим направлениям.")
         else:
             kept.append(i)
-            for w in _key_words(name) - _GENERIC_WORDS:
+            for w in _key_words(name) - ignore:
                 themes[w] = themes.get(w, 0) + 1
     ranked = kept
     for r, i in enumerate(ranked):

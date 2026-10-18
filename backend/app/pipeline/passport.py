@@ -109,15 +109,15 @@ def robustness(prob: float | None, contributions: list[dict], intercept: float |
         logit = math.log(prob / (1 - prob))
     pos = [c for c in contributions if c["contribution"] > 0]
     if not pos:
-        return {"level": "fragile", "label": "хрупкий", "text": "Нет признаков, которые повышают вероятность.", "p_without": prob}
+        return {"level": "fragile", "label": "низкий", "text": "Нет признаков, которые повышают вероятность.", "p_without": prob}
     top = max(pos, key=lambda c: c["contribution"])
     p_without = _sigmoid(logit - top["contribution"])
     if p_without >= 0.75:
-        level, label = "strong", "прочный"
+        level, label = "strong", "высокий"
     elif p_without >= 0.5:
-        level, label = "stable", "устойчивый"
+        level, label = "stable", "достаточный"
     else:
-        level, label = "fragile", "хрупкий"
+        level, label = "fragile", "низкий"
     return {
         "level": level,
         "label": label,
@@ -235,6 +235,38 @@ def bank_radar(name: str, items: list[dict], dossier: dict, passport_: dict | No
 
 # ---------------------------------------------------------------- динамика
 
+# Стадия по ответу decision-модели о зрелости (шкала из 6 уровней) и соответствующий уровень готовности
+# технологии (УГТ, ГОСТ Р 58048-2017 / шкала TRL 1–9) — ориентир для аналитика, а не сертификация.
+STAGES = [
+    ("Фундаментальные исследования", "1–3"),
+    ("Лабораторный прототип", "4"),
+    ("Пилотные проекты и испытания", "5–6"),
+    ("Первые коммерческие продукты", "7"),
+    ("Растущий рынок, несколько поставщиков", "8"),
+    ("Массовое внедрение", "9"),
+]
+
+
+def card_facts(features: dict | None, answers: dict | None, dyn: list[dict] | None, year: int) -> dict:
+    """Короткие факты для списка и карточки: стадия (УГТ), год появления в литературе, рост работ за 2 года."""
+    f, a = features or {}, answers or {}
+    m = (a.get("maturity") or {}).get("value")
+    stage = None
+    if m is not None:
+        i = max(0, min(len(STAGES) - 1, int(round(float(m) * (len(STAGES) - 1)))))
+        stage = {"label": STAGES[i][0], "trl": STAGES[i][1]}
+    age = f.get("age_years") or 0
+    by_year = {d["year"]: d["works"] for d in dyn or []}
+    recent = by_year.get(year - 1, 0) + by_year.get(year - 2, 0)
+    prior = by_year.get(year - 3, 0) + by_year.get(year - 4, 0)
+    return {
+        "stage": stage,
+        "first_year": int(year - age) if age else None,
+        "works_2y": recent if dyn else None,
+        "growth_x": round(recent / prior, 1) if dyn and prior >= 3 else None,
+    }
+
+
 def dynamics(yearly: dict, today_year: int, years: int = 8) -> list[dict]:
     """Ряд публикаций по годам для графика в карточке (текущий год — неполный, помечается)."""
     c = {int(k): int(v) for k, v in (yearly or {}).items()}
@@ -243,7 +275,7 @@ def dynamics(yearly: dict, today_year: int, years: int = 8) -> list[dict]:
 
 # ---------------------------------------------------------------- сверка досье
 
-CHECK_FIELDS = ("description", "advantage", "case_example", "why_weak_signal")
+CHECK_FIELDS = ("description", "advantage", "case_example", "application", "why_weak_signal")
 
 
 def split_claims(dossier: dict, limit: int = 10) -> list[tuple[str, str]]:

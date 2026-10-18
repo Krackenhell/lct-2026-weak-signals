@@ -32,7 +32,9 @@ class Evidence:
     today: str = ""
 
 
-SOURCE_DEADLINE = 60.0  # секунд на один источник по одному кандидату: зависший источник не держит весь запрос
+# Секунд на один источник по одному кандидату: зависший источник не держит весь запрос. С запасом на очередь:
+# arXiv разрешает 1 запрос в 3 с, и при 12 кандидатах одновременно ожидание доходит до ~40 с.
+SOURCE_DEADLINE = 120.0
 
 
 async def _safe(name: str, coro, default, failed: list[str]):
@@ -69,9 +71,12 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         "wiki": _safe("wikipedia", wikipedia.lookup(http, phrase), {}, f),
         "hn": _safe("hackernews", hackernews.search(http, phrase, since_ts, 10), ([], None), f),
     }
-    if with_gh_count:
+    if with_gh_count and with_repos:
+        # Один поисковый запрос вместо двух: GitHub — самый медленный источник по лимиту (30 запросов в минуту).
+        tasks["github_both"] = _safe("github", github.created_with_top(http, phrase, year_ago.isoformat(), today.isoformat(), 3), (None, []), f)
+    elif with_gh_count:
         tasks["github"] = _safe("github", github.count_created(http, phrase, year_ago.isoformat(), today.isoformat()), None, f)
-    if with_repos:
+    elif with_repos:
         tasks["github_top"] = _safe("github", github.top_repos(http, phrase, 3), [], f)
     if with_news:
         tasks["news"] = _safe("gdelt", gdelt.search(http, phrase, "12m", 12), [], f)
@@ -80,13 +85,18 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # В числовые признаки не входит (они считаются только по CORE_COLLECTORS), поэтому модель не смещается.
         since = (today - timedelta(days=3 * 365)).isoformat()
         tasks["crossref"] = _safe("crossref", crossref.search(http, phrase, since, 8), [], f)
+        if with_news_search is not False:
+            # Работы OpenAlex за 3 года: в нефтегазе, химии, материалах, медицине arXiv почти пуст, и без этих
+            # документов decision-модели нечего подтверждать (кандидат уходил в «Наблюдать» из-за пустого паспорта).
+            tasks["openalex_docs"] = _safe("openalex", openalex.search(http, phrase, since, 8), [], f)
         if semanticscholar.enabled():
             tasks["s2"] = _safe("semanticscholar", semanticscholar.search(http, phrase, today.year - 3, 8), [], f)
     if with_news_search if with_news_search is not None else get_settings().news_sources:
         # Отраслевые новости о технологии: раунды, запуски, пилоты (в числовые признаки не входят).
         # Ленты изданий кэшируются один раз за запуск, отбор по названию технологии — без новых запросов.
+        # Поиск SiliconANGLE по каждому кандидату убран: сайт отвечает медленно, и 30 запросов с паузами занимали до 100 с
+        # (замер 19.10); его новости и так попадают в корпус при сборе по подтемам и ленте издания.
         tasks["gnews"] = _safe("rss", news_search.matching(http, [phrase], "en", 10, min_score=3), [], f)
-        tasks["sa"] = _safe("siliconangle", news_search.siliconangle(http, phrase, 5), [], f)
     if with_news_search is not False and (with_extra if with_extra is not None else get_settings().extra_sources):
         # География работ за 2 года: доля Китая, США, России (один запрос group_by в OpenAlex).
         tasks["countries"] = _safe("openalex_countries", openalex.country_counts(http, phrase, today.year - 2), {}, f)
@@ -115,6 +125,8 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     ev.countries = results.get("countries") or {}
     ev.patents = results.get("patents")
     ev.gh_repos_12m = results.get("github")
+    if "github_both" in results:
+        ev.gh_repos_12m, results["github_top"] = results["github_both"]
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
                *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),

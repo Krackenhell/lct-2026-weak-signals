@@ -111,6 +111,12 @@ async def check_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]
     return rule_check_query(query), res
 
 
+def clean_phrase(s: str) -> str:
+    """Поисковая фраза без склеек: «smart_wellhead_monitoring», «oil-and-gas-technology» → слова через пробел."""
+    s = re.sub(r"[_\-–—/]+", " ", str(s or ""))
+    return re.sub(r"\s+", " ", re.sub(r"[\"«»“”]", "", s)).strip()
+
+
 def fallback_plan(query: str) -> dict:
     q = query.lower()
     topics: list[str] = []
@@ -143,11 +149,12 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
     if isinstance(data, dict) and data.get("subqueries"):
         base = fallback_plan(query)
         # Половина подтем — от LLM (новые узкие направления), половина — из проверенного словаря области.
-        # GigaChat иногда склеивает слова дефисом («synthetic-data credit-scoring») — точный поиск по фразе
-        # в arXiv и OpenAlex такое не находит. Дефис между словами заменяем пробелом (термины вроде «zero-knowledge» —
-        # тоже: поиск по словам их находит).
-        subs = [re.sub(r"\s+", " ", s.replace("-", " ")).strip() for s in data["subqueries"] if isinstance(s, str)][:6]
-        data["ru_terms"] = [re.sub(r"\s+", " ", t.replace("-", " ")).strip() for t in data.get("ru_terms", []) if isinstance(t, str)]
+        # GigaChat иногда склеивает слова дефисом («synthetic-data credit-scoring») или подчёркиванием
+        # («smart_wellhead_monitoring», замечено на запросе «нефтегазовое дело») — точный поиск по фразе в arXiv
+        # и OpenAlex такое не находит. Склейку заменяем пробелом (термины вроде «zero-knowledge» поиск по словам находит).
+        subs = [p for p in (clean_phrase(s) for s in data["subqueries"] if isinstance(s, str)) if p and len(p.split()) <= 6][:6]
+        data["ru_terms"] = [clean_phrase(t) for t in data.get("ru_terms", []) if isinstance(t, str) and clean_phrase(t)]
+        data["topic_en"] = clean_phrase(str(data.get("topic_en") or "")) or base["topic_en"]
         data["subqueries"] = subs + [t for t in base["subqueries"] if t not in subs][: max(0, 12 - len(subs))]
         # Китайские фразы: только строки с иероглифами (модель иногда возвращает пиньинь или английский).
         data["zh_terms"] = [t.strip() for t in data.get("zh_terms", []) if isinstance(t, str) and re.search(r"[一-鿿]", t)][:3]
@@ -213,8 +220,7 @@ async def write_dossier(llm: BaseLLM, query: str, name: str, evidence: list[dict
         "\"advantage\": потенциальное преимущество (1-2 предложения), "
         "\"case_example\": конкретный пример применения или пилота, описанный в документах, с указанием организации [n]; "
         "не придумывай организации и события — если конкретного примера в документах нет, напиши «В найденных документах описаны только исследовательские прототипы» и укажи [n], "
-        "\"bank_application\": как это может применить банк или его клиенты (1-2 предложения, пометь как гипотезу), "
-        "\"bank_area\": одно направление банка строго из списка: " + "; ".join(f"«{a}»" for a in BANK_AREA_NAMES) + ", "
+        "\"application\": где и кем технология может применяться — отрасли и типы задач (1-2 предложения, только по документам), "
         "\"why_weak_signal\": почему это ранний сигнал, а не зрелый тренд (2-3 предложения с опорой на показатели и документы), "
         "\"risks\": что может помешать развитию (1 предложение)}."
     )

@@ -95,7 +95,7 @@ def test_feedback_is_saved_shown_and_counted(client, run_id):
     with SessionLocal() as s:
         sig = s.query(Candidate).filter_by(run_id=run_id, status="signal").one()
         exc = s.query(Candidate).filter_by(run_id=run_id, status="excluded").one()
-    assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "noise"}).json()["label"] == "Хайп / шум"
+    assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "noise"}).json()["label"] == "Завышенные ожидания без подтверждений"
     assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "signal", "comment": "согласен"}).status_code == 200
     assert client.post(f"/api/candidates/{exc.id}/feedback", json={"verdict": "mature"}).status_code == 200
     assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "maybe"}).status_code == 422

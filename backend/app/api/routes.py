@@ -20,6 +20,7 @@ from app.models import Candidate, Document, Feedback, ModelCall, Run
 from app.pipeline import runner
 from app.pipeline.decide import EXCLUSION_RU
 from app.pipeline.features import FEATURE_RU
+from app.pipeline.passport import card_facts
 from app.pipeline.questions import QUESTION_RU
 from app.pipeline.trust import TRUST_RU, TYPE_RU
 
@@ -60,6 +61,14 @@ def _doc_out(d: Document) -> dict:
     }
 
 
+def _first_sentence(text: str, limit: int = 220) -> str:
+    """Первое предложение описания без ссылок [n] — строка под названием в списке сигналов."""
+    s = re.sub(r"\s*\[\d+(?:[,\s]+\d+)*\]", "", text or "").strip()
+    m = re.match(r"(.+?[.!?])(\s|$)", s)
+    s = m.group(1) if m else s
+    return s if len(s) <= limit else s[: limit - 1].rsplit(" ", 1)[0] + "…"
+
+
 def _cand_out(c: Candidate, brief: bool = True) -> dict:
     extra = c.contributions or {}
     items = extra.get("items", [])
@@ -74,6 +83,9 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
         "radar": extra.get("radar"), "dynamics": extra.get("dynamics"), "missing": extra.get("missing", []),
         "geography": extra.get("geography"), "startups_by_year": extra.get("startups_by_year"), "patents": extra.get("patents"),
         "score": extra.get("score"),
+        # Короткие факты для списка: стадия (УГТ), год появления в литературе, рост работ, одна строка описания.
+        **card_facts(c.features, c.answers, extra.get("dynamics"), datetime.now(timezone.utc).year),
+        "summary": _first_sentence((c.dossier or {}).get("description", "")) if (c.dossier or {}).get("generated_by") not in (None, "template") else "",
     }
     if not brief:
         fb = sorted(c.feedback, key=lambda f: f.id)[-1] if getattr(c, "feedback", None) else None
@@ -193,7 +205,7 @@ def get_run(run_id: int, db: Session = Depends(get_session)) -> dict:
     }
 
 
-VERDICTS = {"signal": "Слабый сигнал", "mature": "Зрелая технология", "noise": "Хайп / шум", "not_tech": "Не технология"}
+VERDICTS = {"signal": "Слабый сигнал", "mature": "Зрелая технология", "noise": "Завышенные ожидания без подтверждений", "not_tech": "Не технология"}
 
 
 class FeedbackIn(BaseModel):

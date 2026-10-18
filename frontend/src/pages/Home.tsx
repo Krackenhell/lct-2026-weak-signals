@@ -5,12 +5,10 @@ import { api, Run, Showcase } from "../api";
 const EXAMPLES = [
   "микрофлюидные технологии",
   "технологии многослойного графена",
+  "газлифт в газоконденсатных скважинах",
   "перспективные решения в финтехе",
-  "слабые сигналы в кибербезопасности ИИ",
-  "инфраструктура для ИИ",
+  "кибербезопасность ИИ",
   "робототехника",
-  "edge AI",
-  "индустриальный ИИ",
   "энергетика и накопители",
 ];
 
@@ -48,9 +46,8 @@ export default function Home() {
       <section className="panel hero">
         <h1>Поиск зарождающихся технологий</h1>
         <p className="muted">
-          Введите технологическое направление в свободной форме. Система соберёт свежие научные публикации, препринты,
-          новости и сигналы разработчиков, выделит конкретные технологии, отделит зрелые решения, стандарты и хайп и
-          сформирует топ-15 слабых сигналов с проверяемыми источниками.
+          Введите направление — широкое («финтех») или узкое («микрофлюидные чипы»). Система найдёт до 15 технологий, которые только
+          начинают расти, и для каждой покажет основания оценки и проверяемые источники.
         </p>
         <form
           className="searchbox"
@@ -59,13 +56,9 @@ export default function Home() {
             start(q);
           }}
         >
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Например: перспективные решения в финтехе" autoFocus />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Например: технологии многослойного графена" autoFocus />
           <button disabled={busy || q.trim().length < 2}>{busy ? "Запуск…" : "Найти сигналы"}</button>
         </form>
-        <label className="small muted" style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
-          <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} />
-          Режим мониторинга: добавить к поиску известные сигналы из базы отслеживания (по умолчанию — чистое обнаружение)
-        </label>
         <div className="chips">
           {EXAMPLES.map((ex) => (
             <button key={ex} className="chip" type="button" onClick={() => setQ(ex)}>
@@ -73,22 +66,29 @@ export default function Home() {
             </button>
           ))}
         </div>
+        <details className="small muted" style={{ marginTop: 10 }}>
+          <summary>Дополнительно</summary>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+            <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} />
+            Режим мониторинга: добавить к поиску известные сигналы из базы отслеживания (по умолчанию — поиск только в открытых источниках)
+          </label>
+        </details>
         {err && <div className="error" style={{ marginTop: 12 }}>{err}</div>}
       </section>
 
       {ready.length > 0 && (
         <>
-          <h2>Готовые прогоны — открываются сразу</h2>
-          <p className="muted small">Последний завершённый анализ по каждой теме. Повторный запуск той же темы покажет, что появилось и что выпало (мониторинг).</p>
+          <h2>Готовые результаты</h2>
+          <p className="muted small">
+            Посчитаны заранее по типовым темам и открываются сразу; дата расчёта указана. Новые темы и кнопка «Пересчитать» запускают анализ с нуля.
+          </p>
           <div className="showcase">
             {ready.map((r) => (
               <Link key={r.run_id} to={`/runs/${r.run_id}`} className="panel showcase-card">
                 <b>{r.query}</b>
                 <div className="small muted">
-                  {r.date ? new Date(r.date).toLocaleDateString("ru-RU") : ""} · {r.mode} · сигналов {r.signals}
-                  {r.passport ? ` · доказательства A ${r.passport.A ?? 0} / B ${r.passport.B ?? 0}` : ""}
+                  {r.date ? `расчёт ${new Date(r.date).toLocaleDateString("ru-RU")}` : ""} · сигналов: {r.signals}
                 </div>
-                <div className="small muted">{r.providers?.decision_model} · {r.providers?.llm}</div>
               </Link>
             ))}
           </div>
@@ -102,23 +102,14 @@ export default function Home() {
         <div className="tablewrap">
           <table>
             <thead>
-              <tr>
-                <th>#</th>
-                <th>Запрос</th>
-                <th>Статус</th>
-                <th>Сигналов</th>
-                <th>Источников</th>
-                <th>Дата</th>
-              </tr>
+              <tr><th>Запрос</th><th>Статус</th><th>Сигналов</th><th>Дата</th></tr>
             </thead>
             <tbody>
-              {runs.map((r) => (
+              {runs.slice(0, 10).map((r) => (
                 <tr key={r.id}>
-                  <td>{r.id}</td>
                   <td><Link to={`/runs/${r.id}`}>{r.query}</Link></td>
                   <td>{STATUS_RU[r.status] ?? r.status}{r.status === "running" ? ` · ${r.progress}%` : ""}</td>
                   <td>{(r.stats?.signals as number) ?? "—"}</td>
-                  <td>{(r.stats?.sources_processed as number) ?? "—"}</td>
                   <td className="muted small">{r.created_at ? new Date(r.created_at).toLocaleString("ru-RU") : ""}</td>
                 </tr>
               ))}

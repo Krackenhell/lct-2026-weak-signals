@@ -29,6 +29,7 @@ from app.pipeline import cost as cost_mod
 from app.pipeline import discovery, evidence as evidence_mod
 from app.pipeline import links as links_mod
 from app.pipeline import passport as pp_mod
+from app.pipeline import subtopics
 from app.pipeline.decide import decide, template_dossier, wiki_fact
 from app.pipeline.features import answer_features, numeric_features
 from app.pipeline.questions import (
@@ -179,6 +180,24 @@ async def _execute(ctx: RunContext, s) -> None:
         if res:
             ctx.log_call(res.provider, res.model, "расширение запроса", query, {"query": query}, {"text": res.text[:3000]}, res.latency_ms, res.ok, usage=res.usage)
         plan = {**plan, "query": query}  # исходная формулировка нужна сбору корпуса (выбор тематических баз)
+
+        # 1б. Растущие поднаправления по литературе (собственное решение, без LLM): ключевой термин темы и ключевые
+        # слова OpenAlex, доля которых в работах по теме быстро растёт. На узких запросах («многослойный графен»,
+        # «газлифт») именно они — ранние сигналы, а подтемы LLM бывают общими или испорченными.
+        ctx.stage("Поиск растущих поднаправлений в научной литературе", 4)
+        try:
+            core = await asyncio.wait_for(subtopics.resolve_core(http, plan.get("topic_en", ""), query), 45)
+            found = await asyncio.wait_for(subtopics.emerging(http, core), 60) if core else []
+        except Exception as exc:  # без этого шага запрос всё равно выполняется по плану LLM
+            log.info("run %s: emerging subtopics failed: %s", run_id, exc)
+            core, found = "", []
+        if core and re.search(r"[a-z]", core, re.I):
+            kws = [e["keyword"] for e in found]
+            llm_subs = [x for x in subtopics.drop_buzz(plan.get("subqueries", []), query) if x.lower() not in kws and x.lower() != core.lower()]
+            plan["subqueries"] = (kws + [core] + llm_subs)[:12]
+            if not re.search(r"[a-z]", plan.get("topic_en", ""), re.I):
+                plan["topic_en"] = core  # без LLM русская фраза не находит ничего в англоязычных базах
+        plan = {**plan, "core_term": core, "emerging": found}
         ctx.run.plan = plan
         ctx.session.commit()
 
@@ -195,7 +214,8 @@ async def _execute(ctx: RunContext, s) -> None:
         for r in llm_res:
             ctx.log_call(r.provider, r.model, "извлечение технологий из документов", query, {"docs": "пачка документов корпуса"}, {"text": r.text[:3000]}, r.latency_ms, r.ok, usage=r.usage)
         watch = discovery.watchlist(query, plan, (ctx.run.options or {}).get("use_watchlist"))
-        pool = discovery.merge(extracted + mined + watch)
+        lit = subtopics.literature_candidates(plan.get("emerging", []), corpus)
+        pool = discovery.merge(extracted + lit + mined + watch)
         # Предварительный отбор: сначала подтверждённые несколькими документами/методами.
         # Сигналы из базы отслеживания получают зарезервированные места (до 20), остальное — новые кандидаты.
         watched = [c for c in pool if "watchlist" in c["methods"]][:20]
@@ -207,9 +227,13 @@ async def _execute(ctx: RunContext, s) -> None:
         # Отраслевым событиям (раунд, запуск) — до 8 мест: у них мало документов, и по числу ссылок
         # они проигрывают научным темам, хотя именно такие события лежат в основе большинства сигналов датасета.
         slots = max(s.max_candidates - len(watched), 0)
-        events = [c for c in fresh if any(corpus[i].extra.get("event") for i in c["doc_idx"] if i < len(corpus))][: min(8, slots)]
-        ev_ids = {id(c) for c in events}
-        pool = watched + events + [c for c in fresh if id(c) not in ev_ids][: slots - len(events)]
+        # Растущим поднаправлениям из литературы — до 6 мест: их рост уже измерен, а документов в корпусе может быть мало.
+        growing = [c for c in fresh if "literature-growth" in c["methods"]][: min(6, slots)]
+        taken = {id(c) for c in growing}
+        events = [c for c in fresh if id(c) not in taken and any(corpus[i].extra.get("event") for i in c["doc_idx"] if i < len(corpus))]
+        events = events[: min(8, slots - len(growing))]
+        taken |= {id(c) for c in events}
+        pool = watched + growing + events + [c for c in fresh if id(c) not in taken][: slots - len(growing) - len(events)]
         ctx.run.stats = {**ctx.run.stats, "corpus_docs": len(corpus), "raw_candidates": len(extracted) + len(mined) + len(watch)}
         ctx.stage(f"Проверка {len(pool)} кандидатов по открытым источникам", 32)
 
@@ -277,7 +301,9 @@ async def _execute(ctx: RunContext, s) -> None:
                 "prob": prob, "missing": missing, "passport": pp_mod.passport(items, res.answers, n_asked, s.min_confirmed_docs),
             }
 
-        sem = asyncio.Semaphore(6)
+        # Скорость: время этапа — это очереди к источникам с обязательными паузами (arXiv 3 с, GitHub 2 с), а не модели
+        # (Jev отвечает за 0,5 с). 12 кандидатов одновременно держат все очереди занятыми параллельно, а не по очереди.
+        sem = asyncio.Semaphore(12)
 
         async def guarded(c):
             async with sem:
@@ -320,8 +346,8 @@ async def _execute(ctx: RunContext, s) -> None:
         ctx.session.commit()
 
         # 5. Решение: сигнал / исключение
-        ctx.stage("Ранжирование и фильтрация зрелых технологий, стандартов и хайпа", 82)
-        decisions = decide(assessed, model, s.top_k)
+        ctx.stage("Ранжирование: исключение зрелых технологий, стандартов и тем без технического подтверждения", 82)
+        decisions = decide(assessed, model, s.top_k, topic_terms=[t for t in (plan.get("core_term"), plan.get("topic_en")) if t])
 
         # 6. Сохранение документов и кандидатов
         doc_ids_by_url: dict[str, int] = {}

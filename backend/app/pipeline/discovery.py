@@ -54,7 +54,9 @@ MAX_LLM_DOCS, INDUSTRY_DOCS = 300, 60
 JUNK_FIRST = {"show", "ask", "tell", "hn", "launch"}
 JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter",
             # заголовки новостей о раундах: «X startup raises $12M Series A» — событие, а не технология
-            "raises", "raised", "raise", "series", "funding", "startup", "startups", "round", "nabs", "secures", "valuation"}
+            "raises", "raised", "raise", "series", "funding", "startup", "startups", "round", "nabs", "secures", "valuation",
+            # обороты новостных заметок: «today announced», «said today it», «announced that it»
+            "today", "announced", "announces", "announce", "said", "says", "unveiled", "unveils", "week", "yesterday"}
 JUNK_LAST = {"digital", "financial", "technological", "sized", "driven", "aware", "enabled", "open-source", "related"}
 
 
@@ -105,6 +107,10 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
         tasks.append(coro)
         groups.append(group or topic)
 
+    core = plan.get("core_term") or ""
+    for e in plan.get("emerging", [])[:6] if core else []:
+        # Растущие поднаправления ищем внутри темы: «velocity strings» вместе с «gas lift», а не во всех областях.
+        add(openalex.search_within(http, core, e["keyword"], from_date, 20), e["keyword"])
     for i, sq in enumerate(subs):
         add(arxiv.search(http, sq, 20), sq)
         add(openalex.search(http, sq, from_date, 20), sq)

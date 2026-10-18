@@ -79,6 +79,18 @@ COMMON = {
 }
 
 
+# Слова, которые LLM приставляет к любой теме: «machine learning in gaslift control» приводил в корпус запроса о газлифте
+# все новости про ИИ. Игнорируются, только если их нет в самом запросе: для «квантовых сенсоров» «quantum» — главное слово.
+GENERIC_EXTRA = {"quantum", "computing", "autonomous", "optimization", "control", "monitoring", "management", "neural", "deep",
+                 "agent", "agents", "agentic", "modeling", "modelling", "analytics", "efficiency", "advanced", "generation", "innovative"}
+
+
+def generic_for(topic_text: str) -> set[str]:
+    """Основы общих слов, которые нужно игнорировать для этого запроса (те, что в нём не встречаются)."""
+    asked = _stems(topic_text)
+    return {w[:5] for w in GENERIC_EXTRA} - asked
+
+
 def event_of(text: str) -> str | None:
     """Тип события в заголовке новости: раунд или сделка, запуск или пилот, иначе None."""
     if FUNDING.search(text or ""):
@@ -179,10 +191,11 @@ async def tag_feeds(http: HttpClient, terms: list[str], n: int = 20) -> list[Raw
     return _unique(d for b in batches for d in b[:n])
 
 
-def select(docs: list[RawDoc], terms: list[str], n: int = 20, min_score: int = 2) -> list[RawDoc]:
+def select(docs: list[RawDoc], terms: list[str], n: int = 20, min_score: int = 2, ignore: set[str] | frozenset = frozenset()) -> list[RawDoc]:
     """Записи лент, относящиеся к теме: у одного из терминов совпало не меньше min_score основ слов
-    (у однословного термина — само слово). Выше — больше совпадений, затем новости о раундах и запусках."""
-    term_stems = [s for s in (_stems(t) for t in terms if t and not CJK.search(t)) if s]
+    (у однословного термина — само слово). Выше — больше совпадений, затем новости о раундах и запусках.
+    ignore — основы общих слов, которые для этого запроса не считаются (см. generic_for)."""
+    term_stems = [s for s in (_stems(t) - ignore for t in terms if t and not CJK.search(t)) if s]
     # В китайском нет пробелов: сравниваем пары соседних иероглифов, нужно совпадение 60% пар термина.
     term_bigrams = [b for b in (_bigrams(t) for t in terms if t and CJK.search(t)) if b]
     scored = []
@@ -198,15 +211,16 @@ def select(docs: list[RawDoc], terms: list[str], n: int = 20, min_score: int = 2
     return [d for *_, d in scored[:n]]
 
 
-async def matching(http: HttpClient, terms: list[str], lang: str = "en", n: int = 20, min_score: int = 2) -> list[RawDoc]:
-    return select(await industry_feeds(http, lang), terms, n, min_score)
+async def matching(http: HttpClient, terms: list[str], lang: str = "en", n: int = 20, min_score: int = 2,
+                   ignore: set[str] | frozenset = frozenset()) -> list[RawDoc]:
+    return select(await industry_feeds(http, lang), terms, n, min_score, ignore)
 
 
 async def for_topic(http: HttpClient, topic_text: str, terms: list[str], lang: str = "en", n: int = 80) -> list[RawDoc]:
     """Корпус новостей для запроса: все записи тематических лент + совпавшие по словам из остальных
     + ленты тегов по подтемам (только для английского)."""
     themed = await industry_feeds(http, lang, topic_text)
-    by_words = await matching(http, terms, lang, n)
+    by_words = await matching(http, terms, lang, n, ignore=generic_for(topic_text))
     tagged = await tag_feeds(http, terms[:4]) if lang == "en" else []
     themed.sort(key=lambda d: (bool(d.extra.get("event")), d.published or ""), reverse=True)  # раунды и запуски, затем свежие
     return _unique([*by_words, *tagged, *themed])[:n]
