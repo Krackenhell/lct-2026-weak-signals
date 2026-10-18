@@ -11,6 +11,7 @@ SiliconANGLE (WordPress) разрешает всё, включая RSS поис�
 """
 import asyncio
 import re
+import time
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote, urlparse
 
@@ -131,7 +132,16 @@ def _blocked(http: HttpClient, url: str) -> None:
     st["robots_blocked"] = st.get("robots_blocked", 0) + 1
 
 
+# Разобранные ленты в памяти процесса. Скорость: лента TechNode — 11 МБ и 2000 записей; раньше её заново разбирал
+# каждый из 30 кандидатов, и синхронный разбор на минуту блокировал все остальные запросы (замер 19.10).
+FEED_TTL = 1800.0
+_PARSED: dict[str, tuple[float, list[RawDoc]]] = {}
+
+
 async def _feed(http: HttpClient, url: str, publisher: str, lang: str) -> list[RawDoc]:
+    hit = _PARSED.get(url)
+    if hit and time.monotonic() - hit[0] < FEED_TTL:
+        return hit[1]
     if not await robots.allowed(http, url):
         _blocked(http, url)
         return []
@@ -139,6 +149,12 @@ async def _feed(http: HttpClient, url: str, publisher: str, lang: str) -> list[R
         text = await http.get(url, as_json=False)
     except SourceError:
         return []
+    docs = await asyncio.to_thread(_parse_feed, text, url, publisher, lang)  # разбор — в отдельном потоке
+    _PARSED[url] = (time.monotonic(), docs)
+    return docs
+
+
+def _parse_feed(text: str, url: str, publisher: str, lang: str) -> list[RawDoc]:
     docs = []
     for e in feedparser.parse(text).entries:
         title = clean(e.get("title"), 400)

@@ -94,7 +94,7 @@ def summarize(run_id: int, domain: str | None) -> dict:
 
 async def main_async(args) -> None:
     init_db()
-    path = Path(get_settings().model_dir) / "live_eval.json"
+    path = Path(get_settings().model_dir) / (getattr(args, "out", "") or "live_eval.json")
     report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"runs": []}
     before = path.with_name("live_eval_before.json")
     if args.fresh and path.exists() and not before.exists():
@@ -133,6 +133,7 @@ def main() -> None:
     ap.add_argument("--extras", action="store_true", help="добавить темы вне датасета")
     ap.add_argument("--nonsense", action="store_true", help="добавить контрольные бессмысленные запросы («Привет»)")
     ap.add_argument("--fresh", action="store_true", help="начать новый live_eval.json (старый сохраняется как live_eval_before.json)")
+    ap.add_argument("--out", default="", help="имя файла отчёта в data/model (по умолчанию live_eval.json)")
     asyncio.run(main_async(ap.parse_args()))
 
 

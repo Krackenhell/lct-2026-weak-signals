@@ -1,0 +1,147 @@
+{
+ "runs": [
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 52,
+   "query": "газлифт в газоконденсатных скважинах",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 311,
+   "n_signals": 1,
+   "confident_75": 1,
+   "new_candidates_in_top": 1,
+   "top": [
+    {
+     "rank": 1,
+     "name": "liquid loading prediction",
+     "name_ru": "предсказание жидкостной нагрузки в газоконденсатных скважинах",
+     "p": 0.834,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 0,
+    "B": 1
+   },
+   "watch": 3,
+   "exclusions": {
+    "low_probability": 9,
+    "not_technology": 3,
+    "irrelevant": 8,
+    "low_evidence": 2,
+    "topic_itself": 1,
+    "mature": 1,
+    "broad": 1,
+    "product": 1
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 53,
+   "query": "технологии многослойного графена",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 337,
+   "n_signals": 8,
+   "confident_75": 8,
+   "new_candidates_in_top": 8,
+   "top": [
+    {
+     "rank": 1,
+     "name": "twisted graphene bilayers and trilayers",
+     "name_ru": "графеновые слои с поворотом",
+     "p": 0.989,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 2,
+     "name": "rhombohedral graphene",
+     "name_ru": "графен ромбоэдрической структуры",
+     "p": 0.99,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "fractional chern insulators",
+     "name_ru": "фракционные чирн-изоляторы",
+     "p": 0.989,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 4,
+     "name": "charge transfer heterostructures",
+     "name_ru": "гетероструктуры с переносом заряда многослойного графена",
+     "p": 0.991,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 5,
+     "name": "moire systems",
+     "name_ru": "многослойные графеновые системы Moire",
+     "p": 0.943,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 6,
+     "name": "metallic wigner crystals in graphene",
+     "name_ru": "металлические кристаллы Вигнера в графене",
+     "p": 0.97,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 7,
+     "name": "magnetic domain walls in graphene",
+     "name_ru": "магнитные доменные стенки в графене",
+     "p": 0.958,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 8,
+     "name": "flat bands",
+     "name_ru": "многослойный графен flat bands",
+     "p": 0.895,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 2,
+    "B": 6
+   },
+   "watch": 5,
+   "exclusions": {
+    "not_technology": 3,
+    "broad": 1,
+    "irrelevant": 5,
+    "topic_itself": 1,
+    "low_evidence": 3,
+    "low_probability": 4
+   }
+  }
+ ]
+}
