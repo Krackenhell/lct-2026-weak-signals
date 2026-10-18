@@ -37,5 +37,7 @@ if _DIST.exists():
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str) -> FileResponse:
-        f = _DIST / path
-        return FileResponse(f if path and f.is_file() else _DIST / "index.html")
+        # Только файлы внутри frontend/dist: путь вида /..%2F..%2F.env иначе отдал бы любой файл сервера (в т.ч. ключи).
+        f = (_DIST / path).resolve()
+        inside = f.is_relative_to(_DIST.resolve())
+        return FileResponse(f if path and inside and f.is_file() else _DIST / "index.html")
