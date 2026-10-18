@@ -96,6 +96,7 @@ export default function RunPage() {
         </div>
       )}
       {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}
+      {run.status === "done" && run.error && <div className="error" style={{ marginTop: 16 }}>{run.error}</div>}
 
       {run.status !== "rejected" && <div className="kpis">
         <div className="kpi"><div className="label">Обработано источников</div><div className="value">{(s.sources_processed as number)?.toLocaleString("ru-RU") ?? "…"}</div></div>

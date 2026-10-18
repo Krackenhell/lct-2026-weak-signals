@@ -513,6 +513,11 @@ async def _execute(ctx: RunContext, s) -> None:
             "changes": _changes(ctx.session, ctx.run, [c.name for c in signals]),
             "http": http.stats,
         }
+        if not corpus and not any(st.get("ok") or st.get("cached") for st in http.stats.values()):
+            # Пустая выдача без объяснения выглядела бы как «технологий нет»; на деле сервер не достучался до источников.
+            ctx.run.stats = {**ctx.run.stats, "sources_down": True}
+            ctx.run.error = ("Ни один открытый источник не ответил, поэтому сигналов нет. Проверьте доступ сервера в интернет "
+                             "(прокси, файрвол) и повторите запрос кнопкой «Пересчитать заново».")
         ctx.run.status = "done"
         ctx.stage("Готово", 100)
         ctx.run.stats = {**ctx.run.stats, "timing": ctx.finish_timing()}
