@@ -160,6 +160,9 @@ async def extract_candidates(llm: BaseLLM, topic: str, docs: list[dict]) -> tupl
         "Выдели КОНКРЕТНЫЕ технологии или технические подходы, которые обсуждаются в документах "
         "(например «tokenized deposits», «optical circuit switching», «machine unlearning»), а не общие области "
         "(не «AI», не «blockchain», не «robotics»), не компании и не продукты. Объединяй синонимы. "
+        "Название — короткий термин класса технологий, каким его написали бы в заголовке отраслевой новости, а НЕ заголовок статьи: "
+        "не «Characterization of …», не «… Model of …», не «… under stress», без хвостов «development», «applications», «technologies». "
+        "Выделяй только технологии, относящиеся к области; соседние темы из других областей пропускай. "
         "Верни JSON-массив до 15 объектов: {\"name_en\": 2-6 слов на английском, \"name_ru\": " + NAME_RU_RULE + ", "
         "\"docs\": [номера документов, где она упоминается]}."
     )

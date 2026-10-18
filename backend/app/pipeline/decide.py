@@ -27,7 +27,21 @@ EXCLUSION_RU = {
     "watch": "Наблюдать: мало подтверждённых документов",
     "organization": "Организация, а не технология",
     "duplicate": "Повтор: синоним технологии выше в списке",
+    "paper_title": "Название статьи, а не технологии",
+    "crowded": "Тема уже представлена в топе",
 }
+
+# Формулировки научных статей, а не технологий: «Stackelberg Model of AI Security», «Stablecoin under stress».
+PAPER_TITLE = re.compile(
+    r"\b(model|characteri[sz]ation|manipulation|analysis|study|survey|review|evaluation|investigation|assessment|case|role|impact|"
+    r"perspective|overview|comparison|understanding) of\b|\bunder (stress|attack|uncertainty)\b|\b(towards?|a|an|the)\b \w+ \w+",
+    re.I,
+)
+# Слова, по которым темы не считаются «одинаковыми» при проверке разнообразия топа.
+_GENERIC_WORDS = {"ai", "learning", "neural", "network", "model", "data", "system", "based", "deep", "machine", "intelligent",
+                  "computing", "detection", "control", "optimization", "edge", "llm", "agent", "security", "robot", "robotic", "digital",
+                  "smart", "adaptive", "hybrid", "real", "time", "multi", "self", "generative", "large", "language", "federated"}
+MAX_PER_THEME = 3
 
 # Названия организаций, а не технологий (работает и без decision-модели).
 ORG = re.compile(
@@ -71,6 +85,8 @@ def _filters(a: dict) -> tuple[str, str] | None:
         return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {_ans(a, 'evidence_match', 1.0):.0%}) — вероятно, это случайное сочетание слов."
     if ORG.search(a["c"]["name_en"]):
         return "organization", "Название организации (комиссия, агентство, университет, компания), а не технологии."
+    if PAPER_TITLE.search(a["c"]["name_en"]) or len(a["c"]["name_en"].split()) > 7:
+        return "paper_title", "Формулировка похожа на заголовок научной статьи, а не на название класса технологий — такой кандидат нельзя проверить поиском по источникам."
     if _ans(a, "is_technology", 1.0) < 0.3:
         return "not_technology", f"Это не технологическая инновация, а документ, репозиторий, организация или общее рыночное явление (оценка {_ans(a, 'is_technology', 1.0):.0%})."
     if _ans(a, "product_name", 0.0) >= 0.6:
@@ -134,13 +150,22 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
         key=lambda i: -((assessed[i]["prob"] or 0.5) * (0.6 + 0.4 * out[i]["relevance"])),
     )
     # Синонимы не занимают два места в топе: остаётся вариант с более высоким баллом.
+    # Разнообразие: одна узкая тема (например, «quantum») — не больше MAX_PER_THEME мест, иначе топ по
+    # «инфраструктуре для ИИ» превращается в список вариантов квантового машинного обучения.
     kept: list[int] = []
+    themes: dict[str, int] = {}
     for i in ranked:
-        twin = next((k for k in kept if near_duplicate(assessed[i]["c"]["name_en"], assessed[k]["c"]["name_en"])), None)
-        if twin is None:
-            kept.append(i)
-        else:
+        name = assessed[i]["c"]["name_en"]
+        twin = next((k for k in kept if near_duplicate(name, assessed[k]["c"]["name_en"])), None)
+        theme = next((w for w in sorted(_key_words(name) - _GENERIC_WORDS) if len(w) > 3 and themes.get(w, 0) >= MAX_PER_THEME), None)
+        if twin is not None:
             out[i].update(status="excluded", code="duplicate", reason=f"Синоним технологии «{assessed[twin]['c']['name_en']}», которая уже в списке.")
+        elif theme and len(kept) < top_k:
+            out[i].update(status="excluded", code="crowded", reason=f"В топе уже {MAX_PER_THEME} технологии на тему «{theme}» — место отдано другим направлениям.")
+        else:
+            kept.append(i)
+            for w in _key_words(name) - _GENERIC_WORDS:
+                themes[w] = themes.get(w, 0) + 1
     ranked = kept
     for r, i in enumerate(ranked):
         if r < top_k:

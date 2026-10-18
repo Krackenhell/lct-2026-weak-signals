@@ -187,3 +187,30 @@ def test_cost_of_request_in_rubles(monkeypatch):
     monkeypatch.setattr(llm._client, "post", fake_post)
     res = asyncio.run(llm.complete("s", "u"))
     assert res.text == "ok" and res.usage == {"prompt": 7, "completion": 3, "total": 10}
+
+
+def test_paper_titles_and_crowded_themes_do_not_fill_top():
+    from types import SimpleNamespace
+
+    from app.collectors.base import RawDoc
+    from app.pipeline.decide import decide
+    from app.pipeline.discovery import clean_name, merge
+
+    assert clean_name("solid state battery development") == "solid state battery"
+    assert clean_name("Development of solid-state batteries") == "solid-state batteries"
+    assert merge([{"name_en": "Dendrimer applications", "doc_idx": [0]}])[0]["name_en"] == "Dendrimer"
+
+    def cand(name, p=0.9):
+        answers = {k: {"value": v} for k, v in {"relevance": 0.9, "specific_tech": 0.9, "is_technology": 0.9}.items()}
+        ev = SimpleNamespace(docs=[RawDoc(url=f"https://arxiv.org/abs/{i}", title="t", source_name="arXiv", source_type="preprint", collector="arxiv")
+                                   for i in range(4)])
+        return {"c": {"name_en": name}, "res": SimpleNamespace(ok=True, answers=answers), "features": {}, "prob": p, "ev": ev,
+                "passport": {"level": "B"}}
+
+    names = ["Annealing-based Quantum Neural Networks", "Quantum Kernel SVM", "Variational Quantum Algorithms", "Quantum NLP",
+             "optical interconnect", "Stackelberg Model of AI Security", "CXL memory pooling"]
+    out = decide([cand(n, 0.99 - i / 100) for i, n in enumerate(names)], None, 15)
+    status = {n: (d["status"], d.get("code")) for n, d in zip(names, out, strict=True)}
+    assert status["Quantum NLP"] == ("excluded", "crowded")
+    assert status["Stackelberg Model of AI Security"] == ("excluded", "paper_title")
+    assert sum(1 for s, _ in status.values() if s == "signal") == 5
