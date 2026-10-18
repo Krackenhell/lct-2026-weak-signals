@@ -172,7 +172,10 @@ async def extract_candidates(llm: BaseLLM, topic: str, docs: list[dict]) -> tupl
         for c in data:
             if not isinstance(c, dict) or not c.get("name_en"):
                 continue
-            ids = [i for i in c.get("docs", []) if isinstance(i, int) and 0 <= i < len(docs)]
+            raw = c.get("docs")
+            # Модель иногда пишет "docs": null, 3 или "1, 4" — это не должно ронять запрос.
+            raw = raw if isinstance(raw, list) else re.findall(r"\d+", str(raw)) if raw is not None else []
+            ids = sorted({int(i) for i in raw if isinstance(i, int) or (isinstance(i, str) and i.isdigit())} & set(range(len(docs))))
             out.append({"name_en": str(c["name_en"]).strip(), "name_ru": str(c.get("name_ru") or "").strip(), "doc_idx": ids})
     return out, res
 
@@ -209,7 +212,11 @@ async def write_dossier(llm: BaseLLM, query: str, name: str, evidence: list[dict
     )
     res = await llm.complete(SYSTEM_ANALYST, prompt, temperature=0.2, max_tokens=1400)
     data = parse_json(res.text) if res.ok else None
-    return (data if isinstance(data, dict) else None), res
+    if not isinstance(data, dict):
+        return None, res
+    # Поля досье — только строки: список или вложенный объект от модели сломал бы проверку утверждений.
+    flat = lambda v: v if isinstance(v, str) else " ".join(map(str, v)) if isinstance(v, list) else "" if v is None else str(v)  # noqa: E731
+    return {k: flat(v) for k, v in data.items()}, res
 
 
 async def summarize_sources(llm: BaseLLM, docs: list[dict]) -> tuple[dict[int, str], LLMResult]:

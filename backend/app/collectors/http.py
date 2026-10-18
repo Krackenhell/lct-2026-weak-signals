@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,32 @@ def _retry_after(resp: httpx.Response) -> float | None:
         return min(max(float(resp.headers["retry-after"]), 1.0), 60.0)
     except (KeyError, ValueError):
         return None
+
+
+def _write_cache(path: Path, data: Any) -> None:
+    """Запись через временный файл: параллельный запуск не прочитает файл, записанный наполовину."""
+    tmp = path.with_suffix(f".{os.getpid()}.{id(data)}.tmp")
+    try:
+        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError as exc:  # нет места на диске — работаем без кэша, а не падаем
+        log.warning("cache write failed %s: %s", path.name, exc)
+        tmp.unlink(missing_ok=True)
+
+
+def prune_cache(cache_dir: Path, ttl_hours: int) -> int:
+    """Удаляет просроченные файлы кэша (при запуске сервера), чтобы кэш не рос без предела."""
+    if not cache_dir.exists():
+        return 0
+    limit, n = time.time() - ttl_hours * 3600, 0
+    for f in cache_dir.iterdir():
+        try:
+            if f.suffix in (".json", ".tmp") and f.stat().st_mtime < limit:
+                f.unlink()
+                n += 1
+        except OSError:
+            continue
+    return n
 
 
 class SourceError(Exception):
@@ -142,8 +169,12 @@ class HttpClient:
         retries = max(retries, 5) if self.patient else min(retries, HOST_RETRIES.get(host, retries))
         path = self._cache_path(url, params if json_body is None else {"__post__": json_body, **(params or {})})
         if cache and path.exists() and time.time() - path.stat().st_mtime < self._ttl:
-            self._bump(host, "cached")
-            return json.loads(path.read_text(encoding="utf-8"))
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                self._bump(host, "cached")
+                return data
+            except (OSError, ValueError):  # повреждённый файл кэша (сбой питания, диск заполнен) — читаем из источника
+                path.unlink(missing_ok=True)
 
         if self._fails.get(host, 0) >= 3 and not self.patient:
             if time.monotonic() < self._open_until.get(host, 0.0):
@@ -193,7 +224,7 @@ class HttpClient:
                 else:
                     data = resp.text
                 if cache:
-                    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                    _write_cache(path, data)
                 self._bump(host, "ok")
                 self._fails[host] = 0
                 return data

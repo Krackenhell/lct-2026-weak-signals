@@ -8,6 +8,7 @@ import logging
 import re
 import time
 import traceback
+import weakref
 from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -35,6 +36,19 @@ from app.pipeline.questions import (
 from app.pipeline.trust import classify
 
 log = logging.getLogger(__name__)
+
+
+# Клиенты моделей и ограничитель параллельных запусков — общие на процесс (точнее, на цикл событий).
+# Раньше каждый запуск создавал свои HTTP-клиенты GigaChat и Jev и не закрывал их, а лимит «1 поток GigaChat»
+# действовал внутри запуска: три одновременных запроса жюри давали три потока и ошибки 429 на бесплатном тарифе.
+_SHARED: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict]" = weakref.WeakKeyDictionary()
+
+
+def _shared(key, factory):
+    per_loop = _SHARED.setdefault(asyncio.get_running_loop(), {})
+    if key not in per_loop:
+        per_loop[key] = factory()
+    return per_loop[key]
 
 
 class RunContext:
@@ -100,13 +114,34 @@ def _changes(session: Session, run: Run, names: list[str]) -> dict | None:
 async def execute(run_id: int) -> None:
     ctx = RunContext(run_id)
     s = get_settings()
-    http = None
     try:
         # Подключения к источникам и моделям — внутри обработки ошибок: сбой здесь не должен оставлять запуск
         # «в очереди» навсегда (найдено стресс-тестом).
+        # Очередь: одновременно обрабатываются не больше MAX_PARALLEL_RUNS запросов, остальные ждут
+        # со статусом «в очереди» — лимиты источников и моделей общие, а сервер не должен падать от наплыва.
+        ctx.stage("В очереди: ждёт завершения других запросов", 0)
+        gate = _shared(("runs", s.max_parallel_runs), lambda: asyncio.Semaphore(max(1, s.max_parallel_runs)))
+        async with gate:
+            await _execute(ctx, s)
+    except Exception as exc:  # запуск не должен «зависнуть»: фиксируем ошибку в БД
+        log.exception("run %s failed", run_id)
+        ctx.session.rollback()
+        ctx.run.status = "failed"
+        ctx.run.error = f"{exc}\n{traceback.format_exc()[-2000:]}"
+        ctx.session.commit()
+    finally:
+        ctx.run.finished_at = datetime.now(timezone.utc)
+        ctx.session.commit()
+        ctx.session.close()
+
+
+async def _execute(ctx: RunContext, s) -> None:
+    run_id = ctx.run_id
+    http = None
+    try:
         http = HttpClient()
-        llm = get_llm()
-        dm = get_decision_model()
+        llm = _shared(("llm", get_llm), get_llm)
+        dm = _shared(("dm", get_decision_model), get_decision_model)
         model = SignalModel.load()
         query = ctx.run.query
         ctx.run.status = "running"
@@ -236,9 +271,15 @@ async def execute(run_id: int) -> None:
 
         async def guarded(c):
             async with sem:
-                return await assess(c)
+                try:
+                    return await assess(c)
+                except Exception:  # сбой на одном кандидате (неожиданный ответ источника) не роняет весь запрос
+                    log.exception("run %s: candidate %r failed", run_id, c.get("name_en"))
+                    return None
 
-        assessed = await asyncio.gather(*(guarded(c) for c in pool))
+        assessed = [a for a in await asyncio.gather(*(guarded(c) for c in pool)) if a is not None]
+        if len(assessed) < len(pool):
+            ctx.run.stats = {**ctx.run.stats, "candidate_errors": len(pool) - len(assessed)}
 
         # Повторный опрос тех, по кому decision-модель не ответила (обычно таймаут под нагрузкой).
         async def reask(a: dict) -> None:
@@ -334,7 +375,11 @@ async def execute(run_id: int) -> None:
 
         async def guarded_window(cand):
             async with sem_w:
-                return await window(cand)
+                try:
+                    return await window(cand)
+                except Exception:
+                    log.exception("run %s: russia window for %r failed", run_id, cand.name)
+                    return cand, {"status": "unknown", "label": "Нет данных", "text": "Не удалось проверить русскоязычные источники.", "world": None, "ru": None, "failed": ["error"]}
 
         async def windows_phase():
             if not (s.russia_window and signals):
@@ -391,7 +436,14 @@ async def execute(run_id: int) -> None:
         async def dossiers_phase():
             if llm.provider == "none":
                 return []
-            return await asyncio.gather(*(dossier(c) for c in signals))
+            async def safe_dossier(cand):
+                try:
+                    return await dossier(cand)
+                except Exception:  # досье — не критичный шаг: остаётся шаблонное
+                    log.exception("run %s: dossier for %r failed", run_id, cand.name)
+                    return None
+
+            return [r for r in await asyncio.gather(*(safe_dossier(c) for c in signals)) if r is not None]
 
         win_res, link_res, dos_res = await asyncio.gather(windows_phase(), links_phase(), dossiers_phase())
         for cand, w in win_res:
@@ -465,15 +517,6 @@ async def execute(run_id: int) -> None:
         ctx.stage("Готово", 100)
         ctx.run.stats = {**ctx.run.stats, "timing": ctx.finish_timing()}
         ctx.stage("Готово", 100)
-    except Exception as exc:  # запуск не должен «зависнуть»: фиксируем ошибку в БД
-        log.exception("run %s failed", run_id)
-        ctx.session.rollback()
-        ctx.run.status = "failed"
-        ctx.run.error = f"{exc}\n{traceback.format_exc()[-2000:]}"
-        ctx.session.commit()
     finally:
-        ctx.run.finished_at = datetime.now(timezone.utc)
-        ctx.session.commit()
-        ctx.session.close()
         if http is not None:
             await http.close()

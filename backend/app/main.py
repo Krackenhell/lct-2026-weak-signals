@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
+from app.collectors.http import prune_cache
+from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.models import Run
 
@@ -16,6 +18,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 def startup() -> None:
     init_db()
+    s = get_settings()
+    removed = prune_cache(Path(s.cache_dir), s.cache_ttl_hours)
+    if removed:
+        logging.getLogger(__name__).info("cache: removed %d expired files", removed)
     # Запуски, прерванные перезапуском сервера, помечаем как неуспешные, а не «вечно выполняющиеся».
     with SessionLocal() as s:
         for r in s.query(Run).filter(Run.status.in_(["queued", "running"])):
