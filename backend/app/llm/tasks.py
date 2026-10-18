@@ -117,6 +117,8 @@ def fallback_plan(query: str) -> dict:
             topics += [t for t in terms if t not in topics]
     latin = re.findall(r"[a-zA-Z][a-zA-Z0-9\- ]{2,}", query)
     topics = [t.strip() for t in latin if t.strip()] + topics
+    seen: set[str] = set()
+    topics = [t for t in topics if not (t.lower() in seen or seen.add(t.lower()))]  # без повторов («edge AI» из запроса и словаря)
     if not topics:
         topics = [query]
     return {"topic_en": topics[0], "subqueries": topics[:10], "ru_terms": [query], "generated_by": "lexicon"}
