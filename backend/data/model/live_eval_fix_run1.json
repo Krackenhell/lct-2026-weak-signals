@@ -1,0 +1,511 @@
+{
+ "runs": [
+  {
+   "domain": "Финтех",
+   "mode": "только обнаружение",
+   "run_id": 40,
+   "query": "перспективные решения в финтехе",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 567,
+   "n_signals": 3,
+   "confident_75": 2,
+   "new_candidates_in_top": 3,
+   "top": [
+    {
+     "rank": 1,
+     "name": "real-world asset (RWA) tokenization",
+     "name_ru": "токенизация реальных активов (RWA)",
+     "p": 0.945,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "quantum-resistant cryptography",
+     "name_ru": "квантоустойчивая криптография",
+     "p": 0.835,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "transaction-based credit scoring",
+     "name_ru": "Транзакционный скоринг на основе поведения",
+     "p": 0.75,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    }
+   ],
+   "passport": {
+    "A": 1,
+    "B": 2
+   },
+   "watch": 1,
+   "exclusions": {
+    "irrelevant": 9,
+    "low_evidence": 4,
+    "low_probability": 7,
+    "mature": 4,
+    "not_technology": 1,
+    "product": 1
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  },
+  {
+   "domain": "Защита ИИ",
+   "mode": "только обнаружение",
+   "run_id": 42,
+   "query": "слабые сигналы в кибербезопасности ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 610,
+   "n_signals": 2,
+   "confident_75": 2,
+   "new_candidates_in_top": 2,
+   "top": [
+    {
+     "rank": 1,
+     "name": "AI agents for cybersecurity",
+     "name_ru": "агенты искусственного интеллекта для кибербезопасности",
+     "p": 0.973,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "explainable graph neural networks",
+     "name_ru": "Объяснимые графовые нейронные сети",
+     "p": 0.975,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 2,
+    "B": 0
+   },
+   "watch": 1,
+   "exclusions": {
+    "irrelevant": 15,
+    "low_probability": 7,
+    "not_technology": 1,
+    "broad": 1,
+    "low_evidence": 1,
+    "product": 1,
+    "mature": 1
+   },
+   "dataset_signals_in_domain": 16,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  },
+  {
+   "domain": "Роботы",
+   "mode": "только обнаружение",
+   "run_id": 43,
+   "query": "робототехника",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 698,
+   "n_signals": 9,
+   "confident_75": 8,
+   "new_candidates_in_top": 9,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Whole Body Model Predictive Control",
+     "name_ru": "Целостная Предиктивная Контрольная Модель Всего Тела",
+     "p": 0.964,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "Device-Agnostic Control Policy",
+     "name_ru": "Устройство-независимая политика управления",
+     "p": 0.982,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 3,
+     "name": "sim-to-real control workflow",
+     "name_ru": "Workflow симуляции для реального мира в робототехнике",
+     "p": 0.93,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 4,
+     "name": "lemmata-based motion retargeting",
+     "name_ru": "lemмата-ориентированная ретаргетинговая механика движений",
+     "p": 0.939,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 5,
+     "name": "loco-manipulation",
+     "name_ru": "локомоционная манипуляция",
+     "p": 0.838,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 6,
+     "name": "zero-order optimization",
+     "name_ru": "Zero-Order Optimization",
+     "p": 0.951,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 7,
+     "name": "vision-language-action models",
+     "name_ru": "Vision-Language-Action модели",
+     "p": 0.798,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 8,
+     "name": "Humanoid Robot Communication Features",
+     "name_ru": "Коммуникационные особенности человекоподобных роботов",
+     "p": 0.772,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 9,
+     "name": "First Person View Navigation",
+     "name_ru": "Навигация с первой персоной (First Person View Navigation)",
+     "p": 0.507,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    }
+   ],
+   "passport": {
+    "A": 6,
+    "B": 3
+   },
+   "watch": 9,
+   "exclusions": {
+    "low_probability": 6,
+    "broad": 2,
+    "mature": 2,
+    "not_technology": 1,
+    "irrelevant": 1
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 2,
+   "share_of_top15_from_dataset": 0.222,
+   "recall_of_domain": 0.118
+  },
+  {
+   "domain": "Edge",
+   "mode": "только обнаружение",
+   "run_id": 44,
+   "query": "edge AI и вычисления на устройствах",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 697,
+   "n_signals": 10,
+   "confident_75": 9,
+   "new_candidates_in_top": 10,
+   "top": [
+    {
+     "rank": 1,
+     "name": "smart glasses with AI",
+     "name_ru": "умные очки с ИИ",
+     "p": 0.995,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "on-device llm agents",
+     "name_ru": "агенты на устройстве с локальными нейросетями",
+     "p": 0.998,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "on-device LLM inference",
+     "name_ru": "Inference на устройстве (on-device)",
+     "p": 0.957,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
+    },
+    {
+     "rank": 4,
+     "name": "near-sensor computing",
+     "name_ru": "Near-Sensor Computing",
+     "p": 0.987,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 5,
+     "name": "low-power AI accelerators",
+     "name_ru": "низкопотребляющие ускорители ИИ для устройств на краях",
+     "p": 0.912,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 6,
+     "name": "periphery-computing wearable assistive navigation",
+     "name_ru": "носимая ассистивная навигационная система",
+     "p": 0.926,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 7,
+     "name": "real-time AI inference",
+     "name_ru": "Инференс ИИ на краях в реальном времени",
+     "p": 0.847,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 8,
+     "name": "NPU offloading",
+     "name_ru": "вычисления на устройствах с использованием NPU оффлоадинга",
+     "p": 0.882,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 9,
+     "name": "6G AI algorithms",
+     "name_ru": "6G AI алгоритмы",
+     "p": 0.86,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 10,
+     "name": "deep spiking neural networks",
+     "name_ru": "Глубокие нейронные сети на всплесках (Deep Spiking Neural Networks)",
+     "p": 0.741,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 4,
+    "B": 6
+   },
+   "watch": 6,
+   "exclusions": {
+    "irrelevant": 8,
+    "low_probability": 4,
+    "duplicate": 1,
+    "product": 1
+   },
+   "dataset_signals_in_domain": 16,
+   "dataset_hits_in_top15": 2,
+   "share_of_top15_from_dataset": 0.2,
+   "recall_of_domain": 0.125
+  },
+  {
+   "domain": "Инфраструктура ИИ",
+   "mode": "только обнаружение",
+   "run_id": 45,
+   "query": "инфраструктура для ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 590,
+   "n_signals": 8,
+   "confident_75": 6,
+   "new_candidates_in_top": 8,
+   "top": [
+    {
+     "rank": 1,
+     "name": "wafer-scale optical interconnects",
+     "name_ru": "Wafer-scale оптические межсоединения",
+     "p": 0.998,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 2,
+     "name": "long-context inference",
+     "name_ru": "Длинноконтекстный вывод",
+     "p": 0.993,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "ultra-low-power edge intelligence",
+     "name_ru": "Ultra-Low-Power Edge Intelligence",
+     "p": 0.97,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 4,
+     "name": "sparse KV cache compression",
+     "name_ru": "Сжатие разреженных ключей-значений (Sparse KV cache compression)",
+     "p": 0.985,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 5,
+     "name": "programmable diffractive neural networks",
+     "name_ru": "Программируемые дифракционные нейронные сети",
+     "p": 1.0,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 6,
+     "name": "optimized neural network compression",
+     "name_ru": "Оптимизированная компрессия нейронных сетей",
+     "p": 0.927,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
+    },
+    {
+     "rank": 7,
+     "name": "edge-cloud collaboration",
+     "name_ru": "крайне-облако сотрудничество (edge-cloud collaboration)",
+     "p": 0.747,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 8,
+     "name": "short reach optical interconnects",
+     "name_ru": "короткоразъемные оптические межсоединения",
+     "p": 0.658,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 7,
+    "B": 1
+   },
+   "watch": 2,
+   "exclusions": {
+    "irrelevant": 12,
+    "low_evidence": 1,
+    "low_probability": 4,
+    "mature": 2,
+    "broad": 1
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 1,
+   "share_of_top15_from_dataset": 0.125,
+   "recall_of_domain": 0.059
+  },
+  {
+   "domain": "Индустриальный ИИ",
+   "mode": "только обнаружение",
+   "run_id": 46,
+   "query": "индустриальный ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 31589,
+   "n_signals": 2,
+   "confident_75": 1,
+   "new_candidates_in_top": 2,
+   "top": [
+    {
+     "rank": 1,
+     "name": "ai-driven process optimization",
+     "name_ru": "AI-управляемая оптимизация процессов",
+     "p": 0.903,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "predictive failure detection",
+     "name_ru": "Предиктивная детекция отказов с применением ИИ",
+     "p": 0.637,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    }
+   ],
+   "passport": {
+    "A": 1,
+    "B": 1
+   },
+   "watch": 0,
+   "exclusions": {
+    "broad": 3,
+    "mature": 5,
+    "low_probability": 15,
+    "hype": 1,
+    "irrelevant": 1,
+    "organization": 3
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  }
+ ]
+}

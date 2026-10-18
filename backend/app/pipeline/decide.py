@@ -31,10 +31,11 @@ EXCLUSION_RU = {
 
 # Названия организаций, а не технологий (работает и без decision-модели).
 ORG = re.compile(
-    r"\b(commission|agency|association|consortium|ministry|department|administration|authority|university|institute|foundation|"
+    r"\b(commission|agency|association|consortium|ministry|department|administration|authority|university|institute|foundation(?![\s-]+models?)|"  # «foundation model» — класс моделей, а не фонд
     r"inc|ltd|llc|corp|corporation|gmbh|plc|bank of|federal reserve)\b|министерств|комисси|ассоциаци|агентств|университет|институт|корпораци",
     re.I,
 )
+RELEVANT = 0.5  # минимальная релевантность по ответам decision-модели (см. _filters)
 # Слова-связки для сравнения названий: «in-orbit servicing» и «on-orbit servicing» — одно и то же.
 _LINK_WORDS = {"in", "on", "of", "for", "the", "and", "a", "an", "based", "driven", "enabled"}
 
@@ -65,7 +66,11 @@ def _filters(a: dict) -> tuple[str, str] | None:
     if not a["res"].ok:
         return "no_decision", "Decision-модель не ответила (сбой сети) — признаки не проверены, кандидат не ранжируется."
     rel = relevance(a)
-    if rel < 0.34:
+    # Шкала вопроса: 0 — не связано, 0,33 — слабо связано, 0,67 — связано, 1 — ядро темы. В топ попадает только
+    # то, что ближе к «связано», чем к «слабо связано» (≥ 0,5): иначе при «уехавшем» плане запроса в выдачу
+    # «инфраструктура для ИИ» попадали квантовые алгоритмы с оценкой 0,40–0,45. У офлайн-правил шкала другая
+    # (минимум 0,4 без совпадений слов темы), для них порог прежний.
+    if rel < (0.34 if a["res"].provider == "heuristic" else RELEVANT):
         return "irrelevant", f"Слабо связано с запросом (оценка релевантности {rel:.2f} из 1: к теме {_ans(a, 'relevance', 0.6):.2f}, к исходной формулировке {_ans(a, 'relevance_query', 1.0):.2f})."
     if _ans(a, "evidence_match", 1.0) < 0.4:
         return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {_ans(a, 'evidence_match', 1.0):.0%}) — вероятно, это случайное сочетание слов."

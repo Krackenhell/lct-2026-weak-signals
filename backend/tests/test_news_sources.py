@@ -159,6 +159,31 @@ def test_llm_reads_industry_news_even_with_many_papers():
     assert sum(t.count("Paper ") for t in llm.seen) <= discovery.MAX_LLM_DOCS - 5
 
 
+def test_llm_reads_every_subquery_not_just_the_first():
+    from app.llm.providers import LLMResult, NoLLM
+    from app.pipeline import discovery
+
+    class Recorder(NoLLM):
+        provider, model = "gigachat", "GigaChat-2"
+
+        def __init__(self):
+            super().__init__()
+            self.seen = []
+
+        async def complete(self, system, user, temperature=0.2, max_tokens=1500):
+            self.seen.append(user)
+            return LLMResult("[]", self.provider, self.model, 1, ok=True)
+
+    # 12 подтем по 60 свежих статей: мест меньше, чем статей, — последняя подтема всё равно должна дойти до модели
+    docs = [RawDoc(url=f"https://arxiv.org/abs/{g}-{i}", title=f"Topic{g} paper {i}", source_type="preprint", published="2026-01-01",
+                   extra={"group": f"sub{g}"}) for g in range(12) for i in range(60)]
+    llm = Recorder()
+    asyncio.run(discovery.llm_candidates(llm, "ai infrastructure", docs))
+    text = "\n".join(llm.seen)
+    per_group = [text.count(f"Topic{g} paper") for g in range(12)]
+    assert min(per_group) >= 15 and max(per_group) - min(per_group) <= 1
+
+
 def test_topic_feeds_and_tag_feeds():
     web = FakeWeb()
     http = web.client()

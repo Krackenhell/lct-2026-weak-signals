@@ -66,6 +66,9 @@ class FakeJev:
     async def ask(self, state, questions):
         base = await self.rules.ask(state, questions)
         answers = dict(base.answers)
+        for qid in ("relevance", "relevance_query"):  # шкала Jev: 0,67 — «связано»; у правил минимум 0,4 означает «нет слов темы»
+            if qid in answers:
+                answers[qid] = {"type": "score", "value": 0.67}
         for qid, q in questions.items():
             if qid.startswith("claim_"):
                 answers[qid] = {"type": "noul", "value": 0.05 if FABRICATED in q["instructions"] else 0.9}

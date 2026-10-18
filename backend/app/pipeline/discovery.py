@@ -50,7 +50,7 @@ LIFE_SCIENCE = r"медиц|здрав|биотех|биолог|фарм|ген
 # Обрывки фраз, которые статистика выдаёт за технологии: заголовки Hacker News, биржевые новости,
 # фрагменты через «and» («detection and anti-money»), фразы, обрывающиеся на прилагательном («adoption of digital»).
 INDUSTRY_COLLECTORS = {"rss", "siliconangle", "yc"}
-MAX_LLM_DOCS, INDUSTRY_DOCS = 240, 60
+MAX_LLM_DOCS, INDUSTRY_DOCS = 300, 60
 JUNK_FIRST = {"show", "ask", "tell", "hn", "launch"}
 JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter",
             # заголовки новостей о раундах: «X startup raises $12M Series A» — событие, а не технология
@@ -81,56 +81,63 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
 
     s = get_settings()
     topic = plan.get("topic_en", subs[0] if subs else "")
+    # Каждый документ помечается поисковой фразой, которая его нашла: по этой метке LLM читает корпус
+    # поровну по подтемам (см. llm_candidates), а не первые по порядку запросы.
+    groups: list[str] = []
+
+    def add(coro, group: str = "") -> None:
+        tasks.append(coro)
+        groups.append(group or topic)
+
     for i, sq in enumerate(subs):
-        tasks.append(arxiv.search(http, sq, 20))
-        tasks.append(openalex.search(http, sq, from_date, 20))
-        tasks.append(hn_docs(sq))  # ссылки на свежие статьи отраслевых изданий о стартапах и продуктах
+        add(arxiv.search(http, sq, 20), sq)
+        add(openalex.search(http, sq, from_date, 20), sq)
+        add(hn_docs(sq), sq)  # ссылки на свежие статьи отраслевых изданий о стартапах и продуктах
         if s.extra_sources and i < 6:
-            tasks.append(crossref.search(http, sq, from_date, 15))  # все издатели с DOI, в т.ч. неанглоязычные журналы
+            add(crossref.search(http, sq, from_date, 15), sq)  # все издатели с DOI, в т.ч. неанглоязычные журналы
             if semanticscholar.enabled():
-                tasks.append(semanticscholar.search(http, sq, today.year - 2, 15))
+                add(semanticscholar.search(http, sq, today.year - 2, 15), sq)
             if re.search(LIFE_SCIENCE, plan.get("query", "") + " " + topic, flags=re.I):
-                tasks.append(europepmc.search(http, sq, from_date, 15))
-    tasks.append(gdelt.search(http, topic, "6m", 30))
+                add(europepmc.search(http, sq, from_date, 15), sq)
+    add(gdelt.search(http, topic, "6m", 30))
     ru_terms = plan.get("ru_terms", [])[:3]
     for j, ru in enumerate(ru_terms):
         if j == 0:  # GDELT — 1 запрос / 5,5 с: одного русского запроса достаточно, остальное дают Хабр и КиберЛенинка
-            tasks.append(gdelt.search(http, ru, "12m", 25, lang="russian"))
-        tasks.append(habr.search(http, ru, 15))
+            add(gdelt.search(http, ru, "12m", 25, lang="russian"), ru)
+        add(habr.search(http, ru, 15), ru)
         if s.extra_sources:
-            tasks.append(cyberleninka.search(http, ru, 15, min_year=today.year - 3))  # русскоязычная наука
+            add(cyberleninka.search(http, ru, 15, min_year=today.year - 3), ru)  # русскоязычная наука
     if s.extra_sources and topic:
-        tasks.append(gdelt.search(http, topic, "12m", 20, lang="chinese"))  # китайские СМИ — крупнейший рынок ранних внедрений
+        add(gdelt.search(http, topic, "12m", 20, lang="chinese"))  # китайские СМИ — крупнейший рынок ранних внедрений
     if s.news_sources and topic:
         # Отраслевые новости и раунды: на них построена большая часть сигналов датасета организатора.
         # Ленты изданий (TechCrunch, The Block, PR Newswire, vc.ru, CNews) — только разрешённые robots.txt.
         topic_text = f"{plan.get('query', '')} {topic}"
-        tasks.append(news_search.for_topic(http, topic_text, [*subs, topic], "en", 100))
-        tasks.append(news_search.siliconangle(http, topic, 20))
+        add(news_search.for_topic(http, topic_text, [*subs, topic], "en", 100))
+        add(news_search.siliconangle(http, topic, 20))
         for sq in subs[:3]:
-            tasks.append(news_search.siliconangle(http, sq, 15))
+            add(news_search.siliconangle(http, sq, 15), sq)
         if ru_terms:
-            tasks.append(news_search.for_topic(http, topic_text, [plan.get("query", ""), *ru_terms], "ru", 30))
+            add(news_search.for_topic(http, topic_text, [plan.get("query", ""), *ru_terms], "ru", 30))
     if s.grant_sources:
         # Проекты, которые фонды уже профинансировали: описывают направления за годы до продуктов.
         for sq in subs[:3]:
-            tasks.append(grants.nih(http, sq, n=10))
-            tasks.append(grants.nsf(http, sq, n=10))
-            tasks.append(grants.ukri(http, sq, n=10))
+            add(grants.nih(http, sq, n=10), sq)
+            add(grants.nsf(http, sq, n=10), sq)
+            add(grants.ukri(http, sq, n=10), sq)
     if s.ml_sources and re.search(AI_QUERY + r"|robot|робот|edge|вычисл|comput|данн|data|агент|agent", plan.get("query", "") + " " + topic, flags=re.I):
         # Ранние исследования в ИИ: обсуждаемые статьи (HF Papers) и поданные на конференции (OpenReview).
         for sq in subs[:6]:
-            tasks.append(ml_papers.hf_papers(http, sq, 10, min_year=today.year - 2))
-            tasks.append(ml_papers.openreview(http, sq, 10, min_year=today.year - 2))
+            add(ml_papers.hf_papers(http, sq, 10, min_year=today.year - 2), sq)
+            add(ml_papers.openreview(http, sq, 10, min_year=today.year - 2), sq)
     if s.startup_sources:
         # Стартапы YC последних двух лет по подтемам: описания продуктов, в которые уже вложены деньги.
         for sq in subs[:6]:
-            tasks.append(yc.search(http, sq, 10, min_year=today.year - 2))
+            add(yc.search(http, sq, 10, min_year=today.year - 2), sq)
     if s.news_sources and topic:
         if plan.get("zh_terms"):  # китайские техно-СМИ: 36Kr, IT之家, cnBeta, InfoQ China
-            tasks.append(news_search.for_topic(http, topic_text, plan["zh_terms"], "zh", 30))
+            add(news_search.for_topic(http, topic_text, plan["zh_terms"], "zh", 30))
 
-    docs: list[RawDoc] = []
     done = 0
 
     async def wrap(coro):
@@ -144,14 +151,26 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
             if on_progress:
                 await on_progress(done, len(tasks))
 
-    for batch in await asyncio.gather(*(wrap(t) for t in tasks)):
-        docs.extend(batch)
     seen, out = set(), []
-    for d in docs:
-        k = d.title.lower()[:90]
-        if k and k not in seen:
-            seen.add(k)
-            out.append(d)
+    for group, batch in zip(groups, await asyncio.gather(*(wrap(t) for t in tasks)), strict=True):
+        for d in batch:
+            k = d.title.lower()[:90]
+            if k and k not in seen:
+                seen.add(k)
+                d.extra = {**(d.extra or {}), "group": group}
+                out.append(d)
+    return out
+
+
+def _round_robin(idx: list[int], key) -> list[int]:
+    """Порядок «по кругу»: первый документ каждой группы, затем второй и т. д. (внутри группы порядок сохраняется)."""
+    by_group: dict[str, list[int]] = defaultdict(list)
+    for i in idx:
+        by_group[key(i)].append(i)
+    out, k = [], 0
+    while len(out) < len(idx):
+        out += [g[k] for g in by_group.values() if k < len(g)]
+        k += 1
     return out
 
 
@@ -201,17 +220,26 @@ def mine_phrases(docs: list[RawDoc], limit: int = 40) -> list[dict]:
 async def llm_candidates(llm: BaseLLM, topic: str, docs: list[RawDoc], batch: int = 30) -> tuple[list[dict], list[LLMResult]]:
     if llm.provider == "none":
         return [], []
-    # Модели отдаётся не более 240 документов: до 180 — свежая наука и прочее, до 60 — отраслевые новости
-    # (сначала о раундах и запусках). Без квоты научных документов хватает на все пачки и новости не читаются.
+    # Модели отдаётся не более 300 документов: до 240 — свежая наука и прочее (столько же, сколько до подключения
+    # новостей), до 60 — отраслевые новости (сначала о раундах и запусках). Без квоты научных документов хватает
+    # на все пачки и новости не читаются.
+    # Научные документы берутся по кругу по поисковым фразам плана: при простой сортировке по году все места
+    # занимали первые подтемы (в корпусе 700–900 документов, свежих — больше, чем мест), а поздние
+    # («KV cache», «photonic computing») модель не читала вовсе.
     def year(i):
         return -(int((docs[i].published or "0")[:4] or 0))
+
+    def group(i):
+        return docs[i].extra.get("group", "")
 
     industry = [i for i in range(len(docs)) if docs[i].collector in INDUSTRY_COLLECTORS]
     industry.sort(key=lambda i: (not docs[i].extra.get("event"), year(i)))
     industry = industry[:INDUSTRY_DOCS]
     taken = set(industry)
-    rest = sorted((i for i in range(len(docs)) if i not in taken), key=lambda i: (docs[i].source_type not in ("science", "preprint"), year(i)))
-    rest = rest[: MAX_LLM_DOCS - len(industry)]
+    rest = [i for i in range(len(docs)) if i not in taken]
+    science = sorted((i for i in rest if docs[i].source_type in ("science", "preprint")), key=year)
+    other = sorted((i for i in rest if docs[i].source_type not in ("science", "preprint")), key=year)
+    rest = (_round_robin(science, group) + _round_robin(other, group))[: MAX_LLM_DOCS - len(industry)]
     chunks = [rest[k : k + batch] for k in range(0, len(rest), batch)] + [industry[k : k + batch] for k in range(0, len(industry), batch)]
 
     async def one(idx):

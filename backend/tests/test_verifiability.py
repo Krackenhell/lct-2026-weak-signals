@@ -123,6 +123,25 @@ def test_query_relevance_takes_minimum():
     assert out[0]["code"] == "irrelevant"
 
 
+def test_weakly_related_is_not_in_top_but_rules_keep_their_scale():
+    model = SignalModel(features=list(FEATURES), mean=[0.0] * len(FEATURES), scale=[1.0] * len(FEATURES), coef=[0.1] * len(FEATURES), intercept=0.0, meta={})
+    weak, rules = _assessed("quantum kernels", 0.98, "B"), _assessed("no topic words", 0.9, "B")
+    weak["res"].answers["relevance_query"] = {"type": "score", "value": 0.42}  # между «слабо связано» и «связано»
+    rules["res"].answers["relevance_query"] = {"type": "score", "value": 0.42}
+    rules["res"].provider = "heuristic"  # у офлайн-правил 0,4 — это «совпадений слов нет», а не «слабо связано»
+    out = decide([weak, rules], model, top_k=15)
+    assert out[0]["code"] == "irrelevant"
+    assert out[1]["status"] == "signal"
+
+
+def test_foundation_models_are_technology_not_a_fund():
+    from app.pipeline.decide import ORG
+
+    assert not ORG.search("industrial time-series foundation models")
+    assert not ORG.search("robot foundation-model")
+    assert ORG.search("Linux Foundation") and ORG.search("foundation for AI safety")
+
+
 # ---------------------------------------------------------------- вопросы decision-модели
 
 def test_doc_and_claim_questions_answered_offline():
