@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -42,6 +43,28 @@ def start() -> subprocess.Popen:
     return subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", PORT], cwd=BACKEND, env=env)
 
 
+def busy() -> int:
+    """Сколько запросов сейчас в очереди и в работе (по метрикам сервера); при ошибке считаем, что занятых нет."""
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{PORT}/api/metrics", timeout=10) as r:
+            for line in r.read().decode("utf-8").splitlines():
+                if line.startswith("weak_signals_runs_in_progress"):
+                    return int(float(line.split()[-1]))
+    except (OSError, ValueError):
+        pass
+    return 0
+
+
+def wait_idle(max_wait: int = 1200) -> None:
+    """Перезапуск не обрывает чужой запрос: ждём, пока обработка закончится (не дольше 20 минут)."""
+    waited = 0
+    while busy() and waited < max_wait:
+        if waited == 0:
+            log("обновление ждёт завершения запросов в работе")
+        time.sleep(15)
+        waited += 15
+
+
 def stop(p: subprocess.Popen) -> None:
     p.terminate()
     try:
@@ -72,6 +95,7 @@ def main() -> None:
                 log(f"git pull не прошёл, сервер работает на старой версии: {out.stderr.strip()[:300]}")
                 continue
             install()
+            wait_idle()
             stop(proc)
             proc = start()
 
