@@ -2,6 +2,8 @@
 import asyncio
 import hmac
 import json
+import re
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
@@ -36,13 +38,14 @@ def require_token(x_api_token: str | None = Header(default=None), token: str | N
 class SearchIn(BaseModel):
     query: str = Field(min_length=2, max_length=300)
     use_watchlist: bool | None = None  # None — по настройке сервера
+    fresh: bool = False  # True — пересчитать, даже если свежий результат по этой теме уже есть
 
 
 def _run_out(r: Run) -> dict:
     return {
         "id": r.id, "query": r.query, "status": r.status, "stage": r.stage, "progress": r.progress, "error": r.error,
         "plan": r.plan, "stats": r.stats, "providers": r.providers, "options": r.options or {},
-        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "created_at": _aware(r.created_at).isoformat() if r.created_at else None,
         "finished_at": r.finished_at.isoformat() if r.finished_at else None,
     }
 
@@ -81,9 +84,43 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
     return out
 
 
+def _norm_query(q: str) -> str:
+    return " ".join(re.findall(r"\w+", q.lower().replace("ё", "е")))
+
+
+def _aware(dt: datetime | None) -> datetime | None:
+    return dt.replace(tzinfo=timezone.utc) if dt and dt.tzinfo is None else dt  # SQLite не хранит часовой пояс
+
+
+def _reusable_run(db: Session, query: str, use_watchlist: bool) -> Run | None:
+    """Тот же запрос уже выполняется или выполнен недавно той же рабочей моделью — отдаём его сразу.
+
+    Повторный клик жюри не запускает вторую обработку, а готовые темы открываются за секунду, а не за 5 минут.
+    Свежесть — REUSE_HOURS (по умолчанию сутки); «Пересчитать» в интерфейсе передаёт fresh=true."""
+    hours = get_settings().reuse_hours
+    key = _norm_query(query)
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    llm = _current_llm_label()
+    recent = db.query(Run).filter(Run.status.in_(["queued", "running", "done"])).order_by(desc(Run.id)).limit(300).all()
+    for r in recent:
+        if _norm_query(r.query) != key or bool((r.options or {}).get("use_watchlist", get_settings().use_watchlist)) != use_watchlist:
+            continue
+        if r.status in ("queued", "running"):
+            return r
+        fresh_enough = hours > 0 and (_aware(r.created_at) or since) > since
+        if fresh_enough and (r.providers or {}).get("llm") == llm and (r.stats or {}).get("signals"):
+            return r
+    return None
+
+
 @router.post("/search")
 async def start_search(body: SearchIn, db: Session = Depends(get_session), _: None = Depends(require_token)) -> dict:
     options = {} if body.use_watchlist is None else {"use_watchlist": body.use_watchlist}
+    if not body.fresh:
+        watch = get_settings().use_watchlist if body.use_watchlist is None else body.use_watchlist
+        prev = _reusable_run(db, body.query, watch)
+        if prev:
+            return {**_run_out(prev), "reused": True}
     run = Run(query=body.query.strip(), options=options)
     db.add(run)
     db.commit()

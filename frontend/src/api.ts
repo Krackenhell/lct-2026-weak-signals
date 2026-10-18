@@ -112,6 +112,7 @@ export type Run = {
   options?: { use_watchlist?: boolean };
   created_at: string | null;
   finished_at: string | null;
+  reused?: boolean;
 };
 
 export type RunFull = Run & { signals: CandidateBrief[]; watch?: CandidateBrief[]; excluded: CandidateBrief[] };
@@ -187,8 +188,8 @@ export const EXPORT_FORMATS: [string, string][] = [
 export const exportUrl = (runId: number | string, format: string) => `/api/runs/${runId}/export?format=${format}`;
 
 export const api = {
-  search: (query: string, use_watchlist: boolean) =>
-    req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query, use_watchlist }) }),
+  search: (query: string, use_watchlist: boolean, fresh = false) =>
+    req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query, use_watchlist, fresh }) }),
   runs: () => req<Run[]>("/api/runs"),
   run: (id: number | string) => req<RunFull>(`/api/runs/${id}`),
   log: (id: number | string) => req<ModelCall[]>(`/api/runs/${id}/log`),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
 import { OriginBadge, PassportBadge, RadarBadge, RobustnessBadge, ScoreBadge, WindowBadge } from "../components/ui";
 
@@ -11,6 +11,8 @@ export default function RunPage() {
   const [tab, setTab] = useState<Tab>("signals");
   const [log, setLog] = useState<ModelCall[] | null>(null);
   const [err, setErr] = useState("");
+  const [rerun, setRerun] = useState(false);
+  const nav = useNavigate();
 
   useEffect(() => {
     let timer: number | undefined;
@@ -39,6 +41,19 @@ export default function RunPage() {
   const watch = run.watch ?? [];
   const solid = run.signals.filter((c) => c.passport?.level === "A" || c.passport?.level === "B").length;
   const changes = s.changes as Changes | undefined;
+  const seconds = run.finished_at && run.created_at ? Math.round((Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000) : null;
+
+  async function recompute() {
+    setRerun(true);
+    try {
+      const r = await api.search(run!.query, !!run!.options?.use_watchlist, true);
+      nav(`/runs/${r.id}`);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setRerun(false);
+    }
+  }
 
   return (
     <>
@@ -50,6 +65,16 @@ export default function RunPage() {
         {run.providers?.classifier && <span>· Классификатор: <b>{run.providers.classifier}</b></span>}
         <span>· Режим: <b>{run.options?.use_watchlist ? "мониторинг (с базой отслеживания)" : "чистое обнаружение"}</b></span>
       </div>
+
+      {run.status === "done" && (
+        <div className="meta-row small muted" style={{ marginTop: 6 }}>
+          <span>
+            Результат от <b>{run.created_at ? new Date(run.created_at).toLocaleString("ru-RU") : "—"}</b>
+            {seconds != null ? `, обработка заняла ${Math.floor(seconds / 60)} мин ${seconds % 60} с` : ""}. Повторный запрос темы в течение суток открывает этот результат сразу.
+          </span>
+          <button className="chip" type="button" disabled={rerun} onClick={recompute}>{rerun ? "Запуск…" : "Пересчитать заново"}</button>
+        </div>
+      )}
 
       {run.status === "rejected" && (
         <div className="panel" style={{ marginTop: 16, borderLeft: "4px solid var(--bad)" }}>
@@ -67,7 +92,7 @@ export default function RunPage() {
         <div className="panel" style={{ marginTop: 16 }}>
           <b>{run.stage || "Ожидание"}</b>
           <div className="progress"><div style={{ width: `${run.progress}%` }} /></div>
-          <span className="muted small">{run.progress}% · обработка обычно занимает 5–15 минут</span>
+          <span className="muted small">{run.progress}% · новый анализ обычно занимает 5–6 минут; страница обновляется сама</span>
         </div>
       )}
       {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}

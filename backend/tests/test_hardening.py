@@ -1,6 +1,7 @@
 """Устойчивость и безопасность: выход за пределы каталога сайта, кривые ответы LLM, повреждённый кэш, очередь запусков."""
 import asyncio
 import json
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi.testclient import TestClient
@@ -120,3 +121,30 @@ def test_runs_wait_in_queue_and_one_failing_candidate_does_not_fail_run(monkeypa
         runs = [s.get(Run, i) for i in ids]
         assert all(r.status == "done" for r in runs), [(r.query, r.error) for r in runs]
         assert sum((r.stats or {}).get("candidate_errors", 0) for r in runs) == 1
+
+
+def test_repeat_query_opens_recent_result_instantly(monkeypatch):
+    from app.api import routes
+
+    started = []
+
+    async def fake_execute(run_id):
+        started.append(run_id)
+
+    monkeypatch.setattr(routes.runner, "execute", fake_execute)
+    with SessionLocal() as s:
+        done = Run(query="Квантовые  сенсоры!", status="done", stats={"signals": 3}, providers={"llm": "none:template"}, options={})
+        old = Run(query="микрофлюидика", status="done", stats={"signals": 2}, providers={"llm": "none:template"}, options={},
+                  created_at=datetime.now(timezone.utc) - timedelta(days=3))
+        s.add_all([done, old])
+        s.commit()
+        done_id = done.id
+    with TestClient(main_mod.app) as c:
+        r = c.post("/api/search", json={"query": "квантовые сенсоры"}).json()
+        assert r["id"] == done_id and r["reused"] is True and not started
+        r = c.post("/api/search", json={"query": "квантовые сенсоры", "fresh": True}).json()
+        assert r["id"] != done_id and "reused" not in r and started == [r["id"]]
+        assert c.post("/api/search", json={"query": "микрофлюидика"}).json().get("reused") is None  # старше суток — пересчёт
+        r2 = c.post("/api/search", json={"query": "квантовые сенсоры"}).json()
+        assert r2["id"] == r["id"] and r2["status"] == "queued"  # тот же запрос уже в работе — второй не запускается
+        assert len(started) == 2
