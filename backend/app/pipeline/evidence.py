@@ -32,9 +32,12 @@ class Evidence:
     today: str = ""
 
 
+SOURCE_DEADLINE = 60.0  # секунд на один источник по одному кандидату: зависший источник не держит весь запрос
+
+
 async def _safe(name: str, coro, default, failed: list[str]):
     try:
-        return await coro
+        return await asyncio.wait_for(coro, SOURCE_DEADLINE)
     except (SourceError, Exception) as exc:  # источник недоступен — продолжаем без него
         log.info("evidence source %s failed: %s", name, exc)
         failed.append(name)

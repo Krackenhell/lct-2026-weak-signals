@@ -2,6 +2,8 @@
 import asyncio
 import hmac
 import json
+import re
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
@@ -36,6 +38,28 @@ def require_token(x_api_token: str | None = Header(default=None), token: str | N
 class SearchIn(BaseModel):
     query: str = Field(min_length=2, max_length=300)
     use_watchlist: bool | None = None  # None — по настройке сервера
+    # Разрешено организаторами при условии раскрытия: если такой же запрос уже посчитан вживую за последние
+    # REUSE_DAYS дней, отдаём готовую выдачу мгновенно (с датой и кнопкой «посчитать заново»).
+    reuse: bool = False
+
+
+REUSE_DAYS = 7
+
+
+def _norm_query(q: str) -> str:
+    return re.sub(r"[^\w]+", " ", (q or "").lower()).strip()
+
+
+def _reusable(db: Session, query: str, use_watchlist: bool | None) -> Run | None:
+    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=REUSE_DAYS)
+    key = _norm_query(query)
+    for r in db.query(Run).filter(Run.status == "done", Run.created_at >= since).order_by(desc(Run.id)).limit(300):
+        if _norm_query(r.query) != key or (r.providers or {}).get("decision_model", "").startswith("heuristic"):
+            continue
+        if use_watchlist is not None and bool((r.options or {}).get("use_watchlist")) != use_watchlist:
+            continue
+        return r
+    return None
 
 
 def _run_out(r: Run) -> dict:
@@ -84,6 +108,8 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
 
 @router.post("/search")
 async def start_search(body: SearchIn, db: Session = Depends(get_session), _: None = Depends(require_token)) -> dict:
+    if body.reuse and (old := _reusable(db, body.query, body.use_watchlist)):
+        return {**_run_out(old), "reused": True}
     options = {} if body.use_watchlist is None else {"use_watchlist": body.use_watchlist}
     run = Run(query=body.query.strip(), options=options)
     db.add(run)

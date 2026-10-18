@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
 import { OriginBadge, PassportBadge, RadarBadge, RobustnessBadge, ScoreBadge, WindowBadge } from "../components/ui";
 
@@ -11,6 +11,10 @@ export default function RunPage() {
   const [tab, setTab] = useState<Tab>("signals");
   const [log, setLog] = useState<ModelCall[] | null>(null);
   const [err, setErr] = useState("");
+  const [fresh, setFresh] = useState(false);
+  const [params] = useSearchParams();
+  const reused = params.get("reused") === "1";
+  const nav = useNavigate();
 
   useEffect(() => {
     let timer: number | undefined;
@@ -50,6 +54,19 @@ export default function RunPage() {
         {run.providers?.classifier && <span>· Классификатор: <b>{run.providers.classifier}</b></span>}
         <span>· Режим: <b>{run.options?.use_watchlist ? "мониторинг (с базой отслеживания)" : "чистое обнаружение"}</b></span>
       </div>
+
+      {reused && (
+        <div className="panel" style={{ marginTop: 16, borderLeft: "4px solid var(--accent)" }}>
+          <b>Заранее посчитанная выдача</b> — эта тема уже обрабатывалась вживую{" "}
+          {run.finished_at ? new Date(run.finished_at).toLocaleString("ru-RU") : ""}, поэтому результат открыт сразу.
+          Новые темы всегда считаются с нуля.{" "}
+          <button className="chip" type="button" disabled={fresh} onClick={async () => {
+            setFresh(true);
+            const r = await api.search(run.query, !!run.options?.use_watchlist, false);
+            nav(`/runs/${r.id}`);
+          }}>{fresh ? "Запуск…" : "Посчитать заново"}</button>
+        </div>
+      )}
 
       {run.status === "rejected" && (
         <div className="panel" style={{ marginTop: 16, borderLeft: "4px solid var(--bad)" }}>

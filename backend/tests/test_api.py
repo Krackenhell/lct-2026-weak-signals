@@ -123,3 +123,24 @@ def test_spa_routes_served(client):
     # Интерфейс отдаётся самим backend: прямые ссылки на страницы открываются без nginx.
     r = client.get("/runs/1")
     assert r.status_code == 200 and "<div id=" in r.text
+
+
+def test_search_reuses_recent_live_run(client, sample_run, monkeypatch):
+    from app.api import routes
+
+    started = []
+
+    async def fake_execute(run_id):
+        started.append(run_id)
+
+    monkeypatch.setattr(routes.runner, "execute", fake_execute)
+    run_id, _ = sample_run
+    r = client.post("/api/search", json={"query": "API-тест: квантовые сенсоры", "reuse": True}).json()
+    assert r["reused"] is True and r["id"] == run_id and started == []  # та же тема — готовая выдача сразу
+    r2 = client.post("/api/search", json={"query": "api-тест квантовые сенсоры", "reuse": False}).json()
+    assert "reused" not in r2 and r2["id"] != run_id  # «посчитать заново» — новый прогон
+    with SessionLocal() as s:
+        s.add(Run(query="только правила", status="done", providers={"decision_model": "heuristic:rules"}, options={}))
+        s.commit()
+    r3 = client.post("/api/search", json={"query": "только правила", "reuse": True}).json()
+    assert "reused" not in r3  # прогон на запасных правилах не выдаём за готовый результат
