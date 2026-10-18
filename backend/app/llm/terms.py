@@ -37,6 +37,15 @@ GLOSSARY = {
     "knowledge distillation": "дистилляция знаний",
     "self-driving laboratories": "автономные лаборатории",
     "multilayer graphene": "многослойный графен",
+    "twisted multilayer graphene": "скрученный многослойный графен",
+    "twisted bilayer graphene": "скрученный двухслойный графен",
+    "rhombohedral graphene": "ромбоэдрический графен",
+    "moire superlattices": "муаровые сверхрешётки",
+    "moiré superlattices": "муаровые сверхрешётки",
+    "chern insulator": "черновский изолятор",
+    "fractional chern insulator": "дробный черновский изолятор",
+    "chiral superconductivity": "хиральная сверхпроводимость",
+    "perovskite tandem solar cells": "перовскитные тандемные солнечные элементы",
     "microfluidic chips": "микрофлюидные чипы",
     "organ-on-a-chip": "орган-на-чипе",
     "tokenized deposits": "токенизированные депозиты",
@@ -57,6 +66,15 @@ CALQUES: list[tuple[str, str | None]] = [
     (r"\bтелесн\w*", None),
     (r"\bинтеллекуальн\w*|\bобученое\b|\bглубинное[\s-]+обучен", None),  # частые опечатки и сбои согласования
     (r"\bумное\s+менеджмент\w*", None),
+    (r"\bмультиграфен\w*", "многослойный графен"),
+    (r"\bчирн\w*", "черновский"),
+]
+
+# Кальки, которые исправляются только при определённом английском слове в оригинале: «силиконовый» верно для silicone,
+# но не для silicon (кремний); «фракционный» верно в химии, но fractional в физике — «дробный».
+CONDITIONAL: list[tuple[str, str, str]] = [
+    ("silicon", r"\bсиликонов(ый|ая|ое|ые|ого|ой|ых|ым|ую)\b", r"кремниев\1"),
+    ("fractional", r"\bфракционн(ый|ая|ое|ые|ого|ой|ых|ым|ую)\b", r"дробн\1"),
 ]
 
 CYR = re.compile(r"[а-яё]", re.I)
@@ -107,6 +125,10 @@ def normalize_name_ru(name_en: str, name_ru: str | None) -> str:
         if re.search(pattern, ru, flags=re.I):
             if fix is None:
                 return en
+            ru = re.sub(pattern, fix, ru, flags=re.I)
+    low_en = key.replace("silicone", "")  # silicone (силикон) — не silicon (кремний)
+    for word, pattern, fix in CONDITIONAL:
+        if word in low_en:
             ru = re.sub(pattern, fix, ru, flags=re.I)
     return ru
 

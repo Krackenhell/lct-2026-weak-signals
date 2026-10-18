@@ -47,7 +47,7 @@ def _run_out(r: Run) -> dict:
         "id": r.id, "query": r.query, "status": r.status, "stage": r.stage, "progress": r.progress, "error": r.error,
         "plan": r.plan, "stats": r.stats, "providers": r.providers, "options": r.options or {},
         "created_at": _aware(r.created_at).isoformat() if r.created_at else None,
-        "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+        "finished_at": _aware(r.finished_at).isoformat() if r.finished_at else None,  # с часовым поясом, как created_at
     }
 
 
@@ -165,7 +165,7 @@ def showcase(db: Session = Depends(get_session)) -> list[dict]:
             continue
         seen.add(key)
         out.append({
-            "run_id": r.id, "query": r.query, "date": r.created_at.isoformat() if r.created_at else None,
+            "run_id": r.id, "query": r.query, "date": _aware(r.created_at).isoformat() if r.created_at else None,
             "signals": r.stats.get("signals"), "passport": r.stats.get("passport"), "providers": r.providers,
             "mode": "мониторинг" if (r.options or {}).get("use_watchlist") else "обнаружение",
             "seconds": int((r.finished_at - r.created_at).total_seconds()) if r.finished_at and r.created_at else None,

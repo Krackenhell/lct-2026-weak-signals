@@ -110,3 +110,17 @@ def test_topic_words_do_not_count_as_crowded_theme():
     assert all(d["status"] == "signal" for d in out)  # «graphene» — слово темы запроса, а не повторяющаяся тема
     out = decide([_cand(n, 0.99 - i / 100) for i, n in enumerate(names)], None, 15)
     assert sum(d.get("code") == "crowded" for d in out) == 2  # без темы запроса — прежнее ограничение 3 на тему
+
+
+def test_near_duplicate_uses_word_stems():
+    from app.pipeline.decide import near_duplicate
+
+    assert near_duplicate("chiral superconductivity", "chiral superconductors")  # реальный дубль в топе 19.10
+    assert not near_duplicate("fractional chern insulator", "chern insulator in graphene")
+    assert not near_duplicate("graphene plasmonics", "graphene photonics")
+
+
+def test_clean_name_drops_paper_tail():
+    from app.pipeline.discovery import clean_name
+
+    assert clean_name("Yb-doped ZnO investigation") == "Yb-doped ZnO"

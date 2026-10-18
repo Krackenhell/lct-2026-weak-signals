@@ -63,7 +63,7 @@ JUNK_LAST = {"digital", "financial", "technological", "sized", "driven", "aware"
 # Хвосты и зачины, которые делают из технологии название раздела или статьи: «solid state battery development»,
 # «Dendrimer applications», «Characterization of soft robotic materials». Срезаем — так и поиск по фразе точнее.
 TAIL_WORDS = {"development", "developments", "application", "applications", "technology", "technologies", "solution", "solutions",
-              "research", "study", "studies", "analysis", "advances", "trends"}
+              "research", "study", "studies", "analysis", "advances", "trends", "investigation", "investigations", "evaluation"}
 HEAD = re.compile(r"^(characteri[sz]ation|development|analysis|design|evaluation|study|applications?|advances|towards?|"
                   r"investigation|review|overview|modell?ing|role|use|impact) (of|in|for|on) (the )?", re.I)
 

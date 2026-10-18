@@ -72,8 +72,13 @@ def _key_words(name: str) -> set[str]:
     return {w[:-1] if len(w) > 4 and w.endswith("s") else w for w in words if w not in _LINK_WORDS}
 
 
+def _stems(name: str) -> set[str]:
+    """Основы слов для сравнения синонимов: «superconductivity» и «superconductors» — одна основа «superc»."""
+    return {w[:6] if len(w) >= 7 else w for w in _key_words(name)}
+
+
 def near_duplicate(a: str, b: str) -> bool:
-    wa, wb = _key_words(a), _key_words(b)
+    wa, wb = _stems(a), _stems(b)
     if not wa or not wb:
         return False
     return len(wa & wb) / len(wa | wb) >= 0.6

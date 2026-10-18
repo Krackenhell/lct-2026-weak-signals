@@ -30,3 +30,14 @@ from app.llm.terms import normalize_name_ru
 ])
 def test_normalize_name_ru(en, ru, expected):
     assert normalize_name_ru(en, ru) == expected
+
+
+@pytest.mark.parametrize("en, ru, expected", [
+    ("fractional chern insulator", "фракционный чирн-изолятор", "дробный черновский изолятор"),  # глоссарий (реальный ответ 19.10)
+    ("twisted multilayer graphene", "скрученный мультиграфен", "скрученный многослойный графен"),
+    ("evaporation methods for perovskite-silicon tandems", "Перовскит-силиконовые тандемные элементы", "Перовскит-кремниевые тандемные элементы"),
+    ("silicone microfluidic chips", "силиконовые микрофлюидные чипы", "силиконовые микрофлюидные чипы"),  # silicone — действительно силикон
+    ("fractional quantum anomalous hall effect", "фракционный квантовый аномальный эффект Холла", "дробный квантовый аномальный эффект Холла"),
+])
+def test_conditional_calques(en, ru, expected):
+    assert normalize_name_ru(en, ru) == expected
