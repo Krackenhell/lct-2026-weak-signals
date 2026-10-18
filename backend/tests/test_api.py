@@ -123,3 +123,10 @@ def test_spa_routes_served(client):
     # Интерфейс отдаётся самим backend: прямые ссылки на страницы открываются без nginx.
     r = client.get("/runs/1")
     assert r.status_code == 200 and "<div id=" in r.text
+
+
+def test_list_summary_is_first_sentence_without_refs_or_template():
+    from app.api.routes import _first_sentence
+
+    assert _first_sentence("Ромбоэдрический графен [1, 2] — многослойная модификация. Второе предложение.") == "Ромбоэдрический графен — многослойная модификация."
+    assert _first_sentence("«x» — технология, выявленная в документах по запросу. Подробнее — позже.") == ""

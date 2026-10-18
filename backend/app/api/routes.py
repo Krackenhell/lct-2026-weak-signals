@@ -63,6 +63,8 @@ def _doc_out(d: Document) -> dict:
 
 def _first_sentence(text: str, limit: int = 220) -> str:
     """Первое предложение описания без ссылок [n] — строка под названием в списке сигналов."""
+    if "выявленная в документах по запросу" in (text or ""):
+        return ""  # шаблонное описание (LLM не вернула своё) — в списке не показываем
     s = re.sub(r"\s*\[\d+(?:[,\s]+\d+)*\]", "", text or "").strip()
     m = re.match(r"(.+?[.!?])(\s|$)", s)
     s = m.group(1) if m else s
