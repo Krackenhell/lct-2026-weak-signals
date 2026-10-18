@@ -1,7 +1,8 @@
 @echo off
-rem Запуск стенда на Windows без Docker: Python 3.11+ и файл .env в корне репозитория.
-cd /d "%~dp0backend"
-if not exist .venv python -m venv .venv
-.venv\Scripts\python -m pip install -q -r requirements.txt
+rem Запуск стенда на Windows без Docker: Python 3.11+, Git и файл .env в корне репозитория.
+rem Сторож (deploy\supervisor.py) сам обновляет стенд из GitHub (ветка main) и перезапускает сервер при сбое.
+cd /d "%~dp0"
+if not exist backend\.venv python -m venv backend\.venv
 set PYTHONIOENCODING=utf-8
-.venv\Scripts\python -m uvicorn app.main:app --host 0.0.0.0 --port 80
+if "%PORT%"=="" set PORT=80
+backend\.venv\Scripts\python deploy\supervisor.py

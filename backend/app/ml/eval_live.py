@@ -117,12 +117,52 @@ async def main_async(args) -> None:
             plan += [(None, q, True) for q in EXTRA_QUERIES]
     if args.nonsense:
         plan = [(None, q, False) for q in NONSENSE_QUERIES] + plan  # сначала — быстрые контрольные отказы
+    for r in report["runs"]:
+        r.pop("_new", None)
     for dom, q, wl in plan:
         run_id = await run_query(q, wl)
-        summary = {"domain": dom, "mode": "с базой отслеживания" if wl else "только обнаружение", **summarize(run_id, dom)}
+        summary = {"domain": dom, "mode": "с базой отслеживания" if wl else "только обнаружение", **summarize(run_id, dom), "_new": True}
         report["runs"].append(summary)
-        path.write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+        path.write_text(json.dumps({"runs": [{k: v for k, v in r.items() if k != "_new"} for r in report["runs"]]}, ensure_ascii=False, indent=1), encoding="utf-8")
         print(json.dumps({k: summary.get(k) for k in ("domain", "mode", "query", "status", "seconds", "n_signals", "passport", "watch", "dataset_hits_in_top15", "recall_of_domain", "new_candidates_in_top")}, ensure_ascii=False), flush=True)
+    if plan and getattr(args, "record", True):
+        print("Журнал испытаний:", record(report, getattr(args, "label", "")))
+
+
+def record(report: dict, label: str) -> Path:
+    """Сохраняет полный результат прогона в data/experiments и дописывает строку в журнал испытаний."""
+    from datetime import datetime
+
+    s = get_settings()
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+    exp_dir = Path(s.model_dir).parent / "experiments"
+    exp_dir.mkdir(exist_ok=True)
+    runs = [r for r in report["runs"] if r.get("_new")]
+    providers = {}
+    with SessionLocal() as db:
+        for r in runs:
+            run = db.get(Run, r["run_id"])
+            if run and run.providers:
+                providers = run.providers
+                r["cost_rub"] = ((run.stats or {}).get("cost") or {}).get("total_rub")
+    out = exp_dir / f"{stamp}.json"
+    clean = [{k: v for k, v in r.items() if k != "_new"} for r in runs]
+    out.write_text(json.dumps({"label": label, "date": stamp, "providers": providers, "runs": clean}, ensure_ascii=False, indent=1), encoding="utf-8")
+    journal = Path(s.model_dir).parents[2] / "docs" / "ЖУРНАЛ_ИСПЫТАНИЙ.md"
+    if journal.exists():
+        lines = [f"\n### {stamp.replace('_', ' ')} — {label or 'живой прогон'}\n",
+                 f"Модели: {providers.get('decision_model', '—')}, LLM {providers.get('llm', '—')}. Файл: `backend/data/experiments/{out.name}`.\n",
+                 "| Запрос | Режим | Время | Сигналов (A / B) | Совпадений с датасетом | Стоимость, ₽ |", "|---|---|---|---|---|---|"]
+        for r in clean:
+            sec = r.get("seconds")
+            t = f"{sec // 60} мин {sec % 60} с" if sec is not None else "—"
+            pp = r.get("passport") or {}
+            hits = f"{r['dataset_hits_in_top15']} из {r['dataset_signals_in_domain']}" if r.get("dataset_signals_in_domain") else "—"
+            sig = "отказ" if r.get("status") == "rejected" else f"{r['n_signals']} ({pp.get('A', 0)} / {pp.get('B', 0)})"
+            lines.append(f"| {r['query']} | {r['mode']} | {t} | {sig} | {hits} | {r.get('cost_rub', '—')} |")
+        with journal.open("a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    return out
 
 
 def main() -> None:
@@ -133,7 +173,9 @@ def main() -> None:
     ap.add_argument("--extras", action="store_true", help="добавить темы вне датасета")
     ap.add_argument("--nonsense", action="store_true", help="добавить контрольные бессмысленные запросы («Привет»)")
     ap.add_argument("--fresh", action="store_true", help="начать новый live_eval.json (старый сохраняется как live_eval_before.json)")
-    asyncio.run(main_async(ap.parse_args()))
+    ap.add_argument("--label", default="", help="что проверяет прогон — для журнала испытаний (docs/ЖУРНАЛ_ИСПЫТАНИЙ.md)")
+    args = ap.parse_args()
+    asyncio.run(main_async(args))
 
 
 if __name__ == "__main__":
