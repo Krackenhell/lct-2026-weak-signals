@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4.1"
 
+    # Экономика запроса. Пусто — ориентировочный тариф провайдера из app/pipeline/cost.py; локальные модели — 0.
+    llm_rub_per_1k_tokens: float | None = None
+    decision_rub_per_call: float = 0.0  # Jev: по договору с TypeSafe (на хакатоне — без оплаты); Kev локально — 0
+
     # Источники
     openalex_api_key: str = ""
     openalex_email: str = ""

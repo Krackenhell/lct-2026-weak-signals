@@ -97,6 +97,12 @@ export type CandidateFull = CandidateBrief & {
   feedback?: Feedback;
 };
 
+export type Cost = {
+  total_rub: number;
+  lines: { provider: string; model: string; calls: number; tokens: number; rub: number; tariff: string }[];
+  sources: string;
+};
+
 export type Changes = { prev_run_id: number; prev_date: string | null; new: string[]; dropped: string[]; kept: number } | null;
 
 export type Run = {

@@ -159,3 +159,31 @@ def test_precompute_runs_topics_once(monkeypatch):
     with SessionLocal() as s:
         assert all(s.get(Run, i).status == "done" for i in first)
     assert asyncio.run(precompute.refresh_once(["edge AI предрасчёт", "робототехника предрасчёт"])) == []  # свежие — не пересчитываются
+
+
+def test_cost_of_request_in_rubles(monkeypatch):
+    from app.config import get_settings
+    from app.llm.providers import OpenAICompatible
+    from app.pipeline import cost
+
+    usage = {"gigachat": {"model": "GigaChat-2-Max", "calls": 20, "tokens": 50_000}, "jev": {"model": "jev-latest", "calls": 30, "tokens": 0}}
+    c = cost.estimate(usage)
+    assert c["total_rub"] == 97.5 and {x["provider"] for x in c["lines"]} == {"gigachat", "jev"}  # 50 тыс. токенов × 1,95 ₽
+    monkeypatch.setenv("DECISION_RUB_PER_CALL", "0.5")
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://ollama:11434/v1")
+    get_settings.cache_clear()
+    try:
+        c = cost.estimate({"openai": {"model": "qwen3:8b", "calls": 5, "tokens": 9000}, "jev": {"model": "jev-latest", "calls": 30, "tokens": 0}})
+        assert c["total_rub"] == 15.0  # локальная LLM бесплатна, Jev — 30 × 0,5 ₽
+    finally:
+        get_settings.cache_clear()
+
+    async def fake_post(*a, **kw):
+        req = httpx.Request("POST", "http://x")
+        return httpx.Response(200, request=req, json={"choices": [{"message": {"content": "ok"}}], "usage": {"prompt_tokens": 7, "completion_tokens": 3}})
+
+    llm = OpenAICompatible()
+    monkeypatch.setattr(llm._client, "post", fake_post)
+    res = asyncio.run(llm.complete("s", "u"))
+    assert res.text == "ok" and res.usage == {"prompt": 7, "completion": 3, "total": 10}

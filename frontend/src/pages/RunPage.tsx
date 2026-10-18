@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
+import { api, CandidateBrief, Changes, Cost, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
 import { OriginBadge, PassportBadge, RadarBadge, RobustnessBadge, ScoreBadge, WindowBadge } from "../components/ui";
 
 type Tab = "signals" | "radar" | "watch" | "excluded" | "log";
@@ -41,6 +41,7 @@ export default function RunPage() {
   const watch = run.watch ?? [];
   const solid = run.signals.filter((c) => c.passport?.level === "A" || c.passport?.level === "B").length;
   const changes = s.changes as Changes | undefined;
+  const cost = s.cost as Cost | undefined;
   const seconds = run.finished_at && run.created_at ? Math.round((Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000) : null;
 
   async function recompute() {
@@ -109,6 +110,12 @@ export default function RunPage() {
         <div className="kpi"><div className="label">Слабых сигналов в топе</div><div className="value accent">{run.status === "done" ? run.signals.length : "…"}</div></div>
         <div className="kpi"><div className="label">Доказательства A/B (подтверждено ≥ 3 док.)</div><div className="value good">{run.status === "done" ? solid : "…"}</div></div>
         <div className="kpi"><div className="label">Наблюдать: мало данных</div><div className="value">{run.status === "done" ? watch.length : "…"}</div></div>
+        {cost && (
+          <div className="kpi" title={cost.lines.map((l) => `${l.provider} ${l.model}: ${l.calls} вызовов, ${l.tokens.toLocaleString("ru-RU")} токенов, ${l.tariff} → ${l.rub} ₽`).concat(cost.sources).join("\n")}>
+            <div className="label">Стоимость запроса (наведите для расчёта)</div>
+            <div className="value">{cost.total_rub.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</div>
+          </div>
+        )}
       </div>}
 
       {run.status === "done" && (

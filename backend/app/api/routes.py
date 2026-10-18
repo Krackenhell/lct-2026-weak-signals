@@ -318,6 +318,10 @@ def metrics(db: Session = Depends(get_session)) -> str:
     done = db.query(Run).filter(Run.status == "done", Run.finished_at.isnot(None)).order_by(desc(Run.id)).limit(50).all()
     secs = [(r.finished_at - r.created_at).total_seconds() for r in done if r.created_at]
     gauge("weak_signals_run_seconds_avg", "Среднее время обработки запроса (последние 50), с", [({}, round(sum(secs) / len(secs), 1) if secs else 0)])
+    costs = [(r.stats or {}).get("cost", {}).get("total_rub") for r in done]
+    costs = [c for c in costs if c is not None]
+    gauge("weak_signals_run_cost_rub_avg", "Средняя стоимость запроса (последние 50), руб.", [({}, round(sum(costs) / len(costs), 2) if costs else 0)])
+    gauge("weak_signals_runs_in_progress", "Запросы в очереди и в работе", [({}, db.query(Run).filter(Run.status.in_(["queued", "running"])).count())])
     fails: dict[str, list[int]] = {}
     for r in db.query(Run).filter(Run.status == "done").order_by(desc(Run.id)).limit(20):
         for host, st in ((r.stats or {}).get("http") or {}).items():

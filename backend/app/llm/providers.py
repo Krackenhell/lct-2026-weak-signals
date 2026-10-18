@@ -9,7 +9,7 @@ import json
 import re
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import httpx
 
@@ -24,6 +24,12 @@ class LLMResult:
     latency_ms: int
     ok: bool = True
     error: str = ""
+    usage: dict = field(default_factory=dict)  # {"prompt", "completion", "total"} — токены для расчёта стоимости
+
+
+def _usage(prompt, completion, total=None) -> dict:
+    p, c = int(prompt or 0), int(completion or 0)
+    return {"prompt": p, "completion": c, "total": int(total or p + c)}
 
 
 class BaseLLM:
@@ -33,7 +39,8 @@ class BaseLLM:
     def __init__(self, concurrency: int = 4) -> None:
         self._sem = asyncio.Semaphore(concurrency)
 
-    async def _complete(self, system: str, user: str, temperature: float, max_tokens: int) -> str:
+    async def _complete(self, system: str, user: str, temperature: float, max_tokens: int) -> str | tuple[str, dict]:
+        """Текст ответа или (текст, токены)."""
         raise NotImplementedError
 
     async def complete(self, system: str, user: str, temperature: float = 0.2, max_tokens: int = 1500) -> LLMResult:
@@ -42,8 +49,9 @@ class BaseLLM:
             last = ""
             for attempt in range(3):
                 try:
-                    text = await self._complete(system, user, temperature, max_tokens)
-                    return LLMResult(text, self.provider, self.model, int((time.perf_counter() - t) * 1000))
+                    out = await self._complete(system, user, temperature, max_tokens)
+                    text, usage = out if isinstance(out, tuple) else (out, {})
+                    return LLMResult(text, self.provider, self.model, int((time.perf_counter() - t) * 1000), usage=usage)
                 except (httpx.HTTPError, KeyError, ValueError) as exc:
                     last = str(exc)
                     rate_limited = isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429
@@ -89,7 +97,9 @@ class GigaChat(BaseLLM):
             json={"model": self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": temperature, "max_tokens": max_tokens},
         )
         r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"]
+        d = r.json()
+        u = d.get("usage") or {}
+        return d["choices"][0]["message"]["content"], _usage(u.get("prompt_tokens"), u.get("completion_tokens"), u.get("total_tokens"))
 
 
 class YandexGPT(BaseLLM):
@@ -112,7 +122,9 @@ class YandexGPT(BaseLLM):
             },
         )
         r.raise_for_status()
-        return r.json()["result"]["alternatives"][0]["message"]["text"]
+        d = r.json()["result"]
+        u = d.get("usage") or {}
+        return d["alternatives"][0]["message"]["text"], _usage(u.get("inputTextTokens"), u.get("completionTokens"), u.get("totalTokens"))
 
 
 class OpenAICompatible(BaseLLM):
@@ -133,7 +145,9 @@ class OpenAICompatible(BaseLLM):
             json={"model": self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": temperature, "max_tokens": max_tokens},
         )
         r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"]
+        d = r.json()
+        u = d.get("usage") or {}
+        return d["choices"][0]["message"]["content"], _usage(u.get("prompt_tokens"), u.get("completion_tokens"), u.get("total_tokens"))
 
 
 class NoLLM(BaseLLM):
