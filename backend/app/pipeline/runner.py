@@ -8,6 +8,7 @@ import logging
 import re
 import time
 import traceback
+import weakref
 from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -24,6 +25,7 @@ from app.llm.tasks import check_query, plan_query, summarize_sources, write_doss
 from app.llm.terms import normalize_name_ru
 from app.ml.model import SignalModel
 from app.models import Candidate, Document, ModelCall, Run
+from app.pipeline import cost as cost_mod
 from app.pipeline import discovery, evidence as evidence_mod
 from app.pipeline import links as links_mod
 from app.pipeline import passport as pp_mod
@@ -38,6 +40,19 @@ from app.pipeline.trust import classify
 log = logging.getLogger(__name__)
 
 
+# Клиенты моделей и ограничитель параллельных запусков — общие на процесс (точнее, на цикл событий).
+# Раньше каждый запуск создавал свои HTTP-клиенты GigaChat и Jev и не закрывал их, а лимит «1 поток GigaChat»
+# действовал внутри запуска: три одновременных запроса жюри давали три потока и ошибки 429 на бесплатном тарифе.
+_SHARED: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict]" = weakref.WeakKeyDictionary()
+
+
+def _shared(key, factory):
+    per_loop = _SHARED.setdefault(asyncio.get_running_loop(), {})
+    if key not in per_loop:
+        per_loop[key] = factory()
+    return per_loop[key]
+
+
 class RunContext:
     def __init__(self, run_id: int):
         self.run_id = run_id
@@ -46,6 +61,7 @@ class RunContext:
         self.timing: dict[str, float] = {}
         self._t = time.perf_counter()
         self._phase = "старт"
+        self.usage: dict[str, dict] = {}  # провайдер модели -> вызовы и токены (для стоимости запроса)
 
     def stage(self, text: str, progress: int) -> None:
         self.run.stage = text
@@ -62,7 +78,14 @@ class RunContext:
         self.timing[self._phase] = round(self.timing.get(self._phase, 0) + time.perf_counter() - self._t, 1)
         return self.timing
 
-    def log_call(self, provider: str, model: str, purpose: str, subject: str, request: dict, response: dict, latency_ms: int, ok: bool = True) -> None:
+    def log_call(self, provider: str, model: str, purpose: str, subject: str, request: dict, response: dict, latency_ms: int, ok: bool = True,
+                 usage: dict | None = None) -> None:
+        if usage:
+            response = {**response, "usage": usage}
+        if provider not in ("none", "heuristic"):  # шаблоны и офлайн-правила бесплатны и в расчёт стоимости не входят
+            u = self.usage.setdefault(provider, {"model": model, "calls": 0, "tokens": 0})
+            u["calls"] += 1
+            u["tokens"] += int((usage or {}).get("total") or (usage or {}).get("total_tokens") or 0)
         self.session.add(
             ModelCall(run_id=self.run_id, provider=provider, model=model, purpose=purpose, subject=subject[:300], request=request, response=response, latency_ms=latency_ms, ok=ok)
         )
@@ -101,13 +124,34 @@ def _changes(session: Session, run: Run, names: list[str]) -> dict | None:
 async def execute(run_id: int) -> None:
     ctx = RunContext(run_id)
     s = get_settings()
-    http = None
     try:
         # Подключения к источникам и моделям — внутри обработки ошибок: сбой здесь не должен оставлять запуск
         # «в очереди» навсегда (найдено стресс-тестом).
+        # Очередь: одновременно обрабатываются не больше MAX_PARALLEL_RUNS запросов, остальные ждут
+        # со статусом «в очереди» — лимиты источников и моделей общие, а сервер не должен падать от наплыва.
+        ctx.stage("В очереди: ждёт завершения других запросов", 0)
+        gate = _shared(("runs", s.max_parallel_runs), lambda: asyncio.Semaphore(max(1, s.max_parallel_runs)))
+        async with gate:
+            await _execute(ctx, s)
+    except Exception as exc:  # запуск не должен «зависнуть»: фиксируем ошибку в БД
+        log.exception("run %s failed", run_id)
+        ctx.session.rollback()
+        ctx.run.status = "failed"
+        ctx.run.error = f"{exc}\n{traceback.format_exc()[-2000:]}"
+        ctx.session.commit()
+    finally:
+        ctx.run.finished_at = datetime.now(timezone.utc)
+        ctx.session.commit()
+        ctx.session.close()
+
+
+async def _execute(ctx: RunContext, s) -> None:
+    run_id = ctx.run_id
+    http = None
+    try:
         http = HttpClient()
-        llm = get_llm()
-        dm = get_decision_model()
+        llm = _shared(("llm", get_llm), get_llm)
+        dm = _shared(("dm", get_decision_model), get_decision_model)
         model = SignalModel.load()
         query = ctx.run.query
         ctx.run.status = "running"
@@ -121,7 +165,7 @@ async def execute(run_id: int) -> None:
         ctx.stage("Проверка запроса", 1)
         verdict, res = await check_query(llm, query)
         if res:
-            ctx.log_call(res.provider, res.model, "проверка запроса", query, {"query": query}, {"text": res.text[:1000], "verdict": verdict}, res.latency_ms, res.ok)
+            ctx.log_call(res.provider, res.model, "проверка запроса", query, {"query": query}, {"text": res.text[:1000], "verdict": verdict}, res.latency_ms, res.ok, usage=res.usage)
         ctx.run.stats = {**(ctx.run.stats or {}), "query_check": verdict}
         if not verdict["ok"]:
             ctx.run.status = "rejected"
@@ -133,7 +177,7 @@ async def execute(run_id: int) -> None:
         ctx.stage("Расширение запроса: подтемы и поисковые фразы", 3)
         plan, res = await plan_query(llm, query)
         if res:
-            ctx.log_call(res.provider, res.model, "расширение запроса", query, {"query": query}, {"text": res.text[:3000]}, res.latency_ms, res.ok)
+            ctx.log_call(res.provider, res.model, "расширение запроса", query, {"query": query}, {"text": res.text[:3000]}, res.latency_ms, res.ok, usage=res.usage)
         plan = {**plan, "query": query}  # исходная формулировка нужна сбору корпуса (выбор тематических баз)
         ctx.run.plan = plan
         ctx.session.commit()
@@ -149,7 +193,7 @@ async def execute(run_id: int) -> None:
         mined = discovery.mine_phrases(corpus)
         extracted, llm_res = await discovery.llm_candidates(llm, plan.get("topic_en", query), corpus)
         for r in llm_res:
-            ctx.log_call(r.provider, r.model, "извлечение технологий из документов", query, {"docs": "пачка документов корпуса"}, {"text": r.text[:3000]}, r.latency_ms, r.ok)
+            ctx.log_call(r.provider, r.model, "извлечение технологий из документов", query, {"docs": "пачка документов корпуса"}, {"text": r.text[:3000]}, r.latency_ms, r.ok, usage=r.usage)
         watch = discovery.watchlist(query, plan, (ctx.run.options or {}).get("use_watchlist"))
         pool = discovery.merge(extracted + mined + watch)
         # Предварительный отбор: сначала подтверждённые несколькими документами/методами.
@@ -237,9 +281,15 @@ async def execute(run_id: int) -> None:
 
         async def guarded(c):
             async with sem:
-                return await assess(c)
+                try:
+                    return await assess(c)
+                except Exception:  # сбой на одном кандидате (неожиданный ответ источника) не роняет весь запрос
+                    log.exception("run %s: candidate %r failed", run_id, c.get("name_en"))
+                    return None
 
-        assessed = await asyncio.gather(*(guarded(c) for c in pool))
+        assessed = [a for a in await asyncio.gather(*(guarded(c) for c in pool)) if a is not None]
+        if len(assessed) < len(pool):
+            ctx.run.stats = {**ctx.run.stats, "candidate_errors": len(pool) - len(assessed)}
 
         # Повторный опрос тех, по кому decision-модель не ответила (обычно таймаут под нагрузкой).
         async def reask(a: dict) -> None:
@@ -266,7 +316,7 @@ async def execute(run_id: int) -> None:
 
         for a in assessed:
             r = a["res"]
-            ctx.log_call(r.provider, r.model, "ответы на вопросы-признаки и проверка документов", a["c"]["name_en"], {"state": a["state"][:4000], "questions": list(a["questions"])}, {"answers": r.answers, "error": r.error, "passport": a["passport"]}, r.latency_ms, r.ok)
+            ctx.log_call(r.provider, r.model, "ответы на вопросы-признаки и проверка документов", a["c"]["name_en"], {"state": a["state"][:4000], "questions": list(a["questions"])}, {"answers": r.answers, "error": r.error, "passport": a["passport"]}, r.latency_ms, r.ok, usage=r.usage)
         ctx.session.commit()
 
         # 5. Решение: сигнал / исключение
@@ -336,7 +386,11 @@ async def execute(run_id: int) -> None:
 
         async def guarded_window(cand):
             async with sem_w:
-                return await window(cand)
+                try:
+                    return await window(cand)
+                except Exception:
+                    log.exception("run %s: russia window for %r failed", run_id, cand.name)
+                    return cand, {"status": "unknown", "label": "Нет данных", "text": "Не удалось проверить русскоязычные источники.", "world": None, "ru": None, "failed": ["error"]}
 
         async def windows_phase():
             if not (s.russia_window and signals):
@@ -393,7 +447,14 @@ async def execute(run_id: int) -> None:
         async def dossiers_phase():
             if llm.provider == "none":
                 return []
-            return await asyncio.gather(*(dossier(c) for c in signals))
+            async def safe_dossier(cand):
+                try:
+                    return await dossier(cand)
+                except Exception:  # досье — не критичный шаг: остаётся шаблонное
+                    log.exception("run %s: dossier for %r failed", run_id, cand.name)
+                    return None
+
+            return [r for r in await asyncio.gather(*(safe_dossier(c) for c in signals)) if r is not None]
 
         win_res, link_res, dos_res = await asyncio.gather(windows_phase(), links_phase(), dossiers_phase())
         for cand, w in win_res:
@@ -415,10 +476,10 @@ async def execute(run_id: int) -> None:
 
         if dos_res:
             for cand, data, res, check in dos_res:
-                ctx.log_call(res.provider, res.model, "аналитическое досье", cand.name, {"evidence": len(by_name[cand.name]["items"])}, {"text": res.text[:4000]}, res.latency_ms, res.ok)
+                ctx.log_call(res.provider, res.model, "аналитическое досье", cand.name, {"evidence": len(by_name[cand.name]["items"])}, {"text": res.text[:4000]}, res.latency_ms, res.ok, usage=res.usage)
                 if check:
                     r, claims = check
-                    ctx.log_call(r.provider, r.model, "проверка утверждений досье", cand.name, {"claims": [c for _, c in claims]}, {"answers": r.answers, "error": r.error}, r.latency_ms, r.ok)
+                    ctx.log_call(r.provider, r.model, "проверка утверждений досье", cand.name, {"claims": [c for _, c in claims]}, {"answers": r.answers, "error": r.error}, r.latency_ms, r.ok, usage=r.usage)
                 if data:
                     cand.dossier = {**cand.dossier, **{k: v for k, v in data.items() if v}, "generated_by": f"{res.provider}:{res.model}"}
                     cand.name_ru = normalize_name_ru(cand.name, data.get("name_ru")) or cand.name_ru
@@ -434,7 +495,7 @@ async def execute(run_id: int) -> None:
                 return chunk, *(await summarize_sources(llm, [{"title": d.title, "snippet": d.snippet} for d in chunk]))
 
             for chunk, sums, res in await asyncio.gather(*(summ(ch) for ch in chunks)):
-                ctx.log_call(res.provider, res.model, "резюме источников на русском", f"{len(chunk)} источников", {}, {"text": res.text[:3000]}, res.latency_ms, res.ok)
+                ctx.log_call(res.provider, res.model, "резюме источников на русском", f"{len(chunk)} источников", {}, {"text": res.text[:3000]}, res.latency_ms, res.ok, usage=res.usage)
                 for i, d in enumerate(chunk):
                     if i in sums:
                         d.summary_ru = sums[i]
@@ -463,19 +524,17 @@ async def execute(run_id: int) -> None:
             "changes": _changes(ctx.session, ctx.run, [c.name for c in signals]),
             "http": http.stats,
         }
+        if not corpus and not any(st.get("ok") or st.get("cached") for st in http.stats.values()):
+            # Пустая выдача без объяснения выглядела бы как «технологий нет»; на деле сервер не достучался до источников.
+            ctx.run.stats = {**ctx.run.stats, "sources_down": True}
+            ctx.run.error = ("Ни один открытый источник не ответил, поэтому сигналов нет. Проверьте доступ сервера в интернет "
+                             "(прокси, файрвол) и повторите запрос кнопкой «Пересчитать заново».")
         ctx.run.status = "done"
         ctx.stage("Готово", 100)
         ctx.run.stats = {**ctx.run.stats, "timing": ctx.finish_timing()}
         ctx.stage("Готово", 100)
-    except Exception as exc:  # запуск не должен «зависнуть»: фиксируем ошибку в БД
-        log.exception("run %s failed", run_id)
-        ctx.session.rollback()
-        ctx.run.status = "failed"
-        ctx.run.error = f"{exc}\n{traceback.format_exc()[-2000:]}"
-        ctx.session.commit()
     finally:
-        ctx.run.finished_at = datetime.now(timezone.utc)
-        ctx.session.commit()
-        ctx.session.close()
+        # Стоимость считается и для отклонённых запросов: проверка запроса — тоже вызов модели.
+        ctx.run.stats = {**(ctx.run.stats or {}), "cost": cost_mod.estimate(ctx.usage)}
         if http is not None:
             await http.close()

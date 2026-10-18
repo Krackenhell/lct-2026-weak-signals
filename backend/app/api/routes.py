@@ -38,35 +38,14 @@ def require_token(x_api_token: str | None = Header(default=None), token: str | N
 class SearchIn(BaseModel):
     query: str = Field(min_length=2, max_length=300)
     use_watchlist: bool | None = None  # None — по настройке сервера
-    # Разрешено организаторами при условии раскрытия: если такой же запрос уже посчитан вживую за последние
-    # REUSE_DAYS дней, отдаём готовую выдачу мгновенно (с датой и кнопкой «посчитать заново»).
-    reuse: bool = False
-
-
-REUSE_DAYS = 7
-
-
-def _norm_query(q: str) -> str:
-    return re.sub(r"[^\w]+", " ", (q or "").lower()).strip()
-
-
-def _reusable(db: Session, query: str, use_watchlist: bool | None) -> Run | None:
-    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=REUSE_DAYS)
-    key = _norm_query(query)
-    for r in db.query(Run).filter(Run.status == "done", Run.created_at >= since).order_by(desc(Run.id)).limit(300):
-        if _norm_query(r.query) != key or (r.providers or {}).get("decision_model", "").startswith("heuristic"):
-            continue
-        if use_watchlist is not None and bool((r.options or {}).get("use_watchlist")) != use_watchlist:
-            continue
-        return r
-    return None
+    fresh: bool = False  # True — пересчитать, даже если свежий результат по этой теме уже есть
 
 
 def _run_out(r: Run) -> dict:
     return {
         "id": r.id, "query": r.query, "status": r.status, "stage": r.stage, "progress": r.progress, "error": r.error,
         "plan": r.plan, "stats": r.stats, "providers": r.providers, "options": r.options or {},
-        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "created_at": _aware(r.created_at).isoformat() if r.created_at else None,
         "finished_at": r.finished_at.isoformat() if r.finished_at else None,
     }
 
@@ -106,11 +85,43 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
     return out
 
 
+def _norm_query(q: str) -> str:
+    return " ".join(re.findall(r"\w+", q.lower().replace("ё", "е")))
+
+
+def _aware(dt: datetime | None) -> datetime | None:
+    return dt.replace(tzinfo=timezone.utc) if dt and dt.tzinfo is None else dt  # SQLite не хранит часовой пояс
+
+
+def _reusable_run(db: Session, query: str, use_watchlist: bool) -> Run | None:
+    """Тот же запрос уже выполняется или выполнен недавно той же рабочей моделью — отдаём его сразу.
+
+    Повторный клик жюри не запускает вторую обработку, а готовые темы открываются за секунду, а не за 5 минут.
+    Свежесть — REUSE_HOURS (по умолчанию сутки); «Пересчитать» в интерфейсе передаёт fresh=true."""
+    hours = get_settings().reuse_hours
+    key = _norm_query(query)
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    llm = _current_llm_label()
+    recent = db.query(Run).filter(Run.status.in_(["queued", "running", "done"])).order_by(desc(Run.id)).limit(300).all()
+    for r in recent:
+        if _norm_query(r.query) != key or bool((r.options or {}).get("use_watchlist", get_settings().use_watchlist)) != use_watchlist:
+            continue
+        if r.status in ("queued", "running"):
+            return r
+        fresh_enough = hours > 0 and (_aware(r.created_at) or since) > since
+        if fresh_enough and (r.providers or {}).get("llm") == llm and (r.stats or {}).get("signals"):
+            return r
+    return None
+
+
 @router.post("/search")
 async def start_search(body: SearchIn, db: Session = Depends(get_session), _: None = Depends(require_token)) -> dict:
-    if body.reuse and (old := _reusable(db, body.query, body.use_watchlist)):
-        return {**_run_out(old), "reused": True}
-    options = {} if body.use_watchlist is None else {"use_watchlist": body.use_watchlist}
+    options ={} if body.use_watchlist is None else {"use_watchlist": body.use_watchlist}
+    if not body.fresh:
+        watch = get_settings().use_watchlist if body.use_watchlist is None else body.use_watchlist
+        prev = _reusable_run(db, body.query, watch)
+        if prev:
+            return {**_run_out(prev), "reused": True}
     run = Run(query=body.query.strip(), options=options)
     db.add(run)
     db.commit()
@@ -308,6 +319,10 @@ def metrics(db: Session = Depends(get_session)) -> str:
     done = db.query(Run).filter(Run.status == "done", Run.finished_at.isnot(None)).order_by(desc(Run.id)).limit(50).all()
     secs = [(r.finished_at - r.created_at).total_seconds() for r in done if r.created_at]
     gauge("weak_signals_run_seconds_avg", "Среднее время обработки запроса (последние 50), с", [({}, round(sum(secs) / len(secs), 1) if secs else 0)])
+    costs = [(r.stats or {}).get("cost", {}).get("total_rub") for r in done]
+    costs = [c for c in costs if c is not None]
+    gauge("weak_signals_run_cost_rub_avg", "Средняя стоимость запроса (последние 50), руб.", [({}, round(sum(costs) / len(costs), 2) if costs else 0)])
+    gauge("weak_signals_runs_in_progress", "Запросы в очереди и в работе", [({}, db.query(Run).filter(Run.status.in_(["queued", "running"])).count())])
     fails: dict[str, list[int]] = {}
     for r in db.query(Run).filter(Run.status == "done").order_by(desc(Run.id)).limit(20):
         for host, st in ((r.stats or {}).get("http") or {}).items():

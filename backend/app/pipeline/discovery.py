@@ -58,6 +58,22 @@ JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion"
 JUNK_LAST = {"digital", "financial", "technological", "sized", "driven", "aware", "enabled", "open-source", "related"}
 
 
+# Хвосты и зачины, которые делают из технологии название раздела или статьи: «solid state battery development»,
+# «Dendrimer applications», «Characterization of soft robotic materials». Срезаем — так и поиск по фразе точнее.
+TAIL_WORDS = {"development", "developments", "application", "applications", "technology", "technologies", "solution", "solutions",
+              "research", "study", "studies", "analysis", "advances", "trends"}
+HEAD = re.compile(r"^(characteri[sz]ation|development|analysis|design|evaluation|study|applications?|advances|towards?|"
+                  r"investigation|review|overview|modell?ing|role|use|impact) (of|in|for|on) (the )?", re.I)
+
+
+def clean_name(name: str) -> str:
+    n = HEAD.sub("", re.sub(r"\s+", " ", name.replace("_", " ")).strip())
+    words = n.split()
+    while len(words) > 1 and words[-1].lower() in TAIL_WORDS:
+        words.pop()
+    return " ".join(words) or name.strip()
+
+
 def _junk(low: list[str]) -> bool:
     return low[0] in JUNK_FIRST or low[-1] in JUNK_LAST or any(t in JUNK_ANY for t in low) or "and" in low[1:-1]
 
@@ -258,7 +274,7 @@ def merge(cands: list[dict]) -> list[dict]:
     """Склеивает дубли и синонимы по нормализованному названию и пересечению слов."""
     merged: list[dict] = []
     for c in cands:
-        c = {**c, "name_en": c["name_en"].replace("_", " ").strip()}
+        c = {**c, "name_en": clean_name(c["name_en"])}
         key = _norm(c["name_en"])
         if not key or key in GENERIC:
             continue

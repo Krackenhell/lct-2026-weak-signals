@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { api, CandidateBrief, Changes, Cost, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
 import { OriginBadge, PassportBadge, RadarBadge, RobustnessBadge, ScoreBadge, WindowBadge } from "../components/ui";
 
 type Tab = "signals" | "radar" | "watch" | "excluded" | "log";
@@ -11,9 +11,7 @@ export default function RunPage() {
   const [tab, setTab] = useState<Tab>("signals");
   const [log, setLog] = useState<ModelCall[] | null>(null);
   const [err, setErr] = useState("");
-  const [fresh, setFresh] = useState(false);
-  const [params] = useSearchParams();
-  const reused = params.get("reused") === "1";
+  const [rerun, setRerun] = useState(false);
   const nav = useNavigate();
 
   useEffect(() => {
@@ -43,6 +41,20 @@ export default function RunPage() {
   const watch = run.watch ?? [];
   const solid = run.signals.filter((c) => c.passport?.level === "A" || c.passport?.level === "B").length;
   const changes = s.changes as Changes | undefined;
+  const cost = s.cost as Cost | undefined;
+  const seconds = run.finished_at && run.created_at ? Math.round((Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000) : null;
+
+  async function recompute() {
+    setRerun(true);
+    try {
+      const r = await api.search(run!.query, !!run!.options?.use_watchlist, true);
+      nav(`/runs/${r.id}`);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setRerun(false);
+    }
+  }
 
   return (
     <>
@@ -55,16 +67,13 @@ export default function RunPage() {
         <span>· Режим: <b>{run.options?.use_watchlist ? "мониторинг (с базой отслеживания)" : "чистое обнаружение"}</b></span>
       </div>
 
-      {reused && (
-        <div className="panel" style={{ marginTop: 16, borderLeft: "4px solid var(--accent)" }}>
-          <b>Заранее посчитанная выдача</b> — эта тема уже обрабатывалась вживую{" "}
-          {run.finished_at ? new Date(run.finished_at).toLocaleString("ru-RU") : ""}, поэтому результат открыт сразу.
-          Новые темы всегда считаются с нуля.{" "}
-          <button className="chip" type="button" disabled={fresh} onClick={async () => {
-            setFresh(true);
-            const r = await api.search(run.query, !!run.options?.use_watchlist, false);
-            nav(`/runs/${r.id}`);
-          }}>{fresh ? "Запуск…" : "Посчитать заново"}</button>
+      {run.status === "done" && (
+        <div className="meta-row small muted" style={{ marginTop: 6 }}>
+          <span>
+            Результат от <b>{run.created_at ? new Date(run.created_at).toLocaleString("ru-RU") : "—"}</b>
+            {seconds != null ? `, обработка заняла ${Math.floor(seconds / 60)} мин ${seconds % 60} с` : ""}. Повторный запрос темы в течение суток открывает этот результат сразу.
+          </span>
+          <button className="chip" type="button" disabled={rerun} onClick={recompute}>{rerun ? "Запуск…" : "Пересчитать заново"}</button>
         </div>
       )}
 
@@ -84,10 +93,11 @@ export default function RunPage() {
         <div className="panel" style={{ marginTop: 16 }}>
           <b>{run.stage || "Ожидание"}</b>
           <div className="progress"><div style={{ width: `${run.progress}%` }} /></div>
-          <span className="muted small">{run.progress}% · обработка обычно занимает 5–15 минут</span>
+          <span className="muted small">{run.progress}% · новый анализ обычно занимает 5–6 минут; страница обновляется сама</span>
         </div>
       )}
       {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}
+      {run.status === "done" && run.error && <div className="error" style={{ marginTop: 16 }}>{run.error}</div>}
 
       {run.status !== "rejected" && <div className="kpis">
         <div className="kpi"><div className="label">Обработано источников</div><div className="value">{(s.sources_processed as number)?.toLocaleString("ru-RU") ?? "…"}</div></div>
@@ -100,6 +110,12 @@ export default function RunPage() {
         <div className="kpi"><div className="label">Слабых сигналов в топе</div><div className="value accent">{run.status === "done" ? run.signals.length : "…"}</div></div>
         <div className="kpi"><div className="label">Доказательства A/B (подтверждено ≥ 3 док.)</div><div className="value good">{run.status === "done" ? solid : "…"}</div></div>
         <div className="kpi"><div className="label">Наблюдать: мало данных</div><div className="value">{run.status === "done" ? watch.length : "…"}</div></div>
+        {cost && (
+          <div className="kpi" title={cost.lines.map((l) => `${l.provider} ${l.model}: ${l.calls} вызовов, ${l.tokens.toLocaleString("ru-RU")} токенов, ${l.tariff} → ${l.rub} ₽`).concat(cost.sources).join("\n")}>
+            <div className="label">Стоимость запроса (наведите для расчёта)</div>
+            <div className="value">{cost.total_rub.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</div>
+          </div>
+        )}
       </div>}
 
       {run.status === "done" && (

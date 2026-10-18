@@ -35,9 +35,8 @@ export default function Home() {
     setBusy(true);
     setErr("");
     try {
-      // Если та же тема уже посчитана вживую за последние 7 дней — открываем готовую выдачу сразу (с пометкой и датой).
-      const run = await api.search(query.trim(), watch, true);
-      nav(run.reused ? `/runs/${run.id}?reused=1` : `/runs/${run.id}`);
+      const run = await api.search(query.trim(), watch);
+      nav(`/runs/${run.id}`);
     } catch (e) {
       setErr(String(e));
       setBusy(false);

@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4.1"
 
+    # Экономика запроса. Пусто — ориентировочный тариф провайдера из app/pipeline/cost.py; локальные модели — 0.
+    llm_rub_per_1k_tokens: float | None = None
+    decision_rub_per_call: float = 0.0  # Jev: по договору с TypeSafe (на хакатоне — без оплаты); Kev локально — 0
+
     # Источники
     openalex_api_key: str = ""
     openalex_email: str = ""
@@ -70,6 +74,13 @@ class Settings(BaseSettings):
 
     # Пайплайн
     top_k: int = 15
+    # Одновременно обрабатываемых запросов; остальные ждут в очереди (лимиты источников и моделей общие на сервер).
+    max_parallel_runs: int = 2
+    # Повторный запрос той же темы в течение этого числа часов открывает готовый результат сразу (0 — всегда пересчитывать).
+    reuse_hours: int = 24
+    # Предрасчёт тем сервером раз в N часов (0 — выключено); темы через «;», пусто — 6 областей датасета.
+    precompute_every_hours: float = 0
+    precompute_queries: str = ""
     # Кандидатов на проверку: arXiv требует паузу 3,1 с между запросами, поэтому каждый кандидат — это ~3 с запроса.
     max_candidates: int = 30
     # Новости GDELT по каждому кандидату: лимит 1 запрос / 5,5 с и частые отказы делали этот шаг самым долгим.

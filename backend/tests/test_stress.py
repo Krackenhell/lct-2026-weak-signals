@@ -93,6 +93,7 @@ def test_all_sources_down_gives_empty_but_honest_result(monkeypatch):
         run = s.get(Run, rid)
         assert run.status == "done" and run.stats["signals"] == 0  # не падает и не выдумывает сигналы
         assert all(v["ok"] == 0 for v in run.stats["http"].values())
+        assert run.stats["sources_down"] and "Ни один открытый источник не ответил" in run.error  # пустота объяснена
 
 
 class DownJev:
