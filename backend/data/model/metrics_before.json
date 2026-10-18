@@ -1,0 +1,261 @@
+{
+ "provider": "jev:jev-latest",
+ "n": 240,
+ "n_pos": 100,
+ "n_neg": 140,
+ "train_date": "2026-09-23",
+ "cv5": {
+  "precision": 0.932,
+  "recall": 0.96,
+  "f1": 0.946,
+  "accuracy": 0.954,
+  "roc_auc": 0.994,
+  "brier": 0.031
+ },
+ "confident_75": {
+  "share_of_positives_above_075": 0.91,
+  "precision_above_075": 0.968
+ },
+ "ablation": {
+  "numeric_only": {
+   "precision": 0.857,
+   "recall": 0.96,
+   "f1": 0.906,
+   "accuracy": 0.917,
+   "roc_auc": 0.968,
+   "brier": 0.069
+  },
+  "decision_model_only": {
+   "precision": 0.913,
+   "recall": 0.94,
+   "f1": 0.926,
+   "accuracy": 0.938,
+   "roc_auc": 0.983,
+   "brier": 0.045
+  },
+  "all": {
+   "precision": 0.932,
+   "recall": 0.96,
+   "f1": 0.946,
+   "accuracy": 0.954,
+   "roc_auc": 0.994,
+   "brier": 0.031
+  }
+ },
+ "leave_one_domain_out": {
+  "Edge": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0,
+   "accuracy": 1.0,
+   "roc_auc": 1.0,
+   "brier": 0.012
+  },
+  "Защита ИИ": {
+   "precision": 1.0,
+   "recall": 0.875,
+   "f1": 0.933,
+   "accuracy": 0.944,
+   "roc_auc": 0.994,
+   "brier": 0.044
+  },
+  "Индустриальный ИИ": {
+   "precision": 1.0,
+   "recall": 0.941,
+   "f1": 0.97,
+   "accuracy": 0.973,
+   "roc_auc": 0.997,
+   "brier": 0.024
+  },
+  "Инфраструктура ИИ": {
+   "precision": 0.895,
+   "recall": 1.0,
+   "f1": 0.944,
+   "accuracy": 0.949,
+   "roc_auc": 1.0,
+   "brier": 0.034
+  },
+  "Роботы": {
+   "precision": 0.889,
+   "recall": 0.941,
+   "f1": 0.914,
+   "accuracy": 0.909,
+   "roc_auc": 0.989,
+   "brier": 0.049
+  },
+  "Финтех": {
+   "precision": 0.895,
+   "recall": 1.0,
+   "f1": 0.944,
+   "accuracy": 0.953,
+   "roc_auc": 0.993,
+   "brier": 0.04
+  }
+ },
+ "recall_by_domain": {
+  "Edge": 1.0,
+  "Защита ИИ": 0.875,
+  "Индустриальный ИИ": 0.941,
+  "Инфраструктура ИИ": 1.0,
+  "Роботы": 0.941,
+  "Финтех": 1.0
+ },
+ "errors": [
+  {
+   "name": "Банкинг в метавселенной",
+   "label": 0,
+   "code": "hype",
+   "p": 0.951
+  },
+  {
+   "name": "Сканеры безопасности MCP-серверов и защита от tool poisoning",
+   "label": 1,
+   "code": "signal",
+   "p": 0.192
+  },
+  {
+   "name": "ИИ-управление процессами в полупроводниковом фабе и новые ИИ-сенсоры процесса (плазменная спектроскопия, in-line метрология)",
+   "label": 1,
+   "code": "signal",
+   "p": 0.193
+  },
+  {
+   "name": "Автономные складские роботы",
+   "label": 0,
+   "code": "mature",
+   "p": 0.782
+  },
+  {
+   "name": "Жидкостное охлаждение ЦОД",
+   "label": 0,
+   "code": "mature",
+   "p": 0.772
+  },
+  {
+   "name": "Роевая робототехника выходит из лаборатории (сортировка, полевые работы)",
+   "label": 1,
+   "code": "signal",
+   "p": 0.329
+  },
+  {
+   "name": "Цифровые валюты центробанков (CBDC)",
+   "label": 0,
+   "code": "mature",
+   "p": 0.651
+  },
+  {
+   "name": "Квантование моделей",
+   "label": 0,
+   "code": "mature",
+   "p": 0.647
+  },
+  {
+   "name": "Machine unlearning как средство ремедиации рисков модели (удаление данных/поведения без переобучения)",
+   "label": 1,
+   "code": "signal",
+   "p": 0.359
+  },
+  {
+   "name": "Доставка дронами",
+   "label": 0,
+   "code": "hype",
+   "p": 0.633
+  },
+  {
+   "name": "Чат-боты в банках",
+   "label": 0,
+   "code": "mature",
+   "p": 0.572
+  }
+ ],
+ "weights": [
+  {
+   "feature": "independent",
+   "weight": -1.064
+  },
+  {
+   "feature": "log_total_works",
+   "weight": -1.008
+  },
+  {
+   "feature": "growth",
+   "weight": 0.987
+  },
+  {
+   "feature": "novelty",
+   "weight": 0.801
+  },
+  {
+   "feature": "log_gh_repos_12m",
+   "weight": -0.786
+  },
+  {
+   "feature": "recent_share",
+   "weight": -0.751
+  },
+  {
+   "feature": "market_leaders",
+   "weight": -0.723
+  },
+  {
+   "feature": "maturity",
+   "weight": -0.639
+  },
+  {
+   "feature": "log_hn_12m",
+   "weight": -0.612
+  },
+  {
+   "feature": "textbook",
+   "weight": -0.604
+  },
+  {
+   "feature": "log_wiki_views",
+   "weight": -0.505
+  },
+  {
+   "feature": "standard",
+   "weight": -0.347
+  },
+  {
+   "feature": "age_years",
+   "weight": -0.345
+  },
+  {
+   "feature": "specific_tech",
+   "weight": 0.321
+  },
+  {
+   "feature": "mass_adoption",
+   "weight": -0.293
+  },
+  {
+   "feature": "hype",
+   "weight": -0.201
+  },
+  {
+   "feature": "fresh_preprints",
+   "weight": 0.167
+  },
+  {
+   "feature": "log_evidence",
+   "weight": -0.066
+  },
+  {
+   "feature": "share_science",
+   "weight": 0.049
+  },
+  {
+   "feature": "early_stage",
+   "weight": -0.037
+  },
+  {
+   "feature": "benefit",
+   "weight": -0.019
+  },
+  {
+   "feature": "wiki_exists",
+   "weight": -0.018
+  }
+ ]
+}

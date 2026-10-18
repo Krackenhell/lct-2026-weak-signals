@@ -15,6 +15,8 @@ TYPE_RU = {
     "community": "Профессиональное сообщество",
     "reference": "Энциклопедия / справочник",
     "patent": "Патент",
+    "grant": "Грант / госфинансирование",
+    "startup": "Стартап (каталог акселератора)",
     "regulator": "Госорган / регулятор",
     "dataset": "Датасет организатора",
 }
@@ -32,8 +34,15 @@ MEDIUM_DOMAINS = (
     "techcrunch.com", "theverge.com", "wired.com", "zdnet.com", "siliconangle.com", "venturebeat.com",
     "theregister.com", "securityweek.com", "coindesk.com", "finextra.com", "habr.com", "cnews.ru", "tadviser.ru",
     "forbes.com", "forbes.ru", "spectrum.ieee.org", "technologyreview.com", "arstechnica.com", "semianalysis.com",
+    # Отраслевые и стартап-издания, на которые опирается датасет организатора
+    "geekwire.com", "theaiinsider.tech", "eu-startups.com", "therobotreport.com", "datacenterdynamics.com", "eetimes.com",
+    "tomshardware.com", "paymentsdive.com", "pymnts.com", "fintechfutures.com", "theblock.co", "axios.com", "cnbc.com",
+    "theinformation.com", "crunchbase.com", "news.crunchbase.com", "sifted.eu", "techinasia.com", "pandaily.com",
+    # Китайские техно-СМИ и издания о технологиях Китая
+    "technode.com", "scmp.com", "36kr.com", "ithome.com", "cnbeta.com.tw", "infoq.cn",
 )
-PRESS_MARKERS = ("prnewswire", "businesswire", "globenewswire", "accesswire", "einpresswire", "newswire", "/press", "/news/press", "press-release", "pressrelease")
+PRESS_MARKERS = ("prnewswire", "businesswire", "globenewswire", "accesswire", "einpresswire", "newswire", "/press", "/news/press", "press-release", "pressrelease",
+                 "pr newswire", "business wire")
 LOW_DOMAINS = ("medium.com", "substack.com", "linkedin.com", "twitter.com", "x.com", "reddit.com", "t.me", "youtube.com", "facebook.com", "vc.ru", "dzen.ru")
 
 
@@ -44,10 +53,19 @@ def _domain(url: str) -> str:
 def classify(doc: RawDoc) -> tuple[str, str, str]:
     """Возвращает (source_type, trust_level, trust_reason)."""
     url = doc.url.lower()
-    dom = _domain(url)
+    # Новости из лент: доверие считаем по изданию (домен и название), а не по адресу ленты или перехода.
+    dom = (doc.extra or {}).get("publisher_domain") or _domain(url)
+    if (doc.extra or {}).get("publisher_domain"):
+        url = f"https://{dom}/ {doc.source_name.lower()}"
 
     if doc.source_type == "science":
         return "science", "high", "Научная публикация с метаданными OpenAlex/DOI"
+    if doc.source_type == "grant":
+        return "grant", "high", "Государственный грант: решение научного фонда после экспертизы заявки"
+    if doc.source_type == "patent":
+        return "patent", "high", "Патентная публикация ведомства (EPO OPS): заявка прошла формальную экспертизу"
+    if doc.source_type == "startup":
+        return "startup", "medium", "Стартап из каталога акселератора: компания получила инвестиции, но описание пишет она сама"
     if doc.source_type == "preprint":
         return "preprint", "medium", "Препринт: научный текст без рецензирования"
     if doc.source_type == "repository":

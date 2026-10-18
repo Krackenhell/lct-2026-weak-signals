@@ -90,7 +90,7 @@ def test_decide_filters_and_ranking():
         _assessed("unlikely", base, {}, 0.2),
     ]
     out = decide(items, model, top_k=15)
-    status = {a["c"]["name_en"]: (d["status"], d.get("code")) for a, d in zip(items, out)}
+    status = {a["c"]["name_en"]: (d["status"], d.get("code")) for a, d in zip(items, out, strict=False)}
     assert status["good"] == ("signal", None)
     assert status["standard"][1] == "standard"
     assert status["mature"][1] == "mature"

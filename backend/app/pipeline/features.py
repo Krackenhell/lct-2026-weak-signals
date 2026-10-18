@@ -23,7 +23,9 @@ NUMERIC = [
     "share_science",
     "log_evidence",
 ]
-ANSWERS = ["specific_tech", "mass_adoption", "market_leaders", "standard", "early_stage", "independent", "hype", "novelty", "benefit", "textbook", "maturity"]
+# «event» — самое твёрдое событие (вопрос EVENT). Входит в модель после переопроса обучающей выборки
+# decision-моделью (python -m app.ml.train --reask); до этого у примеров нет ответа, и признак отбрасывается при обучении.
+ANSWERS = ["specific_tech", "mass_adoption", "market_leaders", "standard", "early_stage", "independent", "hype", "novelty", "benefit", "textbook", "maturity", "event"]
 FEATURES = NUMERIC + ANSWERS
 CORE_COLLECTORS = ("arxiv", "hackernews")
 
@@ -50,6 +52,7 @@ FEATURE_RU = {
     "benefit": "Конкретное преимущество (decision-модель)",
     "textbook": "Устоявшаяся учебниковая идея (decision-модель)",
     "maturity": "Уровень зрелости (decision-модель)",
+    "event": "Самое твёрдое событие (decision-модель)",
 }
 
 

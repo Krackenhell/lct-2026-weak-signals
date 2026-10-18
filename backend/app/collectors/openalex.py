@@ -64,6 +64,21 @@ async def search(http: HttpClient, query: str, from_date: str, per_page: int = 5
     return [d for d in docs if d.title]
 
 
+async def country_counts(http: HttpClient, phrase: str, from_year: int, to_year: int | None = None) -> dict[str, int]:
+    """Число работ по странам организаций авторов (ISO-код), один запрос. Работа с авторами из
+    нескольких стран учитывается в каждой — поэтому доли считаются от суммы, а не от числа работ."""
+    years = f"{from_year}-{to_year}" if to_year else f"{from_year}-"
+    data = await http.get(
+        API, params={"filter": f"{_phrase_filter(phrase)},publication_year:{years}", "group_by": "authorships.institutions.country_code", **_auth()}
+    )
+    out = {}
+    for g in data.get("group_by", []):
+        key = str(g.get("key") or "").rsplit("/", 1)[-1].upper()
+        if len(key) == 2:
+            out[key] = int(g.get("count") or 0)
+    return out
+
+
 async def yearly_counts(http: HttpClient, phrase: str) -> dict[int, int]:
     """Число работ с фразой в названии/аннотации по годам публикации."""
     data = await http.get(

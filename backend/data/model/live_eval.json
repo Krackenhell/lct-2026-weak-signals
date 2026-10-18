@@ -1,1318 +1,1014 @@
 {
  "runs": [
   {
-   "domain": "Финтех",
-   "mode": "с базой отслеживания",
-   "run_id": 11,
-   "query": "перспективные решения в финтехе",
-   "status": "done",
+   "domain": null,
+   "mode": "только обнаружение",
+   "run_id": 28,
+   "query": "Привет",
+   "status": "rejected",
    "options": {
-    "use_watchlist": true,
+    "use_watchlist": false,
     "eval": true
    },
-   "seconds": 401,
-   "n_signals": 15,
-   "confident_75": 15,
-   "new_candidates_in_top": 1,
-   "top": [
-    {
-     "rank": 1,
-     "name": "know your agent",
-     "name_ru": "Знай своего агента",
-     "p": 0.991,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 2,
-     "name": "injection attack liveness detection",
-     "name_ru": "инъекционные атаки для проверки подлинности пользователя",
-     "p": 0.996,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 3,
-     "name": "purpose bound money",
-     "name_ru": "Цельносвязанные деньги",
-     "p": 0.977,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 4,
-     "name": "zero-knowledge KYC",
-     "name_ru": "Переиспользуемые ZK-верифицируемые credentials для KYC (zk-KYC)",
-     "p": 0.981,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 5,
-     "name": "HTTP 402 payments",
-     "name_ru": "HTTP 402 платежей",
-     "p": 0.978,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 6,
-     "name": "agent payments protocol",
-     "name_ru": "агентский платёжный протокол",
-     "p": 0.961,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 7,
-     "name": "tokenized deposits",
-     "name_ru": "токенизированные депозиты",
-     "p": 0.944,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 8,
-     "name": "AI-native core banking",
-     "name_ru": "AI-настороженный ядро банковского дела",
-     "p": 0.93,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 9,
-     "name": "post-quantum cryptography migration financial",
-     "name_ru": "Постквантовая криптография в финансовой инфраструктуре (приоритизация миграции)",
-     "p": 0.923,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 10,
-     "name": "agentic ai governance",
-     "name_ru": "управление агентским ИИ",
-     "p": 0.988,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "AI compliance agent KYC",
-     "name_ru": "агент искусственного интеллекта для комплаенс-контроля и KYC",
-     "p": 0.899,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 12,
-     "name": "LLM trading agent benchmark",
-     "name_ru": "агент торговли на основе LLM",
-     "p": 0.995,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 13,
-     "name": "voice AI agent debt collection",
-     "name_ru": "голосовой ИИ-агент для взыскания долгов",
-     "p": 0.831,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 14,
-     "name": "decentralized inference network",
-     "name_ru": "децентрализованная сеть инференса",
-     "p": 0.925,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 15,
-     "name": "tokenized money market fund collateral",
-     "name_ru": "токенизированный денежный рынок фондов обеспечения",
-     "p": 0.822,
-     "origin": "watchlist"
-    }
-   ],
-   "exclusions": {
-    "reserve": 7,
-    "hype": 1,
-    "mature": 4,
-    "low_probability": 5,
-    "broad": 1,
-    "not_technology": 5,
-    "low_evidence": 6,
-    "standard": 1,
-    "irrelevant": 3,
-    "product": 2
+   "seconds": 1,
+   "n_signals": 0,
+   "confident_75": 0,
+   "new_candidates_in_top": 0,
+   "top": [],
+   "passport": {
+    "A": 0,
+    "B": 0
    },
-   "dataset_signals_in_domain": 17,
-   "dataset_hits_in_top15": 13,
-   "share_of_top15_from_dataset": 0.867,
-   "recall_of_domain": 0.765
+   "watch": 0,
+   "exclusions": {}
+  },
+  {
+   "domain": null,
+   "mode": "только обнаружение",
+   "run_id": 29,
+   "query": "почему мирэа лучший вуз",
+   "status": "rejected",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 1,
+   "n_signals": 0,
+   "confident_75": 0,
+   "new_candidates_in_top": 0,
+   "top": [],
+   "passport": {
+    "A": 0,
+    "B": 0
+   },
+   "watch": 0,
+   "exclusions": {}
   },
   {
    "domain": "Финтех",
    "mode": "только обнаружение",
-   "run_id": 12,
+   "run_id": 30,
    "query": "перспективные решения в финтехе",
    "status": "done",
    "options": {
     "use_watchlist": false,
     "eval": true
    },
-   "seconds": 574,
-   "n_signals": 12,
-   "confident_75": 9,
-   "new_candidates_in_top": 12,
+   "seconds": 324,
+   "n_signals": 6,
+   "confident_75": 4,
+   "new_candidates_in_top": 6,
    "top": [
     {
      "rank": 1,
-     "name": "compliance-aware architecture",
-     "name_ru": "архитектура, осведомлённая о соблюдении нормативных требований",
-     "p": 0.994,
-     "origin": "discovered"
+     "name": "real-world asset tokenization",
+     "name_ru": "токенизация реальных активов",
+     "p": 0.949,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
     },
     {
      "rank": 2,
-     "name": "decentralized credit scoring",
-     "name_ru": "Децентрализованная система оценки кредитоспособности",
-     "p": 0.971,
-     "origin": "discovered"
+     "name": "Governance Architecture for Smart Contracts",
+     "name_ru": "Архитектура управления для умных контрактов",
+     "p": 0.982,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
     },
     {
      "rank": 3,
-     "name": "cross-layer-binding",
-     "name_ru": "кросс-слоевое связывание",
-     "p": 0.997,
-     "origin": "discovered"
+     "name": "x402 protocol",
+     "name_ru": "Протокол x402",
+     "p": 0.802,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
     },
     {
      "rank": 4,
-     "name": "quantum-tokens",
-     "name_ru": "Квантовые токены",
-     "p": 0.955,
-     "origin": "discovered"
+     "name": "quantum blockchain",
+     "name_ru": "квантово-блокчейновые технологии",
+     "p": 0.843,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "closing"
     },
     {
      "rank": 5,
-     "name": "ai-powered oracles",
-     "name_ru": "AI-питаемые оракулы",
-     "p": 0.939,
-     "origin": "discovered"
+     "name": "Hybrid Credit Scoring",
+     "name_ru": "Гибридный кредитный скоринг",
+     "p": 0.706,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
     },
     {
      "rank": 6,
-     "name": "behavior-aware-fraud-detection",
-     "name_ru": "поведенчески осведомленная система выявления мошенничества",
-     "p": 0.861,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "proof-carrying code",
-     "name_ru": "Proof-Carrying Code",
-     "p": 0.957,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "gpu retrieval",
-     "name_ru": "GPU-поиск",
-     "p": 0.902,
-     "origin": "discovered"
-    },
-    {
-     "rank": 9,
-     "name": "yield-bearing stablecoin",
-     "name_ru": "доходные стабильные монеты",
-     "p": 0.629,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "face-morphing-attacks",
-     "name_ru": "атаки методом морфинга лица",
-     "p": 0.752,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "shap-interpretable approach",
-     "name_ru": "SHAP-интерпретируемый подход",
-     "p": 0.704,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "deep learning credit scoring",
-     "name_ru": "глубинное обучение для скоринга кредитоспособности",
-     "p": 0.543,
-     "origin": "discovered"
+     "name": "Stablecoin under stress",
+     "name_ru": "Стейблкойны под стрессом",
+     "p": 0.586,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "thin"
     }
    ],
+   "passport": {
+    "A": 4,
+    "B": 2
+   },
+   "watch": 6,
    "exclusions": {
-    "mature": 4,
-    "not_technology": 7,
-    "low_probability": 14,
-    "low_evidence": 7,
-    "broad": 1,
-    "irrelevant": 5
-   },
-   "dataset_signals_in_domain": 17,
-   "dataset_hits_in_top15": 1,
-   "share_of_top15_from_dataset": 0.083,
-   "recall_of_domain": 0.059
-  },
-  {
-   "domain": "Защита ИИ",
-   "mode": "с базой отслеживания",
-   "run_id": 13,
-   "query": "слабые сигналы в кибербезопасности ИИ",
-   "status": "done",
-   "options": {
-    "use_watchlist": true,
-    "eval": true
-   },
-   "seconds": 377,
-   "n_signals": 15,
-   "confident_75": 15,
-   "new_candidates_in_top": 5,
-   "top": [
-    {
-     "rank": 1,
-     "name": "AI agent identity",
-     "name_ru": "идентификация ИИ-агента",
-     "p": 0.985,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 2,
-     "name": "self-healing prompt injection defense",
-     "name_ru": "защита от инъекций prompts самоисцеления",
-     "p": 0.984,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 3,
-     "name": "chain-of-thought monitoring",
-     "name_ru": "мониторинг цепочки размышлений",
-     "p": 0.999,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 4,
-     "name": "Web Bot Auth",
-     "name_ru": "Web Bot Auth",
-     "p": 0.994,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 5,
-     "name": "agentic ai security",
-     "name_ru": "Agentic AI Security",
-     "p": 0.984,
-     "origin": "discovered"
-    },
-    {
-     "rank": 6,
-     "name": "memory poisoning defense agents",
-     "name_ru": "агенты защиты от отравления памяти",
-     "p": 0.999,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 7,
-     "name": "model context protocol",
-     "name_ru": "Протокол модельного контекста",
-     "p": 0.988,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "LLM firewall",
-     "name_ru": "Firewall для LLM",
-     "p": 0.98,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 9,
-     "name": "LLM backdoor detection",
-     "name_ru": "обнаружение бэкдоров в больших языковых моделях",
-     "p": 0.921,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 10,
-     "name": "AI model signing",
-     "name_ru": "AI model signing",
-     "p": 0.98,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 11,
-     "name": "semantic-graph-defense",
-     "name_ru": "Семантическая графовая защита",
-     "p": 0.957,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "adversarial-sql-injection",
-     "name_ru": "адверсариальная SQL-инъекция",
-     "p": 0.908,
-     "origin": "discovered"
-    },
-    {
-     "rank": 13,
-     "name": "LLM text watermarking",
-     "name_ru": "Водяные знаки для текста LLM",
-     "p": 0.904,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 14,
-     "name": "red-teaming-benchmark",
-     "name_ru": "тестирование безопасности ИИ методом red-teaming",
-     "p": 0.81,
-     "origin": "discovered"
-    },
-    {
-     "rank": 15,
-     "name": "confidential inference TEE",
-     "name_ru": "конфиденциальный вывод TEE",
-     "p": 0.885,
-     "origin": "watchlist"
-    }
-   ],
-   "exclusions": {
-    "reserve": 8,
-    "low_evidence": 4,
-    "irrelevant": 7,
-    "mature": 8,
-    "low_probability": 5,
-    "not_technology": 2,
-    "broad": 1
-   },
-   "dataset_signals_in_domain": 16,
-   "dataset_hits_in_top15": 11,
-   "share_of_top15_from_dataset": 0.733,
-   "recall_of_domain": 0.688
-  },
-  {
-   "domain": "Защита ИИ",
-   "mode": "только обнаружение",
-   "run_id": 14,
-   "query": "слабые сигналы в кибербезопасности ИИ",
-   "status": "done",
-   "options": {
-    "use_watchlist": false,
-    "eval": true
-   },
-   "seconds": 352,
-   "n_signals": 13,
-   "confident_75": 9,
-   "new_candidates_in_top": 13,
-   "top": [
-    {
-     "rank": 1,
-     "name": "red-teaming benchmark",
-     "name_ru": "Red-teaming benchmark в области кибербезопасности ИИ",
-     "p": 0.963,
-     "origin": "discovered"
-    },
-    {
-     "rank": 2,
-     "name": "prompt injection detection",
-     "name_ru": "Обнаружение инъекций prompts",
-     "p": 0.934,
-     "origin": "discovered"
-    },
-    {
-     "rank": 3,
-     "name": "gradient-based adversarial attacks",
-     "name_ru": "Градиентно-субдуйшие атаки",
-     "p": 0.921,
-     "origin": "discovered"
-    },
-    {
-     "rank": 4,
-     "name": "zero trust iot environments",
-     "name_ru": "Zero Trust IoT среды",
-     "p": 0.896,
-     "origin": "discovered"
-    },
-    {
-     "rank": 5,
-     "name": "on-device intrusion detection",
-     "name_ru": "Обнаружение вторжений на устройстве",
-     "p": 0.818,
-     "origin": "discovered"
-    },
-    {
-     "rank": 6,
-     "name": "ensemble defense",
-     "name_ru": "Ensemble Defense",
-     "p": 0.902,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "multi-authority anonymous credentials",
-     "name_ru": "многоавторские анонимные сертификаты",
-     "p": 0.97,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "cyber-physical coordination",
-     "name_ru": "координация кибер-физических систем",
-     "p": 0.876,
-     "origin": "discovered"
-    },
-    {
-     "rank": 9,
-     "name": "adversarial sql injection",
-     "name_ru": "адversarial sql инъекция",
-     "p": 0.765,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "agentic ai",
-     "name_ru": "агентный искусственный интеллект",
-     "p": 0.665,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "jailbreak attack",
-     "name_ru": "атака с побегом из тюрьмы для больших языковых моделей",
-     "p": 0.657,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "adaptive federated learning",
-     "name_ru": "адаптивное федеративное обучение",
-     "p": 0.674,
-     "origin": "discovered"
-    },
-    {
-     "rank": 13,
-     "name": "moving target defenses (mtd)",
-     "name_ru": "Движущаяся цель защиты",
-     "p": 0.634,
-     "origin": "discovered"
-    }
-   ],
-   "exclusions": {
-    "low_probability": 5,
-    "mature": 10,
-    "not_technology": 3,
-    "irrelevant": 12,
-    "low_evidence": 7
-   },
-   "dataset_signals_in_domain": 16,
-   "dataset_hits_in_top15": 1,
-   "share_of_top15_from_dataset": 0.077,
-   "recall_of_domain": 0.062
-  },
-  {
-   "domain": "Роботы",
-   "mode": "с базой отслеживания",
-   "run_id": 15,
-   "query": "робототехника",
-   "status": "done",
-   "options": {
-    "use_watchlist": true,
-    "eval": true
-   },
-   "seconds": 526,
-   "n_signals": 15,
-   "confident_75": 15,
-   "new_candidates_in_top": 4,
-   "top": [
-    {
-     "rank": 1,
-     "name": "Force-Aware Vision-Language-Action",
-     "name_ru": "Force-Aware Vision-Language-Action",
-     "p": 0.998,
-     "origin": "discovered"
-    },
-    {
-     "rank": 2,
-     "name": "egocentric human video robot learning",
-     "name_ru": "Эгоцентрическое человеческое видео как «дешёвый» источник обучающих данных (human-to-robot transfer)",
-     "p": 0.997,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 3,
-     "name": "tactile vision-language-action",
-     "name_ru": "тактильная зрение-речь-действие",
-     "p": 0.989,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 4,
-     "name": "self-healing electronic skin",
-     "name_ru": "самовосстанавливающаяся электронная кожа",
-     "p": 0.986,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 5,
-     "name": "Whole-Body Control Policies",
-     "name_ru": "Целостная политика управления всем телом",
-     "p": 0.966,
-     "origin": "discovered"
-    },
-    {
-     "rank": 6,
-     "name": "self-healing soft robots",
-     "name_ru": "самовосстанавливающиеся мягкие роботы",
-     "p": 0.963,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "autonomous robotic welding vision",
-     "name_ru": "автономная сварочная робототехника с видением",
-     "p": 0.951,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 8,
-     "name": "physical intelligence soft robot material",
-     "name_ru": "Физическая интеллектуальная мягкая робототехника",
-     "p": 0.951,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 9,
-     "name": "Light-Driven Soft Robotics",
-     "name_ru": "Светоуправляемые мягкие роботы",
-     "p": 0.941,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "VLA model edge accelerator",
-     "name_ru": "Модели VLA edge accelerator",
-     "p": 0.953,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 11,
-     "name": "biohybrid actuator",
-     "name_ru": "биороботы на основе гибридных актуаторов",
-     "p": 0.922,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 12,
-     "name": "HASEL actuator",
-     "name_ru": "HASEL actuator",
-     "p": 0.905,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 13,
-     "name": "physical AI safety certification",
-     "name_ru": "Сертификация безопасности физического ИИ как «узкое горлышко» внедрения",
-     "p": 0.911,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 14,
-     "name": "robot app store",
-     "name_ru": "магазин приложений для роботов",
-     "p": 0.895,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 15,
-     "name": "medical microrobots",
-     "name_ru": "медицинские микророботы",
-     "p": 0.821,
-     "origin": "watchlist"
-    }
-   ],
-   "exclusions": {
-    "low_probability": 4,
-    "not_technology": 1,
-    "hype": 1,
-    "reserve": 5,
-    "mature": 1,
-    "product": 1,
-    "low_evidence": 22
-   },
-   "dataset_signals_in_domain": 17,
-   "dataset_hits_in_top15": 10,
-   "share_of_top15_from_dataset": 0.667,
-   "recall_of_domain": 0.588
-  },
-  {
-   "domain": "Роботы",
-   "mode": "только обнаружение",
-   "run_id": 16,
-   "query": "робототехника",
-   "status": "done",
-   "options": {
-    "use_watchlist": false,
-    "eval": true
-   },
-   "seconds": 587,
-   "n_signals": 15,
-   "confident_75": 12,
-   "new_candidates_in_top": 15,
-   "top": [
-    {
-     "rank": 1,
-     "name": "latent policy steering",
-     "name_ru": "Скрытое управление политиками",
-     "p": 1.0,
-     "origin": "discovered"
-    },
-    {
-     "rank": 2,
-     "name": "human-to-robot (H2R) transfer",
-     "name_ru": "Передача навыков от человека к роботу (Human-to-Robot Transfer)",
-     "p": 0.997,
-     "origin": "discovered"
-    },
-    {
-     "rank": 3,
-     "name": "force-aware vision-language-action",
-     "name_ru": "силочувствительная зрение-речь-действие",
-     "p": 0.997,
-     "origin": "discovered"
-    },
-    {
-     "rank": 4,
-     "name": "Discrete action tokenization",
-     "name_ru": "дискретная токенизация действий",
-     "p": 0.998,
-     "origin": "discovered"
-    },
-    {
-     "rank": 5,
-     "name": "vision-language-action flow model",
-     "name_ru": "Vision-Language-Action Flow Model",
-     "p": 0.989,
-     "origin": "discovered"
-    },
-    {
-     "rank": 6,
-     "name": "object-centric conditioning",
-     "name_ru": "объектно-центрированное условие",
-     "p": 0.995,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "world-model navigation",
-     "name_ru": "мировая модель навигации",
-     "p": 0.993,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "light-driven soft robotics",
-     "name_ru": "светоуправляемые мягкие роботы",
-     "p": 0.959,
-     "origin": "discovered"
-    },
-    {
-     "rank": 9,
-     "name": "bimanual motion planning",
-     "name_ru": "планирование бимануальных движений",
-     "p": 0.95,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "humanoid whole body control",
-     "name_ru": "Управление целым телом человекоподобного робота",
-     "p": 0.894,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "conversational ai knowledge assistant",
-     "name_ru": "разговорный искусственный интеллект — помощник с энциклопедическими знаниями",
-     "p": 0.974,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "flow matching models",
-     "name_ru": "Модели сопоставления потоков",
-     "p": 0.962,
-     "origin": "discovered"
-    },
-    {
-     "rank": 13,
-     "name": "contact-rich manipulation",
-     "name_ru": "манипуляция с богатым контактным взаимодействием",
-     "p": 0.71,
-     "origin": "discovered"
-    },
-    {
-     "rank": 14,
-     "name": "adaptive mpc",
-     "name_ru": "адаптивная модель-предсказывающая контрольная система",
-     "p": 0.701,
-     "origin": "discovered"
-    },
-    {
-     "rank": 15,
-     "name": "vision-language-action (VLA)",
-     "name_ru": "Vision-Language-Action модели",
-     "p": 0.617,
-     "origin": "discovered"
-    }
-   ],
-   "exclusions": {
-    "mature": 1,
-    "low_evidence": 18,
-    "low_probability": 6,
-    "not_technology": 1,
-    "broad": 1,
-    "product": 6,
-    "reserve": 1,
-    "irrelevant": 1
-   },
-   "dataset_signals_in_domain": 17,
-   "dataset_hits_in_top15": 3,
-   "share_of_top15_from_dataset": 0.2,
-   "recall_of_domain": 0.176
-  },
-  {
-   "domain": "Edge",
-   "mode": "с базой отслеживания",
-   "run_id": 17,
-   "query": "edge AI и вычисления на устройствах",
-   "status": "done",
-   "options": {
-    "use_watchlist": true,
-    "eval": true
-   },
-   "seconds": 1004,
-   "n_signals": 15,
-   "confident_75": 15,
-   "new_candidates_in_top": 10,
-   "top": [
-    {
-     "rank": 1,
-     "name": "federated_edge_intelligence",
-     "name_ru": "федеративная интеллектуальная крайняя граница",
-     "p": 0.973,
-     "origin": "discovered"
-    },
-    {
-     "rank": 2,
-     "name": "federated_edge_learning",
-     "name_ru": "федеративное машинное обучение на краевых устройствах",
-     "p": 0.969,
-     "origin": "discovered"
-    },
-    {
-     "rank": 3,
-     "name": "federated learning sovereign deployment",
-     "name_ru": "федеративное обучение при суверенном развертывании",
-     "p": 0.965,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 4,
-     "name": "on-device llm inference",
-     "name_ru": "вычисления больших языковых моделей на устройстве",
-     "p": 0.952,
-     "origin": "discovered"
-    },
-    {
-     "rank": 5,
-     "name": "KV cache offloading",
-     "name_ru": "Вычисления на устройстве с offloading KV-кэша",
-     "p": 0.974,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 6,
-     "name": "photonic inference processor edge",
-     "name_ru": "Фотонные (оптические) процессоры инференса для компактных SWaP-ограниченных систем",
-     "p": 0.984,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 7,
-     "name": "adaptive_quantization",
-     "name_ru": "адаптивная квантизация",
-     "p": 0.948,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "analog compute-in-memory edge",
-     "name_ru": "аналоговые вычисления в памяти на краевых устройствах",
-     "p": 0.938,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 9,
-     "name": "In-sensor and Near-sensor Computing",
-     "name_ru": "Вычисления вблизи сенсора и внутри сенсора",
-     "p": 0.932,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "Near-Sensor Computing",
-     "name_ru": "Вычисления вблизи сенсоров",
-     "p": 0.929,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "Over-the-Air Computation",
-     "name_ru": "Вычисления над воздухом",
-     "p": 0.937,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "orbital edge computing",
-     "name_ru": "Орбитальная краевая вычислительная инфраструктура",
-     "p": 0.929,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 13,
-     "name": "In-Sensor Computing",
-     "name_ru": "Вычисления в сенсоре",
-     "p": 0.884,
-     "origin": "discovered"
-    },
-    {
-     "rank": 14,
-     "name": "embedded_ai_framework",
-     "name_ru": "встраиваемая платформа искусственного интеллекта",
-     "p": 0.871,
-     "origin": "discovered"
-    },
-    {
-     "rank": 15,
-     "name": "tiny_cnn",
-     "name_ru": "Edge AI и вычисления на устройствах: tiny_cnn",
-     "p": 0.849,
-     "origin": "discovered"
-    }
-   ],
-   "exclusions": {
-    "reserve": 7,
-    "low_evidence": 10,
-    "irrelevant": 3,
-    "low_probability": 8,
-    "hype": 3,
-    "mature": 3,
-    "not_technology": 1
-   },
-   "dataset_signals_in_domain": 16,
-   "dataset_hits_in_top15": 6,
-   "share_of_top15_from_dataset": 0.4,
-   "recall_of_domain": 0.375
-  },
-  {
-   "domain": "Edge",
-   "mode": "только обнаружение",
-   "run_id": 18,
-   "query": "edge AI и вычисления на устройствах",
-   "status": "done",
-   "options": {
-    "use_watchlist": false,
-    "eval": true
-   },
-   "seconds": 378,
-   "n_signals": 15,
-   "confident_75": 10,
-   "new_candidates_in_top": 15,
-   "top": [
-    {
-     "rank": 1,
-     "name": "on-device LLM inference",
-     "name_ru": "вычисления больших языковых моделей на устройстве",
-     "p": 0.961,
-     "origin": "discovered"
-    },
-    {
-     "rank": 2,
-     "name": "Attention-Free Architectures",
-     "name_ru": "Архитектуры без внимания",
-     "p": 0.968,
-     "origin": "discovered"
-    },
-    {
-     "rank": 3,
-     "name": "multi-granularity pruning",
-     "name_ru": "Multi-granularity pruning",
-     "p": 0.922,
-     "origin": "discovered"
-    },
-    {
-     "rank": 4,
-     "name": "Near-sensor Computing",
-     "name_ru": "Вычисления вблизи сенсоров",
-     "p": 0.908,
-     "origin": "discovered"
-    },
-    {
-     "rank": 5,
-     "name": "activation function implementation",
-     "name_ru": "Реализация функций активации для Edge AI",
-     "p": 0.892,
-     "origin": "discovered"
-    },
-    {
-     "rank": 6,
-     "name": "In-sensor Computing",
-     "name_ru": "Вычисления в сенсоре",
-     "p": 0.873,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "Continual Learning in Edge AI",
-     "name_ru": "Постоянное обучение на краевых вычислительных устройствах",
-     "p": 0.83,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "Quantum-Enhanced Learning",
-     "name_ru": "Квантово-усиленное обучение",
-     "p": 0.997,
-     "origin": "discovered"
-    },
-    {
-     "rank": 9,
-     "name": "adaptive meta-learning",
-     "name_ru": "адаптивное мета-обучение",
-     "p": 0.899,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "Physics-Embedded Neural Networks",
-     "name_ru": "Физически встроенные нейронные сети",
-     "p": 0.957,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "On-Device LLM Personalization",
-     "name_ru": "On-Device LLM Personalization",
-     "p": 0.727,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "structured pruning",
-     "name_ru": "Структурное обрезание нейронных сетей",
-     "p": 0.652,
-     "origin": "discovered"
-    },
-    {
-     "rank": 13,
-     "name": "Oscillatory Neural Networks",
-     "name_ru": "Осцилляторные нейронные сети",
-     "p": 0.69,
-     "origin": "discovered"
-    },
-    {
-     "rank": 14,
-     "name": "Event-based Processing",
-     "name_ru": "Обработка событий",
-     "p": 0.562,
-     "origin": "discovered"
-    },
-    {
-     "rank": 15,
-     "name": "In-Memory Computing",
-     "name_ru": "Вычисления в памяти",
-     "p": 0.533,
-     "origin": "discovered"
-    }
-   ],
-   "exclusions": {
-    "mature": 4,
-    "low_probability": 9,
-    "low_evidence": 12,
-    "reserve": 1,
-    "broad": 1,
-    "irrelevant": 5,
-    "not_technology": 2,
-    "product": 1
-   },
-   "dataset_signals_in_domain": 16,
-   "dataset_hits_in_top15": 3,
-   "share_of_top15_from_dataset": 0.2,
-   "recall_of_domain": 0.188
-  },
-  {
-   "domain": "Инфраструктура ИИ",
-   "mode": "с базой отслеживания",
-   "run_id": 19,
-   "query": "инфраструктура для ИИ",
-   "status": "done",
-   "options": {
-    "use_watchlist": true,
-    "eval": true
-   },
-   "seconds": 356,
-   "n_signals": 15,
-   "confident_75": 15,
-   "new_candidates_in_top": 4,
-   "top": [
-    {
-     "rank": 1,
-     "name": "agentic AI inference chip",
-     "name_ru": "чип для инференса агентного ИИ",
-     "p": 0.976,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 2,
-     "name": "ai accelerator co-design",
-     "name_ru": "ко-дизайн ускорителей ИИ",
-     "p": 0.993,
-     "origin": "discovered"
-    },
-    {
-     "rank": 3,
-     "name": "3D stacked DRAM compute",
-     "name_ru": "3D стекированная память DRAM для вычислений",
-     "p": 0.988,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 4,
-     "name": "CXL memory pooling inference",
-     "name_ru": "пул памяти CXL для инференса ИИ",
-     "p": 0.99,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 5,
-     "name": "KV cache offloading",
-     "name_ru": "Выгрузка кеша KV",
-     "p": 0.979,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 6,
-     "name": "Wafer Scale Optical Interconnects",
-     "name_ru": "Вафельная оптическая межсоединительная структура",
-     "p": 0.997,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "predictive data center cooling AI",
-     "name_ru": "искусственный интеллект для прогнозного охлаждения ЦОД",
-     "p": 0.966,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 8,
-     "name": "orbital data center",
-     "name_ru": "Орбитальные центры данных",
-     "p": 0.999,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 9,
-     "name": "decentralized inference network",
-     "name_ru": "децентрализованная сеть инференса",
-     "p": 0.901,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 10,
-     "name": "KV Cache Quantization",
-     "name_ru": "Квантование КЭ-шной кэш-памяти для ИИ",
-     "p": 0.97,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "KV Cache Management",
-     "name_ru": "Управление хранилищем Ключ-Значение",
-     "p": 0.965,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "small modular reactor data center",
-     "name_ru": "Малые модульные реакторы (SMR) как выделенный источник питания ИИ-ЦОД",
-     "p": 0.997,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 13,
-     "name": "reinforcement learning industrial controller real plant",
-     "name_ru": "промышленный контроллер с подкрепляющим обучением",
-     "p": 0.988,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 14,
-     "name": "superconducting computing AI",
-     "name_ru": "Сверхпроводящее вычислительное ИИ на криогенной основе",
-     "p": 0.985,
-     "origin": "watchlist"
-    },
-    {
-     "rank": 15,
-     "name": "edge-cloud inference offloading",
-     "name_ru": "Edge-cloud inference offloading",
-     "p": 0.855,
-     "origin": "watchlist"
-    }
-   ],
-   "exclusions": {
-    "low_probability": 6,
-    "low_evidence": 11,
-    "reserve": 10,
-    "hype": 2,
-    "irrelevant": 2,
-    "product": 4
-   },
-   "dataset_signals_in_domain": 17,
-   "dataset_hits_in_top15": 9,
-   "share_of_top15_from_dataset": 0.6,
-   "recall_of_domain": 0.529
-  },
-  {
-   "domain": "Инфраструктура ИИ",
-   "mode": "только обнаружение",
-   "run_id": 20,
-   "query": "инфраструктура для ИИ",
-   "status": "done",
-   "options": {
-    "use_watchlist": false,
-    "eval": true
-   },
-   "seconds": 513,
-   "n_signals": 15,
-   "confident_75": 12,
-   "new_candidates_in_top": 15,
-   "top": [
-    {
-     "rank": 1,
-     "name": "photonic tensor core",
-     "name_ru": "фотонный тензорный ядро",
-     "p": 0.979,
-     "origin": "discovered"
-    },
-    {
-     "rank": 2,
-     "name": "KV Cache Management",
-     "name_ru": "Управление кешем Ключ-Значение для ИИ",
-     "p": 0.963,
-     "origin": "discovered"
-    },
-    {
-     "rank": 3,
-     "name": "KV Cache Quantization",
-     "name_ru": "Квантизация КЭШа KV",
-     "p": 0.961,
-     "origin": "discovered"
-    },
-    {
-     "rank": 4,
-     "name": "phased development framework",
-     "name_ru": "Фазовая модель развития для ИИ-инфраструктуры",
-     "p": 0.998,
-     "origin": "discovered"
-    },
-    {
-     "rank": 5,
-     "name": "predict-then-schedule framework",
-     "name_ru": "предсказываю-затем-планирую фреймворк",
-     "p": 0.966,
-     "origin": "discovered"
-    },
-    {
-     "rank": 6,
-     "name": "edge ai monitoring",
-     "name_ru": "Edge AI мониторинг",
-     "p": 0.86,
-     "origin": "discovered"
-    },
-    {
-     "rank": 7,
-     "name": "ferroionic materials",
-     "name_ru": "Ферроионные материалы",
-     "p": 0.936,
-     "origin": "discovered"
-    },
-    {
-     "rank": 8,
-     "name": "cfet technology",
-     "name_ru": "CFET-технология",
-     "p": 0.966,
-     "origin": "discovered"
-    },
-    {
-     "rank": 9,
-     "name": "KV Cache Compression",
-     "name_ru": "Сжатие Ключ-Значение (KV) кэша",
-     "p": 0.877,
-     "origin": "discovered"
-    },
-    {
-     "rank": 10,
-     "name": "linear pluggable optics",
-     "name_ru": "Линейные подключаемые оптические модули",
-     "p": 0.901,
-     "origin": "discovered"
-    },
-    {
-     "rank": 11,
-     "name": "variational quantum linear solver",
-     "name_ru": "Вариационный квантовый линейный решатель",
-     "p": 0.983,
-     "origin": "discovered"
-    },
-    {
-     "rank": 12,
-     "name": "physics-informed data-driven modeling",
-     "name_ru": "Физика-информированная данные-центричная модель",
-     "p": 0.755,
-     "origin": "discovered"
-    },
-    {
-     "rank": 13,
-     "name": "co packaged optics",
-     "name_ru": "Ко-пакеджд оптикс",
-     "p": 0.698,
-     "origin": "discovered"
-    },
-    {
-     "rank": 14,
-     "name": "chip thermal design",
-     "name_ru": "Проектирование тепловой нагрузки чипов",
-     "p": 0.734,
-     "origin": "discovered"
-    },
-    {
-     "rank": 15,
-     "name": "photonic computing",
-     "name_ru": "фотоника для ИИ",
-     "p": 0.505,
-     "origin": "discovered"
-    }
-   ],
-   "exclusions": {
-    "low_evidence": 18,
-    "low_probability": 5,
     "irrelevant": 6,
-    "product": 4,
+    "product": 1,
+    "low_probability": 6,
+    "mature": 3,
     "broad": 2
    },
    "dataset_signals_in_domain": 17,
    "dataset_hits_in_top15": 1,
-   "share_of_top15_from_dataset": 0.067,
+   "share_of_top15_from_dataset": 0.167,
    "recall_of_domain": 0.059
+  },
+  {
+   "domain": "Защита ИИ",
+   "mode": "только обнаружение",
+   "run_id": 31,
+   "query": "слабые сигналы в кибербезопасности ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 338,
+   "n_signals": 9,
+   "confident_75": 6,
+   "new_candidates_in_top": 9,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Anomaly Detection for Post-Quantum TLS",
+     "name_ru": "Аномальная детекция для постквантового TLS",
+     "p": 0.992,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 2,
+     "name": "prompt-injection detection",
+     "name_ru": "Обнаружение инъекций prompts",
+     "p": 0.952,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "Stackelberg Model of AI Security",
+     "name_ru": "Модель Stackelberg для кибербезопасности ИИ",
+     "p": 0.997,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 4,
+     "name": "Quantum Convolutional Neural Network",
+     "name_ru": "Квантовая сверточная нейронная сеть",
+     "p": 0.987,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "open"
+    },
+    {
+     "rank": 5,
+     "name": "Intelligent Proactive Threat Prediction",
+     "name_ru": "Интеллектуальная проактивная предсказательная система угроз",
+     "p": 0.846,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 6,
+     "name": "Reinforcement Learning-Honeypots",
+     "name_ru": "Обучение с подкреплением для ловушек-провокаторов",
+     "p": 0.979,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 7,
+     "name": "Bio-Inspired Intrusion Detection",
+     "name_ru": "Биовдохновленная обнаружение вторжений",
+     "p": 0.732,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 8,
+     "name": "Self-Supervised Deep Learning",
+     "name_ru": "Самостоятельно обучающиеся нейронные сети в кибербезопасности",
+     "p": 0.66,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 9,
+     "name": "agent swarm security",
+     "name_ru": "Agent Swarm Security",
+     "p": 0.573,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    }
+   ],
+   "passport": {
+    "A": 1,
+    "B": 8
+   },
+   "watch": 4,
+   "exclusions": {
+    "mature": 3,
+    "product": 2,
+    "irrelevant": 6,
+    "low_probability": 5,
+    "not_technology": 1
+   },
+   "dataset_signals_in_domain": 16,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  },
+  {
+   "domain": "Роботы",
+   "mode": "только обнаружение",
+   "run_id": 32,
+   "query": "робототехника",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 337,
+   "n_signals": 7,
+   "confident_75": 4,
+   "new_candidates_in_top": 7,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Actuator Health Estimation Algorithm",
+     "name_ru": "Алгоритм оценки здоровья актуатора",
+     "p": 0.982,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "cable-driven exoskeletons",
+     "name_ru": "Кабельно-проводные экзоскелеты",
+     "p": 0.952,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "future-vision prediction",
+     "name_ru": "предсказание будущего состояния роботов",
+     "p": 0.961,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "Strain-Stiffening in Soft Composites",
+     "name_ru": "Стрейн-стайффнинг в мягких композитах",
+     "p": 0.999,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 5,
+     "name": "vision-based environmental perception",
+     "name_ru": "визуальная экологическая перцепция",
+     "p": 0.705,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 6,
+     "name": "adaptive motion control",
+     "name_ru": "адаптивное управление движением роботов",
+     "p": 0.615,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 7,
+     "name": "Characterization and Manipulation of Soft Robotic Materials",
+     "name_ru": "Характеристика и манипуляция мягкими роботическими материалами",
+     "p": 0.551,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 2,
+    "B": 5
+   },
+   "watch": 13,
+   "exclusions": {
+    "mature": 1,
+    "low_probability": 8,
+    "product": 1
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  },
+  {
+   "domain": "Edge",
+   "mode": "только обнаружение",
+   "run_id": 33,
+   "query": "edge AI и вычисления на устройствах",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 359,
+   "n_signals": 12,
+   "confident_75": 11,
+   "new_candidates_in_top": 12,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Over-the-Air Federated Learning",
+     "name_ru": "Over-the-Air Federated Learning",
+     "p": 0.97,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "on-device LLM inference",
+     "name_ru": "инференс больших языковых моделей на устройстве",
+     "p": 0.945,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
+    },
+    {
+     "rank": 3,
+     "name": "Low-Rank Activation Compression",
+     "name_ru": "Сжатие активаций с низкой ранговой матрицей",
+     "p": 0.982,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "Sparsely Connected Spiking Neural Networks",
+     "name_ru": "Редко связанные нейронные сети с импульсным срабатыванием",
+     "p": 0.96,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 5,
+     "name": "Massive Digital Over-the-Air Computation",
+     "name_ru": "Масштабируемая цифровая удалённая вычислительная обработка",
+     "p": 0.991,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 6,
+     "name": "Federated Edge Learning",
+     "name_ru": "Федеративное обучение на краях",
+     "p": 0.924,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 7,
+     "name": "in-sensor computing",
+     "name_ru": "вычисления в сенсоре (In-Sensor Computing)",
+     "p": 0.927,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 8,
+     "name": "Transformer-Based Real-Time Object Detection",
+     "name_ru": "Трансформер-базированная реальная временная детекция объектов",
+     "p": 0.866,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 9,
+     "name": "Memristor-Based Cellular Neural Networks",
+     "name_ru": "мемристорные клеточные нейронные сети",
+     "p": 0.905,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 10,
+     "name": "Neural Network State Estimation",
+     "name_ru": "Edge AI и вычисления на устройствах для нейронной оценки состояния",
+     "p": 0.937,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 11,
+     "name": "Adaptive Quantization",
+     "name_ru": "Адаптивная квантизация",
+     "p": 0.835,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 12,
+     "name": "always-on AI agents",
+     "name_ru": "Всегда-активные агенты искусственного интеллекта",
+     "p": 0.567,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 6,
+    "B": 6
+   },
+   "watch": 5,
+   "exclusions": {
+    "low_probability": 7,
+    "low_evidence": 1,
+    "irrelevant": 2,
+    "broad": 1,
+    "mature": 2
+   },
+   "dataset_signals_in_domain": 16,
+   "dataset_hits_in_top15": 3,
+   "share_of_top15_from_dataset": 0.25,
+   "recall_of_domain": 0.188
+  },
+  {
+   "domain": "Инфраструктура ИИ",
+   "mode": "только обнаружение",
+   "run_id": 34,
+   "query": "инфраструктура для ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 353,
+   "n_signals": 9,
+   "confident_75": 7,
+   "new_candidates_in_top": 9,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Annealing-based Quantum Neural Networks",
+     "name_ru": "Аннеллинг-базированные квантовые нейронные сети",
+     "p": 0.991,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "Hybrid Quantum-Classical Optimization",
+     "name_ru": "Гибридные квантово-классические оптимизации",
+     "p": 0.974,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "Quantum Kernel Support Vector Machines",
+     "name_ru": "Квантовые ядра в поддержке векторов машинного обучения",
+     "p": 0.98,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "Generative Quantum Machine Learning",
+     "name_ru": "Генеративный квантовый машинный обучающий алгоритм",
+     "p": 0.976,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 5,
+     "name": "Quantum Natural Language Processing",
+     "name_ru": "Квантовая обработка естественного языка (QNLP)",
+     "p": 0.951,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 6,
+     "name": "Combinatorial Fusion",
+     "name_ru": "Комбинаторная фузия",
+     "p": 0.918,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 7,
+     "name": "Variational Quantum Algorithms",
+     "name_ru": "Вариационные квантовые алгоритмы",
+     "p": 0.896,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 8,
+     "name": "tool learning",
+     "name_ru": "Tool Learning",
+     "p": 0.666,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 9,
+     "name": "Neural Network Representation Learning",
+     "name_ru": "Представление нейронных сетей с помощью изучения представлений",
+     "p": 0.514,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 5,
+    "B": 4
+   },
+   "watch": 8,
+   "exclusions": {
+    "low_probability": 7,
+    "broad": 1,
+    "mature": 1,
+    "irrelevant": 4
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  },
+  {
+   "domain": "Индустриальный ИИ",
+   "mode": "только обнаружение",
+   "run_id": 35,
+   "query": "индустриальный ИИ",
+   "status": "done",
+   "options": {
+    "use_watchlist": false,
+    "eval": true
+   },
+   "seconds": 325,
+   "n_signals": 5,
+   "confident_75": 4,
+   "new_candidates_in_top": 5,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Zero-Trust Federated Learning",
+     "name_ru": "Zero-Trust Federated Learning",
+     "p": 0.995,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "Industrial LLM Training",
+     "name_ru": "Индустриальный ИИ на основе LLM",
+     "p": 0.887,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "Event-Triggered MPC",
+     "name_ru": "Событийно-управляемая MPC",
+     "p": 0.903,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "Self-Evolving Cognitive Environments",
+     "name_ru": "Самоэволюционирующие когнитивные среды",
+     "p": 0.983,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 5,
+     "name": "Anomaly-Aware Intelligent Structural Health Monitoring",
+     "name_ru": "Интеллектуальная мониторинговая система структурной целостности с обнаружением аномалий",
+     "p": 0.725,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 1,
+    "B": 4
+   },
+   "watch": 5,
+   "exclusions": {
+    "mature": 2,
+    "low_probability": 14,
+    "broad": 1,
+    "not_technology": 1,
+    "irrelevant": 2
+   },
+   "dataset_signals_in_domain": 17,
+   "dataset_hits_in_top15": 0,
+   "share_of_top15_from_dataset": 0.0,
+   "recall_of_domain": 0.0
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 36,
+   "query": "энергетика и накопители энергии",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 350,
+   "n_signals": 8,
+   "confident_75": 4,
+   "new_candidates_in_top": 8,
+   "top": [
+    {
+     "rank": 1,
+     "name": "solar-thermochemical water splitting",
+     "name_ru": "солнечно-термохимическое разложение воды",
+     "p": 0.915,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "all-solid-state batteries (ASSB)",
+     "name_ru": "Все-твердые аккумуляторы (ASSB)",
+     "p": 0.811,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "solid-state lithium-ion batteries",
+     "name_ru": "Твердотельные литий-ионные батареи",
+     "p": 0.792,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "NASICON solid electrolytes",
+     "name_ru": "NASICON твердые электролиты для накопления энергии",
+     "p": 0.772,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 5,
+     "name": "solid state battery development",
+     "name_ru": "Развитие твердотельных батарей",
+     "p": 0.589,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 6,
+     "name": "flow-batteries",
+     "name_ru": "технологии проточных батарей",
+     "p": 0.564,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 7,
+     "name": "wind-solar-hydrogen system integration",
+     "name_ru": "интеграция ветровой, солнечной и водородной энергетики",
+     "p": 0.549,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 8,
+     "name": "distributed energy resource aggregation",
+     "name_ru": "агрегация распределённых энергетических ресурсов",
+     "p": 0.6,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 5,
+    "B": 3
+   },
+   "watch": 4,
+   "exclusions": {
+    "low_probability": 9,
+    "irrelevant": 5,
+    "product": 1,
+    "low_evidence": 1,
+    "mature": 2
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 37,
+   "query": "медицинские технологии",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 346,
+   "n_signals": 3,
+   "confident_75": 2,
+   "new_candidates_in_top": 2,
+   "top": [
+    {
+     "rank": 1,
+     "name": "medical microrobots",
+     "name_ru": "Медицинские микророботы",
+     "p": 0.893,
+     "origin": "watchlist",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 2,
+     "name": "G-quadruplexes for cancer delivery",
+     "name_ru": "G-квадруплексы для доставки противораковых препаратов",
+     "p": 0.887,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "Dendrimer applications",
+     "name_ru": "Дендримеры",
+     "p": 0.631,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 0,
+    "B": 3
+   },
+   "watch": 1,
+   "exclusions": {
+    "organization": 4,
+    "irrelevant": 8,
+    "mature": 5,
+    "broad": 1,
+    "low_probability": 8
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 38,
+   "query": "логистика и складская автоматизация",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 361,
+   "n_signals": 5,
+   "confident_75": 5,
+   "new_candidates_in_top": 4,
+   "top": [
+    {
+     "rank": 1,
+     "name": "anonymous multi-agent path finding",
+     "name_ru": "анонимное многоагентное нахождение путей",
+     "p": 0.924,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "platooning technologies",
+     "name_ru": "Платоонинг транспортных средств",
+     "p": 0.938,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "energy-aware routing",
+     "name_ru": "Энергосберегающая маршрутизация",
+     "p": 0.78,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "event-based vision sensor automotive",
+     "name_ru": "сенсор видения на событиях для автомобильного применения",
+     "p": 0.884,
+     "origin": "watchlist",
+     "passport": "B",
+     "window": "thin"
+    },
+    {
+     "rank": 5,
+     "name": "autonomous truck platooning",
+     "name_ru": "автономные грузовики-поезда",
+     "p": 0.76,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 2,
+    "B": 3
+   },
+   "watch": 0,
+   "exclusions": {
+    "irrelevant": 5,
+    "mature": 5,
+    "low_probability": 14,
+    "broad": 1
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 39,
+   "query": "новые материалы и химия",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 351,
+   "n_signals": 9,
+   "confident_75": 6,
+   "new_candidates_in_top": 9,
+   "top": [
+    {
+     "rank": 1,
+     "name": "MXene quantum dots",
+     "name_ru": "MXene квантовые точки",
+     "p": 0.971,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "Self-driving laboratories",
+     "name_ru": "Самоуправляемые лаборатории",
+     "p": 0.975,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "self-healing composites",
+     "name_ru": "Самовосстанавливающиеся композиты",
+     "p": 0.846,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "electronic skin technology",
+     "name_ru": "Электронная кожа (e-skin)",
+     "p": 0.961,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 5,
+     "name": "carbon quantum dots",
+     "name_ru": "Углеродные квантовые точки",
+     "p": 0.8,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 6,
+     "name": "dmref catalyst surfaces",
+     "name_ru": "Поверхности катализаторов dmref",
+     "p": 0.795,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 7,
+     "name": "graphene quantum dots",
+     "name_ru": "Графеновые квантовые точки",
+     "p": 0.658,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 8,
+     "name": "metamaterial design",
+     "name_ru": "Метаматериалы",
+     "p": 0.695,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 9,
+     "name": "nanotechnology in self-healing materials",
+     "name_ru": "Нанотехнологии самовосстанавливающихся материалов",
+     "p": 0.574,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 3,
+    "B": 6
+   },
+   "watch": 2,
+   "exclusions": {
+    "irrelevant": 7,
+    "low_probability": 9,
+    "not_technology": 2,
+    "mature": 1
+   }
   }
  ]
 }

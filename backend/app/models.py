@@ -52,6 +52,7 @@ class Document(Base):
     collector: Mapped[str] = mapped_column(String(50))
     summary_ru: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+    link_status: Mapped[str | None] = mapped_column(String(20), nullable=True)  # ok|dead|restricted — живая проверка ссылки
 
     run: Mapped[Run] = relationship(back_populates="documents")
 
@@ -79,6 +80,24 @@ class Candidate(Base):
     document_ids: Mapped[list] = mapped_column(JSON, default=list)
 
     run: Mapped[Run] = relationship(back_populates="candidates")
+    feedback: Mapped[list["Feedback"]] = relationship(cascade="all, delete-orphan")
+
+
+class Feedback(Base):
+    """Решение аналитика по кандидату (human-in-the-loop): используется для дообучения классификатора."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    candidate_id: Mapped[int] = mapped_column(ForeignKey("candidates.id", ondelete="CASCADE"), index=True)
+    run_id: Mapped[int] = mapped_column(Integer, index=True)
+    verdict: Mapped[str] = mapped_column(String(20))  # signal|mature|noise|not_tech
+    comment: Mapped[str] = mapped_column(Text, default="")
+    name: Mapped[str] = mapped_column(String(300), default="")
+    features: Mapped[dict] = mapped_column(JSON, default=dict)  # снимок признаков на момент оценки
+    provider: Mapped[str] = mapped_column(String(100), default="")  # decision-модель, давшая признаки
+    n_docs: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class ModelCall(Base):

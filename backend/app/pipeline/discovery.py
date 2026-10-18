@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, gdelt, habr, hackernews, openalex
+from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, ml_papers, news_search, openalex, semanticscholar, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -45,6 +45,37 @@ WATCHLIST_DOMAINS = {
     "Индустриальный ИИ": r"индустр|промышлен|производств|завод|industrial|manufactur",
 }
 AI_QUERY = r"\bии\b|искусственн|нейросет|\bai\b|artificial intelligence|машинн"
+# Europe PMC подключается только для наук о жизни: для финтеха или роботов он даёт шум.
+LIFE_SCIENCE = r"медиц|здрав|биотех|биолог|фарм|генн|геном|белк|клиник|диагност|health|medic|biotech|bio|pharma|gene|protein|clinic|drug|patholog"
+# Обрывки фраз, которые статистика выдаёт за технологии: заголовки Hacker News, биржевые новости,
+# фрагменты через «and» («detection and anti-money»), фразы, обрывающиеся на прилагательном («adoption of digital»).
+INDUSTRY_COLLECTORS = {"rss", "siliconangle", "yc"}
+MAX_LLM_DOCS, INDUSTRY_DOCS = 240, 60
+JUNK_FIRST = {"show", "ask", "tell", "hn", "launch"}
+JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter",
+            # заголовки новостей о раундах: «X startup raises $12M Series A» — событие, а не технология
+            "raises", "raised", "raise", "series", "funding", "startup", "startups", "round", "nabs", "secures", "valuation"}
+JUNK_LAST = {"digital", "financial", "technological", "sized", "driven", "aware", "enabled", "open-source", "related"}
+
+
+# Хвосты и зачины, которые делают из технологии название раздела или статьи: «solid state battery development»,
+# «Dendrimer applications», «Characterization of soft robotic materials». Срезаем — так и поиск по фразе точнее.
+TAIL_WORDS = {"development", "developments", "application", "applications", "technology", "technologies", "solution", "solutions",
+              "research", "study", "studies", "analysis", "advances", "trends"}
+HEAD = re.compile(r"^(characteri[sz]ation|development|analysis|design|evaluation|study|applications?|advances|towards?|"
+                  r"investigation|review|overview|modell?ing|role|use|impact) (of|in|for|on) (the )?", re.I)
+
+
+def clean_name(name: str) -> str:
+    n = HEAD.sub("", re.sub(r"\s+", " ", name.replace("_", " ")).strip())
+    words = n.split()
+    while len(words) > 1 and words[-1].lower() in TAIL_WORDS:
+        words.pop()
+    return " ".join(words) or name.strip()
+
+
+def _junk(low: list[str]) -> bool:
+    return low[0] in JUNK_FIRST or low[-1] in JUNK_LAST or any(t in JUNK_ANY for t in low) or "and" in low[1:-1]
 
 
 def _norm(name: str) -> str:
@@ -64,14 +95,56 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
         docs, _ = await hackernews.search(http, q, since_ts, 20)
         return docs
 
-    for sq in subs:
+    s = get_settings()
+    topic = plan.get("topic_en", subs[0] if subs else "")
+    for i, sq in enumerate(subs):
         tasks.append(arxiv.search(http, sq, 20))
         tasks.append(openalex.search(http, sq, from_date, 20))
         tasks.append(hn_docs(sq))  # ссылки на свежие статьи отраслевых изданий о стартапах и продуктах
-    tasks.append(gdelt.search(http, plan.get("topic_en", subs[0] if subs else ""), "6m", 30))
-    for ru in plan.get("ru_terms", [])[:3]:
-        tasks.append(gdelt.search(http, ru, "12m", 25, lang="russian"))
+        if s.extra_sources and i < 6:
+            tasks.append(crossref.search(http, sq, from_date, 15))  # все издатели с DOI, в т.ч. неанглоязычные журналы
+            if semanticscholar.enabled():
+                tasks.append(semanticscholar.search(http, sq, today.year - 2, 15))
+            if re.search(LIFE_SCIENCE, plan.get("query", "") + " " + topic, flags=re.I):
+                tasks.append(europepmc.search(http, sq, from_date, 15))
+    tasks.append(gdelt.search(http, topic, "6m", 30))
+    ru_terms = plan.get("ru_terms", [])[:3]
+    for j, ru in enumerate(ru_terms):
+        if j == 0:  # GDELT — 1 запрос / 5,5 с: одного русского запроса достаточно, остальное дают Хабр и КиберЛенинка
+            tasks.append(gdelt.search(http, ru, "12m", 25, lang="russian"))
         tasks.append(habr.search(http, ru, 15))
+        if s.extra_sources:
+            tasks.append(cyberleninka.search(http, ru, 15, min_year=today.year - 3))  # русскоязычная наука
+    if s.extra_sources and topic:
+        tasks.append(gdelt.search(http, topic, "12m", 20, lang="chinese"))  # китайские СМИ — крупнейший рынок ранних внедрений
+    if s.news_sources and topic:
+        # Отраслевые новости и раунды: на них построена большая часть сигналов датасета организатора.
+        # Ленты изданий (TechCrunch, The Block, PR Newswire, vc.ru, CNews) — только разрешённые robots.txt.
+        topic_text = f"{plan.get('query', '')} {topic}"
+        tasks.append(news_search.for_topic(http, topic_text, [*subs, topic], "en", 100))
+        tasks.append(news_search.siliconangle(http, topic, 20))
+        for sq in subs[:3]:
+            tasks.append(news_search.siliconangle(http, sq, 15))
+        if ru_terms:
+            tasks.append(news_search.for_topic(http, topic_text, [plan.get("query", ""), *ru_terms], "ru", 30))
+    if s.grant_sources:
+        # Проекты, которые фонды уже профинансировали: описывают направления за годы до продуктов.
+        for sq in subs[:3]:
+            tasks.append(grants.nih(http, sq, n=10))
+            tasks.append(grants.nsf(http, sq, n=10))
+            tasks.append(grants.ukri(http, sq, n=10))
+    if s.ml_sources and re.search(AI_QUERY + r"|robot|робот|edge|вычисл|comput|данн|data|агент|agent", plan.get("query", "") + " " + topic, flags=re.I):
+        # Ранние исследования в ИИ: обсуждаемые статьи (HF Papers) и поданные на конференции (OpenReview).
+        for sq in subs[:6]:
+            tasks.append(ml_papers.hf_papers(http, sq, 10, min_year=today.year - 2))
+            tasks.append(ml_papers.openreview(http, sq, 10, min_year=today.year - 2))
+    if s.startup_sources:
+        # Стартапы YC последних двух лет по подтемам: описания продуктов, в которые уже вложены деньги.
+        for sq in subs[:6]:
+            tasks.append(yc.search(http, sq, 10, min_year=today.year - 2))
+    if s.news_sources and topic:
+        if plan.get("zh_terms"):  # китайские техно-СМИ: 36Kr, IT之家, cnBeta, InfoQ China
+            tasks.append(news_search.for_topic(http, topic_text, plan["zh_terms"], "zh", 30))
 
     docs: list[RawDoc] = []
     done = 0
@@ -113,7 +186,7 @@ def mine_phrases(docs: list[RawDoc], limit: int = 40) -> list[dict]:
             for j in range(len(tokens) - n + 1):
                 gram = tokens[j : j + n]
                 low = [t.lower() for t in gram]
-                if low[0] in STOP or low[-1] in STOP or sum(t in STOP for t in low) > 1:
+                if low[0] in STOP or low[-1] in STOP or sum(t in STOP for t in low) > 1 or _junk(low):
                     continue
                 key = _norm(" ".join(low))
                 if key in GENERIC or len(key) < 8:
@@ -144,9 +217,18 @@ def mine_phrases(docs: list[RawDoc], limit: int = 40) -> list[dict]:
 async def llm_candidates(llm: BaseLLM, topic: str, docs: list[RawDoc], batch: int = 30) -> tuple[list[dict], list[LLMResult]]:
     if llm.provider == "none":
         return [], []
-    # Приоритет — свежие научные документы.
-    order = sorted(range(len(docs)), key=lambda i: (docs[i].source_type not in ("science", "preprint"), -(int((docs[i].published or "0")[:4] or 0))))
-    chunks = [order[k : k + batch] for k in range(0, min(len(order), 240), batch)]
+    # Модели отдаётся не более 240 документов: до 180 — свежая наука и прочее, до 60 — отраслевые новости
+    # (сначала о раундах и запусках). Без квоты научных документов хватает на все пачки и новости не читаются.
+    def year(i):
+        return -(int((docs[i].published or "0")[:4] or 0))
+
+    industry = [i for i in range(len(docs)) if docs[i].collector in INDUSTRY_COLLECTORS]
+    industry.sort(key=lambda i: (not docs[i].extra.get("event"), year(i)))
+    industry = industry[:INDUSTRY_DOCS]
+    taken = set(industry)
+    rest = sorted((i for i in range(len(docs)) if i not in taken), key=lambda i: (docs[i].source_type not in ("science", "preprint"), year(i)))
+    rest = rest[: MAX_LLM_DOCS - len(industry)]
+    chunks = [rest[k : k + batch] for k in range(0, len(rest), batch)] + [industry[k : k + batch] for k in range(0, len(industry), batch)]
 
     async def one(idx):
         payload = [{"title": docs[i].title, "snippet": docs[i].snippet} for i in idx]
@@ -164,7 +246,7 @@ def merge(cands: list[dict]) -> list[dict]:
     """Склеивает дубли и синонимы по нормализованному названию и пересечению слов."""
     merged: list[dict] = []
     for c in cands:
-        c = {**c, "name_en": c["name_en"].replace("_", " ").strip()}
+        c = {**c, "name_en": clean_name(c["name_en"])}
         key = _norm(c["name_en"])
         if not key or key in GENERIC:
             continue

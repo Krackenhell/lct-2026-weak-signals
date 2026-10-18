@@ -1,0 +1,85 @@
+{
+ "date": "2026-10-17",
+ "query_en": "agentic commerce",
+ "query_ru": "агентская коммерция",
+ "sources": [
+  {
+   "source": "arXiv",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.0
+  },
+  {
+   "source": "OpenAlex",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.2
+  },
+  {
+   "source": "Crossref",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.2
+  },
+  {
+   "source": "Semantic Scholar (ключ)",
+   "ok": true,
+   "records": 0,
+   "seconds": 0.0
+  },
+  {
+   "source": "Europe PMC",
+   "ok": true,
+   "records": 2,
+   "seconds": 0.7
+  },
+  {
+   "source": "КиберЛенинка (RU)",
+   "ok": true,
+   "records": 5,
+   "seconds": 0.9
+  },
+  {
+   "source": "Хабр (RU)",
+   "ok": true,
+   "records": 5,
+   "seconds": 0.1
+  },
+  {
+   "source": "GDELT (EN)",
+   "ok": false,
+   "error": "HTTP 429",
+   "seconds": 9.8
+  },
+  {
+   "source": "GDELT (RU)",
+   "ok": false,
+   "error": "api.gdeltproject.org временно отключён после серии сбоев",
+   "seconds": 0.0
+  },
+  {
+   "source": "GDELT (ZH)",
+   "ok": false,
+   "error": "api.gdeltproject.org временно отключён после серии сбоев",
+   "seconds": 0.0
+  },
+  {
+   "source": "Hacker News",
+   "ok": true,
+   "records": 5,
+   "seconds": 0.9
+  },
+  {
+   "source": "GitHub",
+   "ok": true,
+   "records": 3,
+   "seconds": 0.0
+  },
+  {
+   "source": "Википедия",
+   "ok": true,
+   "records": 1,
+   "seconds": 0.0
+  }
+ ]
+}

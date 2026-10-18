@@ -16,8 +16,11 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9 ]", "", s.lower()).strip()
 
 
-async def lookup(http: HttpClient, phrase: str) -> dict:
-    """{'exists': bool, 'title': str|None, 'monthly_views': float}"""
+async def lookup(http: HttpClient, phrase: str, as_of: date | None = None) -> dict:
+    """{'exists': bool, 'title': str|None, 'monthly_views': float}
+
+    as_of — дата среза: просмотры берутся за год до неё; статья считается существовавшей, если у неё были просмотры
+    (иначе статья, написанная после среза, «протекла» бы в прошлое)."""
     data = await http.get(
         SEARCH,
         params={"action": "query", "list": "search", "srsearch": f'intitle:"{phrase}"', "srlimit": 3, "format": "json"},
@@ -32,7 +35,7 @@ async def lookup(http: HttpClient, phrase: str) -> dict:
             break
     if not title:
         return {"exists": False, "title": None, "monthly_views": 0.0}
-    end = date.today().replace(day=1) - timedelta(days=1)
+    end = (as_of or date.today()).replace(day=1) - timedelta(days=1)
     start = (end - timedelta(days=365)).replace(day=1)
     try:
         v = await http.get(
@@ -42,4 +45,6 @@ async def lookup(http: HttpClient, phrase: str) -> dict:
         views = sum(i.get("views", 0) for i in items) / max(len(items), 1)
     except Exception:
         views = 0.0
+    if as_of and views == 0:
+        return {"exists": False, "title": None, "monthly_views": 0.0}
     return {"exists": True, "title": title, "monthly_views": views}

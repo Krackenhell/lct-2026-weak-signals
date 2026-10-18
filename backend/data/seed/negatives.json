@@ -1,5 +1,6 @@
 {
  "_comment": "Отрицательные примеры для обучения, собранные командой. code: mature — массово внедрено/сформированный рынок с лидерами; standard — отраслевой стандарт/протокол/регламент; hype — рекламный шум или размытый хайп без технического содержания; broad — слишком общая область, а не конкретная технология.",
+ "_comment_hard": "hard: true — трудные отрицательные примеры (малоизвестные зрелые технологии, заглохший хайп, общие направления, похожие на конкретные). Входят в обучение при полном прогоне python -m app.ml.train (нужен ключ decision-модели).",
  "items": [
   {"name": "Convolutional neural networks for image classification", "name_ru": "Свёрточные нейросети для классификации изображений", "domain": "Индустриальный ИИ", "code": "mature", "terms": ["convolutional neural network"]},
   {"name": "Predictive maintenance with machine learning", "name_ru": "Предиктивное обслуживание на ML", "domain": "Индустриальный ИИ", "code": "mature", "terms": ["predictive maintenance"]},
@@ -140,6 +141,32 @@
   {"name": "Virtual reality headsets", "name_ru": "VR-шлемы", "domain": "Другое", "code": "mature", "terms": ["virtual reality headset"]},
   {"name": "Electric vehicles", "name_ru": "Электромобили", "domain": "Другое", "code": "mature", "terms": ["electric vehicle"]},
   {"name": "HTTP/2", "name_ru": "Протокол HTTP/2", "domain": "Другое", "code": "standard", "terms": ["HTTP/2"]},
-  {"name": "USB-C", "name_ru": "USB-C", "domain": "Другое", "code": "standard", "terms": ["USB-C"]}
+  {"name": "USB-C", "name_ru": "USB-C", "domain": "Другое", "code": "standard", "terms": ["USB-C"]},
+  {"name": "Federated learning for mobile keyboards", "name_ru": "Федеративное обучение для мобильных клавиатур", "domain": "Edge", "code": "mature", "terms": ["federated learning keyboard"], "hard": true},
+  {"name": "Knowledge distillation", "name_ru": "Дистилляция знаний моделей", "domain": "Инфраструктура ИИ", "code": "mature", "terms": ["knowledge distillation"], "hard": true},
+  {"name": "Model pruning", "name_ru": "Прунинг нейросетей", "domain": "Edge", "code": "mature", "terms": ["neural network pruning"], "hard": true},
+  {"name": "Graph neural networks for fraud detection", "name_ru": "Графовые нейросети для антифрода", "domain": "Финтех", "code": "mature", "terms": ["graph neural network fraud detection"], "hard": true},
+  {"name": "Optical character recognition for documents", "name_ru": "OCR для документов", "domain": "Финтех", "code": "mature", "terms": ["document OCR"], "hard": true},
+  {"name": "Simultaneous localization and mapping", "name_ru": "SLAM — одновременная локализация и картирование", "domain": "Роботы", "code": "mature", "terms": ["simultaneous localization and mapping"], "hard": true},
+  {"name": "Collaborative robots cobots", "name_ru": "Коллаборативные роботы (коботы)", "domain": "Роботы", "code": "mature", "terms": ["collaborative robot"], "hard": true},
+  {"name": "Digital twins in manufacturing", "name_ru": "Цифровые двойники на производстве", "domain": "Индустриальный ИИ", "code": "mature", "terms": ["digital twin manufacturing"], "hard": true},
+  {"name": "Anomaly detection with autoencoders", "name_ru": "Поиск аномалий автоэнкодерами", "domain": "Индустриальный ИИ", "code": "mature", "terms": ["autoencoder anomaly detection"], "hard": true},
+  {"name": "Adversarial training", "name_ru": "Состязательное обучение моделей", "domain": "Защита ИИ", "code": "mature", "terms": ["adversarial training"], "hard": true},
+  {"name": "GPU virtualization", "name_ru": "Виртуализация GPU", "domain": "Инфраструктура ИИ", "code": "mature", "terms": ["GPU virtualization"], "hard": true},
+  {"name": "TinyML on microcontrollers", "name_ru": "TinyML на микроконтроллерах", "domain": "Edge", "code": "mature", "terms": ["TinyML"], "hard": true},
+  {"name": "Initial coin offerings", "name_ru": "ICO — первичное размещение токенов", "domain": "Финтех", "code": "hype", "terms": ["initial coin offering"], "hard": true},
+  {"name": "NFT marketplaces", "name_ru": "Маркетплейсы NFT", "domain": "Финтех", "code": "hype", "terms": ["NFT marketplace"], "hard": true},
+  {"name": "Metaverse banking branches", "name_ru": "Отделения банков в метавселенной", "domain": "Финтех", "code": "hype", "terms": ["metaverse bank branch"], "hard": true},
+  {"name": "Blockchain for supply chain traceability", "name_ru": "Блокчейн для прослеживаемости цепочек поставок", "domain": "Индустриальный ИИ", "code": "hype", "terms": ["blockchain supply chain"], "hard": true},
+  {"name": "Chatbot-first customer service", "name_ru": "Обслуживание клиентов только через чат-бот", "domain": "Финтех", "code": "hype", "terms": ["chatbot customer service"], "hard": true},
+  {"name": "Drone delivery of parcels", "name_ru": "Доставка посылок дронами", "domain": "Роботы", "code": "hype", "terms": ["drone parcel delivery"], "hard": true},
+  {"name": "Fully autonomous robotaxis everywhere", "name_ru": "Повсеместные роботакси", "domain": "Роботы", "code": "hype", "terms": ["robotaxi"], "hard": true},
+  {"name": "Quantum supremacy for banking", "name_ru": "Квантовое превосходство в банкинге", "domain": "Финтех", "code": "hype", "terms": ["quantum supremacy finance"], "hard": true},
+  {"name": "AI for finance", "name_ru": "ИИ в финансах", "domain": "Финтех", "code": "broad", "terms": ["AI in finance"], "hard": true},
+  {"name": "Edge intelligence", "name_ru": "Периферийный интеллект", "domain": "Edge", "code": "broad", "terms": ["edge intelligence"], "hard": true},
+  {"name": "Trustworthy AI", "name_ru": "Доверенный ИИ", "domain": "Защита ИИ", "code": "broad", "terms": ["trustworthy AI"], "hard": true},
+  {"name": "Smart manufacturing", "name_ru": "Умное производство", "domain": "Индустриальный ИИ", "code": "broad", "terms": ["smart manufacturing"], "hard": true},
+  {"name": "Service robots", "name_ru": "Сервисные роботы", "domain": "Роботы", "code": "broad", "terms": ["service robot"], "hard": true},
+  {"name": "AI infrastructure", "name_ru": "Инфраструктура ИИ", "domain": "Инфраструктура ИИ", "code": "broad", "terms": ["AI infrastructure"], "hard": true}
  ]
 }

@@ -28,12 +28,27 @@ from app.config import get_settings
 from app.decision import get_decision_model
 from app.ml.model import SignalModel
 from app.pipeline import evidence as evidence_mod
-from app.pipeline.features import ANSWERS, FEATURES, NUMERIC, answer_features, numeric_features
-from app.pipeline.questions import QUESTIONS, build_state
+from app.pipeline.features import ANSWERS, CORE_COLLECTORS, FEATURES, NUMERIC, answer_features, numeric_features
+from app.pipeline.questions import EVENT, QUESTIONS, build_state
 
 log = logging.getLogger("train")
 # Дата отсечения для обучения фиксирована, чтобы признаки были воспроизводимы.
 TRAIN_DATE = date(2026, 9, 23)
+# Минимум найденных документов, чтобы пример участвовал в обучении и оценке (как турникет в живом поиске).
+MIN_DOCS = 3
+# Источники, из которых считаются числовые признаки: без них пример неполный и в обучение не идёт.
+CORE_SOURCES = {"arxiv", "openalex"}
+# Перенос на область с меньшим числом сигналов в проверке не публикуется числом: оценка по 2–4 примерам ничего не значит.
+MIN_LODO_POS = 5
+EVIDENCE_RULE = "OpenAlex находит хотя бы одну работу по термину"
+
+
+def has_evidence(r: dict) -> bool:
+    """Пример участвует в обучении, если по термину есть научная история (OpenAlex нашёл работы).
+
+    Подобрано на данных 17.10.2026: так в обучении нет «пустых» примеров ни в одном классе
+    (иначе модель учит правило «ничего не нашли — значит сигнал»), а сигналов остаётся больше всего."""
+    return (r.get("numeric") or {}).get("log_total_works", 0) > 0
 
 
 def load_examples() -> list[dict]:
@@ -51,28 +66,45 @@ def load_examples() -> list[dict]:
     return rows
 
 
-async def collect(rows: list[dict], concurrency: int = 6) -> tuple[list[dict], dict]:
-    """Собирает доказательства и числовые признаки для каждого примера."""
-    http = HttpClient()
+async def collect(rows: list[dict], concurrency: int = 3) -> tuple[list[dict], dict]:
+    """Собирает доказательства и числовые признаки для каждого примера.
+
+    Терпеливый режим: если основной источник признаков (arXiv, OpenAlex) не ответил, пример собирается заново
+    через паузу; если и после повторов данных нет — пример помечается неполным и в обучение не идёт.
+    """
+    http = HttpClient(patient=True)
     sem = asyncio.Semaphore(concurrency)
     evidence_store: dict = {}
     done = 0
 
+    async def gather_example(r):
+        ev = await evidence_mod.gather(http, r["phrase"], TRAIN_DATE, with_news=False, with_repos=False)
+        # Как при живом поиске (runner.assess): мало документов — пробуем запасной термин.
+        for alt in r.get("alt_terms", [])[:1]:
+            if len(ev.docs) >= 5:
+                break
+            alt_ev = await evidence_mod.gather(http, alt, TRAIN_DATE, with_news=False, with_repos=False)
+            if len(alt_ev.docs) > len(ev.docs) and not set(alt_ev.failed) & CORE_SOURCES:
+                ev = alt_ev
+        return ev
+
     async def one(r):
         nonlocal done
         async with sem:
-            ev = await evidence_mod.gather(http, r["phrase"], TRAIN_DATE, with_news=False, with_repos=False)
-            # Как при живом поиске (runner.assess): мало документов — пробуем запасные термины.
-            for alt in r.get("alt_terms", []):
-                if len(ev.docs) >= 5:
+            ev = await gather_example(r)
+            for attempt in range(3):
+                if not set(ev.failed) & CORE_SOURCES:
                     break
-                alt_ev = await evidence_mod.gather(http, alt, TRAIN_DATE, with_news=False, with_repos=False)
-                if len(alt_ev.docs) > len(ev.docs):
-                    ev = alt_ev
+                await asyncio.sleep(30 * (attempt + 1))
+                ev = await gather_example(r)
         r["phrase_used"] = ev.phrase
         r["numeric"] = numeric_features(ev)
         r["failed_sources"] = sorted(set(ev.failed))
-        r["n_docs"] = len(ev.docs)
+        r["incomplete"] = sorted(set(ev.failed) & CORE_SOURCES)
+        # Порог «есть доказательства» считается по тем же источникам, что и признаки (arXiv, Hacker News).
+        # Crossref ищет нестрого и находит «документы» почти по любой фразе — по нему порог терял смысл.
+        r["n_docs_all"] = len(ev.docs)
+        r["n_docs"] = sum(1 for d in ev.docs if d.collector in CORE_COLLECTORS)
         evidence_store[r["key"]] = evidence_mod.evidence_items(ev)
         done += 1
         if done % 10 == 0:
@@ -88,10 +120,12 @@ async def ask_all(rows: list[dict], evidence_store: dict, provider: str | None =
     model = get_decision_model(provider)
     sem = asyncio.Semaphore(8)
 
+    questions = {**QUESTIONS, "event": EVENT}
+
     async def one(r):
         state = build_state(r["phrase"], "", evidence_store.get(r["key"], []))
         async with sem:
-            res = await model.ask(state, QUESTIONS)
+            res = await model.ask(state, questions)
         r["answers"] = answer_features(res.answers)
         r["decision_ok"] = res.ok
 
@@ -99,10 +133,45 @@ async def ask_all(rows: list[dict], evidence_store: dict, provider: str | None =
     return f"{model.provider}:{model.model}"
 
 
+def feedback_rows(provider: str) -> tuple[list[dict], dict]:
+    """Оценки аналитиков как дополнительные размеченные примеры (human-in-the-loop).
+
+    Берём только оценки по кандидатам, признаки которых дала та же decision-модель, что и обучающая выборка
+    (иначе распределения признаков разойдутся), и только с доказательствами (≥ MIN_DOCS документов).
+    """
+    from app.db import SessionLocal
+    from app.models import Feedback
+
+    with SessionLocal() as s:
+        fbs = s.query(Feedback).order_by(Feedback.id).all()
+    latest = {f.candidate_id: f for f in fbs}  # если аналитик передумал — берём последнее решение
+    rows, skipped = [], {"other_provider": 0, "no_evidence": 0}
+    for f in latest.values():
+        if f.provider.split(":")[0] != provider.split(":")[0]:
+            skipped["other_provider"] += 1
+            continue
+        if f.n_docs < MIN_DOCS:
+            skipped["no_evidence"] += 1
+            continue
+        feats = f.features or {}
+        rows.append({
+            "key": f"fb-{f.id}", "label": int(f.verdict == "signal"), "name": f.name, "domain": "Оценки аналитиков", "code": f"feedback:{f.verdict}",
+            "numeric": {k: feats.get(k, 0.0) for k in NUMERIC}, "answers": {k: feats[k] for k in ANSWERS if k in feats}, "n_docs": f.n_docs,
+        })
+    return rows, {"used": len(rows), **skipped}
+
+
 def _matrix(rows, feats):
-    X = np.array([[{**r["numeric"], **r["answers"]}[f] for f in feats] for r in rows], dtype=float)
+    # Нет ответа на вопрос (например, «event» до переопроса) — нейтральные 0.5; такие признаки отбрасывает _usable.
+    X = np.array([[{**r["numeric"], **r["answers"]}.get(f, 0.5) for f in feats] for r in rows], dtype=float)
     y = np.array([r["label"] for r in rows])
     return X, y
+
+
+def _usable(rows, feats) -> list[str]:
+    """Признаки, которые реально различаются у примеров: постоянный столбец не несёт информации."""
+    X, _ = _matrix(rows, feats)
+    return [f for f, col in zip(feats, X.T, strict=False) if np.std(col) > 1e-9]
 
 
 def _fit(X, y, C=0.5):
@@ -132,11 +201,61 @@ def _metrics(y, p, thr=0.5) -> dict:
     }
 
 
+def _bootstrap_ci(y, p, n_boot: int = 1000, seed: int = 7) -> dict:
+    """95% доверительные интервалы метрик по out-of-fold предсказаниям (бутстрэп по примерам)."""
+    rng = np.random.default_rng(seed)
+    vals = {"precision": [], "recall": [], "f1": [], "roc_auc": []}
+    for _ in range(n_boot):
+        idx = rng.integers(0, len(y), len(y))
+        if len(set(y[idx])) < 2:
+            continue
+        m = _metrics(y[idx], p[idx])
+        for k in vals:
+            vals[k].append(m[k])
+    return {k: [round(float(np.percentile(v, 2.5)), 3), round(float(np.percentile(v, 97.5)), 3)] for k, v in vals.items()}
+
+
+def _repeated(X, y, repeats: int = 10) -> dict:
+    """Кросс-валидация 5×10 с разными разбиениями: среднее и разброс, а не одно удачное число."""
+    f1s = [_metrics(y, _oof(X, y, seed=s))["f1"] for s in range(repeats)]
+    return {"f1_mean": round(float(np.mean(f1s)), 3), "f1_std": round(float(np.std(f1s)), 3), "repeats": repeats}
+
+
+LIMITATIONS = [
+    "Отрицательные примеры собраны командой (включая 26 трудных: малоизвестные зрелые технологии, заглохший хайп, общие "
+    "направления); пограничных случаев всё равно мало, поэтому метрики — верхняя оценка.",
+    f"В обучение и оценку входят только примеры, у которых есть научная история ({EVIDENCE_RULE}): без неё признаки "
+    "не несут информации, и модель училась бы правилу «ничего не нашли — значит сигнал». У части сигналов организатора "
+    "такой истории нет — они в обучении не участвуют.",
+    f"Перенос на новую область считается на 20–50 примерах; для областей, где в проверке меньше {MIN_LODO_POS} сигналов, число "
+    "не публикуется — такая оценка ничего не значит.",
+    "В живом поиске кандидат без подтверждённых документов не попадает в топ, а уходит в «Наблюдать».",
+    "Признак «самое твёрдое событие» пока не входит в модель: для этого нужен переопрос обучающей выборки decision-моделью (--reask).",
+]
+
+
 def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
-    X, y = _matrix(rows, FEATURES)
+    incomplete = [r for r in rows if r.get("incomplete")]
+    all_rows = [r for r in rows if not r.get("incomplete")]  # источники признаков не ответили — пример не используем вовсе
+    rows = [r for r in all_rows if has_evidence(r)]
+    feats_all = _usable(rows, FEATURES)
+    X, y = _matrix(rows, feats_all)
     oof = _oof(X, y)
     report = {"provider": provider, "n": int(len(y)), "n_pos": int(y.sum()), "n_neg": int((1 - y).sum()), "train_date": TRAIN_DATE.isoformat()}
+    report["min_docs"] = MIN_DOCS
+    report["evidence_rule"] = EVIDENCE_RULE
+    report["incomplete_sources"] = {"rows": len(incomplete), "names": [r["name"] for r in incomplete][:20]}
+    dropped = [r for r in all_rows if r.get("n_docs", 0) < MIN_DOCS]
+    report["dropped_no_evidence"] = {"pos": sum(r["label"] for r in dropped), "neg": sum(1 - r["label"] for r in dropped)}
     report["cv5"] = _metrics(y, oof)
+    report["cv5_ci95"] = _bootstrap_ci(y, oof)
+    report["cv5_repeated"] = _repeated(X, y)
+    # Для сравнения — прежний способ: все 240 примеров, включая примеры без доказательств.
+    Xa, ya = _matrix(all_rows, _usable(all_rows, FEATURES))
+    report["reference_all_rows"] = {"n": int(len(ya)), **_metrics(ya, _oof(Xa, ya))}
+    report["features_used"] = feats_all
+    report["features_dropped"] = [f for f in FEATURES if f not in feats_all]
+    report["limitations"] = LIMITATIONS if "event" not in feats_all else [s for s in LIMITATIONS if "событие" not in s]
     report["confident_75"] = {
         "share_of_positives_above_075": round(float((oof[y == 1] >= 0.75).mean()), 3),
         "precision_above_075": round(float(y[oof >= 0.75].mean()) if (oof >= 0.75).any() else 0.0, 3),
@@ -144,7 +263,7 @@ def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
 
     # Ablation: какой вклад дают группы признаков.
     report["ablation"] = {}
-    for name, feats in {"numeric_only": NUMERIC, "decision_model_only": ANSWERS, "all": FEATURES}.items():
+    for name, feats in {"numeric_only": [f for f in NUMERIC if f in feats_all], "decision_model_only": [f for f in ANSWERS if f in feats_all], "all": feats_all}.items():
         Xa, _ = _matrix(rows, feats)
         report["ablation"][name] = _metrics(y, _oof(Xa, y))
 
@@ -156,7 +275,19 @@ def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
         te = ~tr
         sc, clf = _fit(X[tr], y[tr])
         p = clf.predict_proba(sc.transform(X[te]))[:, 1]
-        lodo[d] = _metrics(y[te], p) if len(set(y[te])) > 1 else {"recall": round(float(((p >= 0.5) == y[te]).mean()), 3)}
+        n_pos = int(y[te].sum())
+        if n_pos >= MIN_LODO_POS and len(set(y[te])) > 1:
+            lodo[d] = _metrics(y[te], p)
+            lodo[d]["f1_ci95"] = _bootstrap_ci(y[te], p, n_boot=500)["f1"]
+            errors = int(((p >= 0.5) != y[te]).sum())
+            lodo[d]["errors"] = errors
+            if errors == 0:
+                # Ни одной ошибки: бутстрэп вырождается в «1,00–1,00». Честнее верхняя граница доли ошибок
+                # (точная, по Клопперу — Пирсону): с 95% уверенностью ошибок не больше этой доли.
+                lodo[d]["error_rate_upper95"] = round(1 - 0.05 ** (1 / int(te.sum())), 3)
+        else:
+            lodo[d] = {"too_few": True}  # мало сигналов для оценки — число не публикуем
+        lodo[d].update(n=int(te.sum()), n_pos=n_pos)
     report["leave_one_domain_out"] = lodo
 
     # Полнота по областям датасета организатора (out-of-fold).
@@ -170,16 +301,16 @@ def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
 
     sc, clf = _fit(X, y)
     model = SignalModel(
-        features=list(FEATURES),
+        features=list(feats_all),
         mean=[float(v) for v in sc.mean_],
         scale=[float(v) for v in sc.scale_],
         coef=[float(v) for v in clf.coef_[0]],
         intercept=float(clf.intercept_[0]),
-        meta={"provider": provider, "trained_on": report["n"], "train_date": TRAIN_DATE.isoformat(), "cv5": report["cv5"]},
+        meta={"provider": provider, "trained_on": report["n"], "min_docs": MIN_DOCS, "train_date": TRAIN_DATE.isoformat(), "cv5": report["cv5"]},
     )
     model.save()
     report["weights"] = sorted(
-        [{"feature": f, "weight": round(c, 3)} for f, c in zip(FEATURES, model.coef)], key=lambda r: -abs(r["weight"])
+        [{"feature": f, "weight": round(c, 3)} for f, c in zip(feats_all, model.coef, strict=False)], key=lambda r: -abs(r["weight"])
     )
     return report
 
@@ -191,6 +322,7 @@ def main() -> None:
     ap.add_argument("--refit", action="store_true")
     ap.add_argument("--reask", action="store_true")
     ap.add_argument("--provider", default=None)
+    ap.add_argument("--with-feedback", action="store_true", help="добавить оценки аналитиков из БД как размеченные примеры")
     args = ap.parse_args()
 
     s = get_settings()
@@ -213,7 +345,17 @@ def main() -> None:
             r["provider"] = provider
         rows_path.write_text(json.dumps(rows, ensure_ascii=False, indent=0), encoding="utf-8")
 
+    before = out / "metrics_before.json"
+    if (out / "metrics.json").exists() and not before.exists():
+        before.write_text((out / "metrics.json").read_text(encoding="utf-8"), encoding="utf-8")  # исходные цифры — для сравнения
+    fb_info = None
+    if args.with_feedback:
+        extra, fb_info = feedback_rows(provider)
+        rows = rows + extra
+        log.info("feedback: %s", fb_info)
     report = evaluate_and_fit(rows, provider)
+    if fb_info is not None:
+        report["feedback"] = fb_info
     (out / "metrics.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     log.info("CV5: %s", report["cv5"])
     log.info("ablation: %s", report["ablation"])

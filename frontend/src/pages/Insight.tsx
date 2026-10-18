@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, CandidateFull, pct } from "../api";
-import { ContributionBars, OriginBadge, ScoreBadge, TrustBadge } from "../components/ui";
+import { api, CandidateFull, Feedback, pct, prob, VERDICTS } from "../api";
+import { ContributionBars, DynamicsBars, LinkBadge, OriginBadge, PassportBadge, RadarBadge, RobustnessBadge, ScoreBadge, TrustBadge, WindowBadge } from "../components/ui";
 
 const SECTIONS: [string, string][] = [
   ["description", "Описание технологии"],
@@ -18,47 +18,160 @@ export default function Insight() {
   const { id } = useParams();
   const [c, setC] = useState<CandidateFull | null>(null);
   const [err, setErr] = useState("");
+  const [fb, setFb] = useState<Feedback>(null);
+  const [fbErr, setFbErr] = useState("");
 
   useEffect(() => {
-    api.candidate(id!).then(setC).catch((e) => setErr(String(e)));
+    api.candidate(id!).then((x) => { setC(x); setFb(x.feedback ?? null); }).catch((e) => setErr(String(e)));
   }, [id]);
+
+  async function judge(verdict: string) {
+    setFbErr("");
+    try {
+      const r = await api.feedback(id!, verdict);
+      setFb({ verdict: r.verdict as Exclude<Feedback, null>["verdict"], label: r.label, comment: "" });
+    } catch (e) {
+      setFbErr(String(e));
+    }
+  }
 
   if (err) return <div className="error">{err}</div>;
   if (!c) return <p className="muted">Загрузка…</p>;
 
   const d = c.dossier || {};
   const generated = d.generated_by && d.generated_by !== "template";
-  const answers = Object.entries(c.answers || {}).filter(([, a]) => a.value != null);
+  // Ответы по отдельным документам (doc_N) показываются в паспорте доказательств, а не в общей таблице.
+  const answers = Object.entries(c.answers || {}).filter(([k, a]) => a.value != null && !k.startsWith("doc_") && !k.startsWith("claim_"));
+  const p = c.passport;
+  const v = d.verification;
 
   return (
     <article className="report">
       <p className="muted small"><Link to={`/runs/${c.run_id}`}>← К результатам запроса «{c.query}»</Link></p>
       <div className="panel">
-        <div className="muted small">Аналитическая справка · {c.status === "signal" ? `слабый сигнал №${c.rank}` : "исключённый кандидат"}</div>
+        <div className="muted small">Аналитическая справка · {c.status === "signal" ? `слабый сигнал №${c.rank}` : c.status === "watch" ? "наблюдать: мало доказательств" : "исключённый кандидат"}</div>
         <h1>{c.name_ru || c.name}</h1>
         {c.name_ru && <div className="muted">{c.name}</div>}
         <div className="meta-row">
           <ScoreBadge p={c.probability} />
+          <RadarBadge r={c.radar} />
+          <PassportBadge p={p} />
+          <RobustnessBadge r={c.robustness} />
+          <WindowBadge w={c.window} />
           <OriginBadge origin={c.origin} />
-          <span className="badge neutral">релевантность {pct(c.relevance)}</span>
+          <span className="badge neutral">релевантность {prob(c.relevance)}</span>
           {c.methods?.map((m) => <span key={m} className="badge neutral">{m}</span>)}
         </div>
         {c.status !== "signal" && (
           <div className="error" style={{ marginTop: 12 }}><b>{c.exclusion_label}.</b> {c.exclusion_reason}</div>
         )}
+        <div className="feedback small" style={{ marginTop: 12 }}>
+          <span className="muted">Ваше решение как аналитика:</span>
+          {VERDICTS.map(([v, label]) => (
+            <button key={v} type="button" className={`chip ${fb?.verdict === v ? "active" : ""}`} onClick={() => judge(v)} aria-pressed={fb?.verdict === v}>
+              {label}
+            </button>
+          ))}
+          {fb && <span className="muted">сохранено: «{fb.label}» — войдёт в дообучение модели</span>}
+          {fbErr && <span className="error">{fbErr}</span>}
+        </div>
         {generated && <p className="small" style={{ marginTop: 12 }}><span className="gen-mark">сгенерировано {d.generated_by} по найденным источникам</span></p>}
+        {generated && v && (
+          <p className="small" style={{ marginTop: 4 }}>
+            {v.by ? (
+              <span className="badge high" title="Каждое фактическое утверждение досье проверено decision-моделью по тем же источникам">
+                ✓ Перекрёстная проверка {v.by}: подтверждено {v.supported} из {v.checked} утверждений
+              </span>
+            ) : (
+              <span className="badge neutral">{v.note}</span>
+            )}
+          </p>
+        )}
         {SECTIONS.filter(([k]) => d[k]).map(([k, title]) => (
           <div className="section" key={k}>
             <h3>{title}</h3>
             <p>{d[k]}</p>
           </div>
         ))}
+        {v && v.removed.length > 0 && (
+          <details className="small" style={{ marginTop: 8 }}>
+            <summary>Убрано или помечено при проверке ({v.removed.length})</summary>
+            <ul>{v.removed.map((r, i) => <li key={i}><span className="muted">{r.why}:</span> {r.text}</li>)}</ul>
+          </details>
+        )}
       </div>
+
+      {p && (
+        <>
+          <h2>Паспорт доказательств</h2>
+          <div className="panel">
+            <div className="meta-row"><PassportBadge p={p} /><span className="small">{p.label}</span></div>
+            <table style={{ marginTop: 10 }}>
+              <tbody>
+                <tr><td className="small">Документов проверено decision-моделью</td><td className="small"><b>{p.checked}</b></td></tr>
+                <tr><td className="small">Подтверждают, что речь именно об этой технологии</td><td className="small"><b>{p.confirmed}</b></td></tr>
+                <tr><td className="small">Независимых источников (разные сайты; научные работы — каждая отдельно, но не больше 3)</td><td className="small"><b>{p.domains}</b>{p.domain_list.length > 0 && <span className="muted"> — сайты: {p.domain_list.join(", ")}</span>}</td></tr>
+                <tr><td className="small">Из них научных / препринтов</td><td className="small"><b>{p.science}</b></td></tr>
+                <tr><td className="small">Самое твёрдое событие</td><td className="small"><b>{p.event}</b>{p.hard_event && <span className="badge high" style={{ marginLeft: 6 }}>твёрдое</span>}</td></tr>
+                {(p.funding_news || p.grants) ? (
+                  <tr><td className="small">Деньги в направлении (подтверждённые документы)</td><td className="small">раунды и сделки: <b>{p.funding_news ?? 0}</b>; госгранты NIH / NSF / UKRI: <b>{p.grants ?? 0}</b></td></tr>
+                ) : null}
+                {c.startups_by_year && Object.keys(c.startups_by_year).length > 0 && (
+                  <tr><td className="small">Стартапы Y Combinator по году набора</td><td className="small">{Object.entries(c.startups_by_year).slice(-5).map(([y, n]) => `${y} — ${n}`).join("; ")}</td></tr>
+                )}
+                {c.geography && (
+                  <tr><td className="small">Где ведутся работы (2 года, OpenAlex)</td><td className="small">
+                    {c.geography.top.map((t) => `${t.name} ${Math.round(t.share * 100)}%`).join(", ")}
+                    <span className="muted"> · Китай {Math.round(c.geography.china * 100)}%, Россия {(c.geography.russia * 100).toFixed(1)}%</span>
+                  </td></tr>
+                )}
+                {p.links && (
+                  <tr><td className="small">Ссылки проверены вживую</td><td className="small">открываются: <b>{p.links.ok}</b>; сайт ограничивает автопроверку: {p.links.restricted}; не открываются (убраны из подтверждений): {p.links.dead}</td></tr>
+                )}
+              </tbody>
+            </table>
+            {c.radar && (
+              <p className="small">Радар банка: <b>{c.radar.ring}</b> · направление «{c.radar.area}» · горизонт {c.radar.horizon}.</p>
+            )}
+            <h3>Научные работы по годам</h3>
+            <DynamicsBars points={c.dynamics} />
+            <p className="muted small">OpenAlex, точная фраза в названии или аннотации; * — год ещё не завершён.</p>
+            <p className="muted small">
+              Уровни: A — не меньше 5 подтверждённых документов из 3+ источников и наука или пилот; B — не меньше 3 из 2+ источников;
+              C — меньше: кандидат уходит в «Наблюдать». Ссылки из датасета организатора подтверждением не считаются.
+            </p>
+          </div>
+        </>
+      )}
+
+      {(c.robustness || c.window) && (
+        <div className="grid2" style={{ marginTop: 14 }}>
+          {c.robustness && (
+            <div className="panel">
+              <h3 style={{ marginTop: 0 }}>Запас прочности</h3>
+              <RobustnessBadge r={c.robustness} />
+              <p className="small">{c.robustness.text}</p>
+              <p className="muted small">Модель линейная, поэтому пересчёт точный: из суммы вкладов убирается самый сильный довод «за».</p>
+            </div>
+          )}
+          {c.window && (
+            <div className="panel">
+              <h3 style={{ marginTop: 0 }}>Окно для России</h3>
+              <WindowBadge w={c.window} />
+              <p className="small">{c.window.text}</p>
+              <p className="muted small">
+                Мир: научные работы за 2 года (OpenAlex) — {c.window.world}. Россия: упоминания на Хабре и в русскоязычных СМИ (GDELT) — {c.window.ru ?? "нет данных"}.
+                {c.window.failed && c.window.failed.length > 0 && ` Недоступно: ${c.window.failed.join(", ")}.`}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <h2>Почему модель указала такую уверенность</h2>
       <div className="panel">
         <div className="gauge">
-          <div className="num">{pct(c.probability)}</div>
+          <div className="num">{prob(c.probability)}</div>
           <div className="small">{d.confidence_explanation || "Вероятность отнесения к слабым сигналам по классификатору."}</div>
         </div>
         <p className="muted small">
@@ -74,7 +187,7 @@ export default function Insight() {
           <table>
             <tbody>
               {answers.map(([k, a]) => (
-                <tr key={k}><td className="small">{a.label}</td><td className="small"><b>{pct(a.value)}</b></td></tr>
+                <tr key={k}><td className="small">{a.label}</td><td className="small"><b>{prob(a.value)}</b></td></tr>
               ))}
             </tbody>
           </table>
@@ -103,6 +216,7 @@ export default function Insight() {
             <div className="meta-row small">
               <span className="badge neutral">{s.source_type_ru}</span>
               <TrustBadge level={s.trust_level} label={s.trust_level_ru} />
+              <LinkBadge status={s.link_status} />
               <span className="muted">{s.source_name}</span>
               <span className="muted">· {s.published || "дата не указана"}</span>
               <span className="muted">· язык: {LANG_RU[s.language] ?? s.language}</span>

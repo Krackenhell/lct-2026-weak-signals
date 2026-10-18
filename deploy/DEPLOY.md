@@ -1,48 +1,97 @@
-# Развёртывание стенда на сервере
+# Развёртывание и эксплуатация
 
-Сервер: `midementiew@89.169.170.106` (Yandex Cloud). Задача — поднять стенд и оставить его работать до конца экспертизы.
+Три способа запуска — от самого простого к закрытому контуру банка. Во всех случаях ключи лежат только в файле `.env`
+(шаблон — `.env.example`), в git он не попадает.
 
-## 1. Подготовка сервера
+## 1. Docker Compose — одна команда
+
 ```bash
-# Docker (если ещё нет)
-command -v docker || curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER   # затем переподключиться по ssh
-```
-Проверить, что в группе безопасности Yandex Cloud открыты входящие TCP 80 и 443.
-
-Из Yandex Cloud (ru-central1) недоступны get.docker.com и registry.npmjs.org, частично — Википедия, OpenAlex и GDELT (28.09):
-- Docker ставить из пакетов Ubuntu: `sudo apt-get install -y docker.io docker-compose-v2`; образы Docker Hub тянуть через зеркало — `/etc/docker/daemon.json`: `{"registry-mirrors": ["https://mirror.gcr.io"]}`.
-- В `.env` добавить `NPM_REGISTRY=https://registry.npmmirror.com/` (целостность пакетов сверяется с package-lock.json).
-- Сбои Википедии и OpenAlex не ломают запрос: признаки заменяются нейтральными значениями, в досье есть пометка.
-
-## 2. Код
-Репозиторий приватный до 29.09 — клонировать с GitHub-токеном Миши (он коллаборатор):
-```bash
-sudo mkdir -p /opt/weak-signals && sudo chown $USER /opt/weak-signals
-git clone https://github.com/Krackenhell/lct-2026-weak-signals.git /opt/weak-signals
-cd /opt/weak-signals
-```
-
-## 3. Ключи
-Файл `.env` Иван передаёт Мише лично (в git его нет). Положить его в `/opt/weak-signals/.env`.
-Обязательные строки: `DECISION_PROVIDER=jev`, `TYPESAFE_API_KEY`, `LLM_PROVIDER=gigachat`, `GIGACHAT_AUTH_KEY`, `OPENALEX_API_KEY`, `OPENALEX_EMAIL`, `GITHUB_TOKEN`, `POSTGRES_PASSWORD` (любой длинный), `HTTP_PORT=80`.
-Лишние строки (TELEGRAM_BOT_TOKEN, SERVER_*) не нужны — можно удалить.
-
-## 4. Запуск
-```bash
-cd /opt/weak-signals
+git clone https://github.com/Krackenhell/lct-2026-weak-signals.git && cd lct-2026-weak-signals
+cp .env.example .env        # необязательно: без .env система работает в упрощённом режиме
 docker compose up -d --build
-sleep 10
-curl -s http://localhost/api/health          # {"status":"ok"}
-curl -s http://localhost/api/model | head -c 300   # "trained": true
+curl -s http://localhost/api/health   # {"status":"ok"}
 ```
 
-## 5. Проверка снаружи
-- Открыть `http://77.239.111.137:8080/` в браузере — главная «Радар слабых сигналов».
-- Запустить запрос «перспективные решения в финтехе», дождаться результата (5–10 мин), открыть любой инсайт.
-- Проверить, что GigaChat отвечает с сервера: в карточке сигнала досье на русском с пометкой `gigachat:GigaChat-2`.
+Открыть `http://<сервер>/`. Порт меняется переменной `HTTP_PORT` в `.env`. Состав: PostgreSQL, backend (FastAPI), интерфейс (nginx).
+Контейнеры перезапускаются сами после перезагрузки сервера.
 
-## 6. После
-- Не останавливать контейнеры. `restart: unless-stopped` поднимет их после перезагрузки.
-- **После 29.09 23:59 МСК стенд не трогать** — это правило стоп-кода.
-- Прислать Ивану ссылку `http://77.239.111.137:8080/` и результат проверки.
+Если с сервера недоступны Docker Hub или npm (так было в Yandex Cloud): зеркало образов в `/etc/docker/daemon.json` —
+`{"registry-mirrors": ["https://mirror.gcr.io"]}`, зеркало npm — `NPM_REGISTRY=https://registry.npmmirror.com/` в `.env`.
+
+## 2. Windows без Docker (текущий стенд)
+
+Нужен Python 3.11+. Интерфейс уже собран и лежит в `frontend/dist`, Node.js не нужен.
+
+```bat
+git pull
+run_windows.bat
+```
+
+Скрипт создаёт виртуальное окружение, ставит зависимости и запускает сервер на порту 80 (база — файл SQLite `backend/data/local.db`).
+После `git pull` сервер нужно перезапустить.
+
+## 3. Закрытый контур (без облачных моделей)
+
+Данные запроса не покидают сервер банка, кроме поисковых обращений к открытым источникам.
+
+| Роль | Облачный режим | Закрытый контур |
+|---|---|---|
+| Decision-модель | Jev (TypeSafe) | Kev-4B (Apache-2.0, тот же API), GPU ~10 ГБ |
+| LLM для русских текстов | GigaChat-2 | Qwen3 в Ollama (из списка разрешённых моделей) |
+| Стоимость запроса | считается по токенам, см. карточку запроса | 0 ₽ (только сервер) |
+
+```bash
+# LLM: профиль offline поднимает Ollama рядом с системой
+docker compose --profile offline up -d --build
+docker compose exec ollama ollama pull qwen3:8b
+
+# Decision-модель Kev (на машине с GPU)
+git clone https://github.com/jaredpalmer/kev.git && cd kev
+uv run --extra serve python -m kev.serve --run jaredpalmer/kev-4b --port 8009
+```
+
+В `.env`:
+```
+LLM_PROVIDER=openai
+OPENAI_BASE_URL=http://ollama:11434/v1
+OPENAI_API_KEY=local
+OPENAI_MODEL=qwen3:8b
+DECISION_PROVIDER=kev
+KEV_BASE_URL=http://<хост с GPU>:8009
+```
+
+## 4. Безопасность
+
+- **Токен доступа.** `API_TOKEN=<длинная случайная строка>` — запуск поиска и оценки аналитика требуют заголовок `X-API-Token`
+  (в интерфейсе токен вводится один раз). Чтение готовых результатов открыто.
+- **Файлы сервера.** Backend отдаёт только файлы из `frontend/dist`; запросы вида `/..%2F.env` получают главную страницу.
+- **Ключи** — только в `.env`. Если `.env` мог утечь, ключи GigaChat, TypeSafe, OpenAlex и GitHub нужно перевыпустить.
+- **Нагрузка.** Одновременно обрабатываются `MAX_PARALLEL_RUNS` запросов (по умолчанию 2), остальные ждут в очереди;
+  повторный клик по той же теме не запускает вторую обработку.
+
+## 5. Скорость
+
+- Повтор темы в течение `REUSE_HOURS` (сутки) открывает готовый результат за секунду; «Пересчитать заново» — новый анализ.
+- `PRECOMPUTE_EVERY_HOURS=20` — сервер сам обновляет 6 тем датасета (или `PRECOMPUTE_QUERIES="тема 1;тема 2"`).
+  Разово вручную: `cd backend && python -m app.precompute`.
+- Новый анализ занимает 5–6 минут; основное время — сбор и проверка источников с соблюдением их лимитов.
+
+## 6. Мониторинг
+
+- `GET /api/health` — живость (для балансировщика и healthcheck Docker).
+- `GET /api/metrics` — метрики Prometheus: запуски по статусам, запросы в очереди, среднее время и стоимость запроса,
+  вызовы моделей и их задержка, доля сбоев по каждому источнику, оценки аналитиков.
+- Журнал вызовов моделей по каждому запросу — вкладка «Журнал» в интерфейсе и `GET /api/runs/{id}/log`.
+
+## 7. REST API
+
+| Метод | Назначение |
+|---|---|
+| `POST /api/search` `{"query": "...", "use_watchlist": false, "fresh": false}` | запустить анализ (или получить свежий готовый) |
+| `GET /api/runs/{id}` | статус, прогресс, сигналы, «наблюдать», исключённые с причинами |
+| `GET /api/runs/{id}/export?format=xlsx\|csv\|json\|md` | выгрузка результата |
+| `GET /api/candidates/{id}` | досье, паспорт доказательств, источники |
+| `POST /api/candidates/{id}/feedback` | оценка аналитика (для дообучения) |
+| `GET /api/model` | метрики качества, машина времени, веса модели |
+
+Полное описание с примерами — `http://<сервер>/docs` (Swagger, при запуске backend напрямую на порту 8000).
