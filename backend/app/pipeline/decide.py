@@ -113,7 +113,13 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
     for a in assessed:
         contrib = model.explain(a["features"]) if model else []
         rel = relevance(a)
-        d = {"relevance": rel, "contributions": contrib}
+        p = a["prob"]
+        # Как получается место в выдаче — открыто в карточке: Jev отвечает степенью (0…1) на вопросы,
+        # регрессия складывает ответы и числовые признаки в вероятность, балл = вероятность × (0,6 + 0,4 × релевантность).
+        score = {"probability": None if p is None else round(p, 4), "relevance": round(rel, 3),
+                 "final": None if p is None else round(p * (0.6 + 0.4 * rel), 4),
+                 "outside_training": model.outside(a["features"]) if model else []}
+        d = {"relevance": rel, "contributions": contrib, "score": score}
         flt = _filters(a)
         pp = a.get("passport")
         if flt:

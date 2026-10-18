@@ -189,6 +189,51 @@ def _oof(X, y, groups=None, C=0.5, seed=42):
     return oof
 
 
+def _oof_logit(X, y, C=0.5, seed=42):
+    """Логиты кросс-валидации: каждый пример оценён моделью, которая его не видела."""
+    out = np.zeros(len(y))
+    for tr, te in StratifiedKFold(n_splits=5, shuffle=True, random_state=seed).split(X, y):
+        sc, clf = _fit(X[tr], y[tr], C)
+        out[te] = clf.decision_function(sc.transform(X[te]))
+    return out
+
+
+def _sigmoid(z):
+    return 1.0 / (1.0 + np.exp(-np.clip(z, -30, 30)))
+
+
+def _ece(y, p, bins: int = 10) -> float:
+    """Ожидаемая ошибка калибровки: насколько «80%» на деле расходится с долей сигналов среди таких кандидатов."""
+    edges = np.linspace(0, 1, bins + 1)
+    idx = np.clip(np.digitize(p, edges) - 1, 0, bins - 1)
+    return float(sum(abs(p[idx == b].mean() - y[idx == b].mean()) * (idx == b).mean() for b in range(bins) if (idx == b).any()))
+
+
+def fit_temperature(logits, y) -> float:
+    """Температура T ≥ 1, минимизирующая логарифмическую потерю на out-of-fold логитах (поиск по сетке)."""
+    best_t, best = 1.0, float("inf")
+    for t in np.arange(1.0, 15.01, 0.05):
+        p = np.clip(_sigmoid(logits / t), 1e-6, 1 - 1e-6)
+        loss = float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+        if loss < best - 1e-9:
+            best_t, best = float(t), loss
+    return round(best_t, 2)
+
+
+def calibration_report(logits, y, t: float) -> dict:
+    before, after = _sigmoid(logits), _sigmoid(logits / t)
+    bins = []
+    for lo, hi in ((0, 0.25), (0.25, 0.5), (0.5, 0.75), (0.75, 0.9), (0.9, 1.01)):
+        m = (after >= lo) & (after < hi)
+        if m.any():
+            bins.append({"range": f"{int(lo * 100)}–{min(int(hi * 100), 100)}%", "n": int(m.sum()), "mean_p": round(float(after[m].mean()), 3),
+                         "share_signals": round(float(y[m].mean()), 3)})
+    return {"temperature": t, "ece_before": round(_ece(y, before), 3), "ece_after": round(_ece(y, after), 3),
+            "max_p_before": round(float(before.max()), 4), "max_p_after": round(float(after.max()), 4),
+            "brier_before": round(float(brier_score_loss(y, before)), 3), "brier_after": round(float(brier_score_loss(y, after)), 3),
+            "bins": bins}
+
+
 def _metrics(y, p, thr=0.5) -> dict:
     pred = (p >= thr).astype(int)
     return {
@@ -299,8 +344,14 @@ def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
         key=lambda e: -abs(e["p"] - 0.5),
     )[:40]
 
+    # Калибровка: почему не бывает «100%». Температура подбирается по прогнозам на невиденных примерах.
+    logits = _oof_logit(X, y)
+    temperature = fit_temperature(logits, y)
+    report["calibration"] = calibration_report(logits, y, temperature)
+
     sc, clf = _fit(X, y)
     model = SignalModel(
+        temperature=temperature,
         features=list(feats_all),
         mean=[float(v) for v in sc.mean_],
         scale=[float(v) for v in sc.scale_],

@@ -21,6 +21,7 @@ from app.decision.heuristic import HeuristicDecision
 from app.llm.providers import get_llm
 from app.collectors import cyberleninka, gdelt, habr, news_search
 from app.llm.tasks import check_query, plan_query, summarize_sources, write_dossier
+from app.llm.terms import normalize_name_ru
 from app.ml.model import SignalModel
 from app.models import Candidate, Document, ModelCall, Run
 from app.pipeline import discovery, evidence as evidence_mod
@@ -287,9 +288,10 @@ async def execute(run_id: int) -> None:
                 ids.append(doc_ids_by_url[d.url])
             extra = {"passport": a["passport"], "dynamics": pp_mod.dynamics(a["ev"].yearly, date.today().year) if "openalex" not in a["ev"].failed else None,
                      "missing": a.get("missing", []), "startups_by_year": a["ev"].yc_yearly or None,
-                     "geography": pp_mod.geography(a["ev"].countries), "patents": a["ev"].patents}
+                     "geography": pp_mod.geography(a["ev"].countries), "patents": a["ev"].patents, "score": dcs.get("score")}
             if dcs["status"] == "signal":
-                extra["robustness"] = pp_mod.robustness(a["prob"], dcs["contributions"], model.intercept if model else None)
+                # Вклады уже поделены на температуру калибровки — свободный член делим так же.
+                extra["robustness"] = pp_mod.robustness(a["prob"], dcs["contributions"], model.intercept / model.temperature if model else None)
             cand = Candidate(
                 run_id=run_id, name=a["c"]["name_en"], name_ru=a["c"].get("name_ru") or None,
                 origin="watchlist" if "watchlist" in a["c"]["methods"] and not (set(a["c"]["methods"]) - {"watchlist"}) else "discovered",
@@ -419,7 +421,7 @@ async def execute(run_id: int) -> None:
                     ctx.log_call(r.provider, r.model, "проверка утверждений досье", cand.name, {"claims": [c for _, c in claims]}, {"answers": r.answers, "error": r.error}, r.latency_ms, r.ok)
                 if data:
                     cand.dossier = {**cand.dossier, **{k: v for k, v in data.items() if v}, "generated_by": f"{res.provider}:{res.model}"}
-                    cand.name_ru = data.get("name_ru") or cand.name_ru
+                    cand.name_ru = normalize_name_ru(cand.name, data.get("name_ru")) or cand.name_ru
             ctx.session.commit()
 
             ctx.stage("Русские резюме иностранных источников", 94)

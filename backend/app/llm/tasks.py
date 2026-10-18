@@ -4,6 +4,7 @@ import re
 import time
 
 from app.llm.providers import BaseLLM, LLMResult, parse_json
+from app.llm.terms import glossary_hint, normalize_name_ru
 
 # Лимиты на короткие шаги, у которых есть запасные правила: если GigaChat «завис» (замер: до 4 минут при сбое
 # сервиса — 3 попытки по 120 с), аналитик не ждёт, а запрос идёт дальше по правилам.
@@ -33,7 +34,8 @@ SYSTEM_ANALYST = (
 NAME_RU_RULE = (
     "название на русском так, как его написал бы отраслевой аналитик или русскоязычное IT-издание; "
     "грамматически согласованное; если устоявшегося русского термина нет — оставь английский термин или аббревиатуру "
-    "(например «zero-knowledge KYC», «федеративное обучение», «оркестрация инференса на периферии»)"
+    "(например «zero-knowledge KYC», «федеративное обучение», «оркестрация инференса на периферии»); "
+    "слова пиши через пробел, не склеивай дефисами; принятые переводы: " + glossary_hint()
 )
 
 # Словарь для расширения запроса без LLM: широкие направления -> англоязычные поисковые темы.
@@ -173,7 +175,8 @@ async def extract_candidates(llm: BaseLLM, topic: str, docs: list[dict]) -> tupl
             if not isinstance(c, dict) or not c.get("name_en"):
                 continue
             ids = [i for i in c.get("docs", []) if isinstance(i, int) and 0 <= i < len(docs)]
-            out.append({"name_en": str(c["name_en"]).strip(), "name_ru": str(c.get("name_ru") or "").strip(), "doc_idx": ids})
+            name_en = str(c["name_en"]).strip()
+            out.append({"name_en": name_en, "name_ru": normalize_name_ru(name_en, str(c.get("name_ru") or "")), "doc_idx": ids})
     return out, res
 
 

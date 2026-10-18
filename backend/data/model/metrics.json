@@ -248,6 +248,47 @@
    "p": 0.513
   }
  ],
+ "calibration": {
+  "temperature": 1.0,
+  "ece_before": 0.045,
+  "ece_after": 0.045,
+  "max_p_before": 0.9997,
+  "max_p_after": 0.9997,
+  "brier_before": 0.03,
+  "brier_after": 0.03,
+  "bins": [
+   {
+    "range": "0–25%",
+    "n": 149,
+    "mean_p": 0.023,
+    "share_signals": 0.0
+   },
+   {
+    "range": "25–50%",
+    "n": 5,
+    "mean_p": 0.358,
+    "share_signals": 0.0
+   },
+   {
+    "range": "50–75%",
+    "n": 10,
+    "mean_p": 0.633,
+    "share_signals": 0.6
+   },
+   {
+    "range": "75–90%",
+    "n": 8,
+    "mean_p": 0.811,
+    "share_signals": 0.625
+   },
+   {
+    "range": "90–100%",
+    "n": 33,
+    "mean_p": 0.969,
+    "share_signals": 0.97
+   }
+  ]
+ },
  "weights": [
   {
    "feature": "maturity",

@@ -40,6 +40,7 @@ export type CandidateBrief = {
   radar?: Radar | null;
   dynamics?: YearPoint[] | null;
   geography?: Geography | null;
+  score?: { probability: number | null; relevance: number; final: number | null; outside_training: string[] } | null;
   startups_by_year?: Record<string, number> | null;
   missing?: string[];
   rank: number | null;

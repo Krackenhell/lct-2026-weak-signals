@@ -113,5 +113,6 @@
    "roc_auc": 0.993,
    "brier": 0.03
   }
- }
+ },
+ "temperature": 1.0
 }
