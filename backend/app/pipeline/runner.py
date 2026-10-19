@@ -321,7 +321,7 @@ async def _execute(ctx: RunContext, s) -> None:
             nonlocal done
             # География — после решения и только для сигналов (экономия 20–30 запросов OpenAlex); Europe PMC и ML-источники — по маршруту.
             opts = {"with_news": s.news_per_candidate, "with_repos": with_gh, "with_gh_count": gh_count, "with_countries": False,
-                    "with_europepmc": route["europepmc_evidence"], "with_ml": route["ml_evidence"]}
+                    "with_europepmc": route["europepmc_evidence"], "with_ml": route["ml_evidence"], "profile": route["profile"]}
             ev = await evidence_mod.gather(http, c["name_en"], date.today(), **opts)
             for alt in c.get("alt_terms", [])[:1]:
                 if len(ev.docs) >= 5:
@@ -639,7 +639,8 @@ async def _execute(ctx: RunContext, s) -> None:
                 a = by_name[cand.name]
                 try:
                     m = await market_mod.market_layer(http, dm, cand.name, cand.name_ru or "", topic, a["items"], a["res"].answers, a["n_asked"],
-                                                      ((a["ev"].patents or {}).get("total") or 0), brave_budget if with_web else None)
+                                                      ((a["ev"].patents or {}).get("total") or 0), brave_budget if with_web else None,
+                                                      profile=route["profile"], registries=with_web)
                     pl = await market_mod.players(http, a["ev"].phrase, year, a["items"])
                 except Exception:  # слой дополнительный: сбой не роняет прогон
                     log.exception("run %s: market layer for %r failed", run_id, cand.name)

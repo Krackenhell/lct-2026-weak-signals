@@ -51,7 +51,15 @@ HOST_INTERVAL = {
     "gtr.ukri.org": 0.5,
     "huggingface.co": 0.5,
     "api2.openreview.net": 0.5,
-    "api.search.brave.com": 1.1,  # бесплатный тариф Brave — 1 запрос в секунду
+    "api.search.brave.com": 1.1,
+    "eutils.ncbi.nlm.nih.gov": 0.12,  # с ключом — до 10 запросов в секунду
+    "api.adsabs.harvard.edu": 0.3,
+    "api.biorxiv.org": 0.3,
+    "api.stackexchange.com": 0.15,
+    "clinicaltrials.gov": 0.3,
+    "efts.sec.gov": 0.15,  # SEC — не больше 10 запросов в секунду
+    "searchplatform.rospatent.gov.ru": 0.5,
+    "zakupki.gov.ru": 1.5,  # бесплатный тариф Brave — 1 запрос в секунду
 }
 
 

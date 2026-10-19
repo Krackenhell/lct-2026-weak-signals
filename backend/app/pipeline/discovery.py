@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, brave, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, ml_papers, news_search, openalex, semanticscholar, yc
+from app.collectors import arxiv, brave, crossref, science_more, cyberleninka, europepmc, gdelt, grants, habr, hackernews, ml_papers, news_search, openalex, semanticscholar, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -160,6 +160,23 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None, brave_bud
         # Стартапы YC последних двух лет по подтемам: описания продуктов, в которые уже вложены деньги.
         for sq in subs[:6]:
             add(yc.search(http, sq, 10, min_year=today.year - 2), sq)
+    prof = routing.profile(plan.get("query", ""), plan)
+    if s.more_sources:
+        # Источники 20.10 по профилю запроса: PubMed и bioRxiv/medRxiv — науки о жизни, NASA ADS — физика, материалы, энергетика.
+        async def docs_of(coro):
+            res = await coro
+            return res[0] if isinstance(res, tuple) else res
+
+        async def biorxiv_docs(q):
+            return science_more.biorxiv(q, 10)
+
+        science_more.ensure_catalog()
+        for sq in subs[:4]:
+            if prof == "life_med":
+                add(docs_of(science_more.pubmed(http, sq, 10)), sq)
+                add(biorxiv_docs(sq), sq)
+            elif prof in ("materials", "energy"):
+                add(docs_of(science_more.ads(http, sq, 10)), sq)
     if brave_budget is not None and brave.enabled():
         # Отраслевые события по самой теме (пилоты, контракты, раунды) из открытого веба: их почти нет в научных базах, а ленты
         # изданий покрывают в основном ИТ. Два запроса из бюджета прогона: термин темы и английское название запроса.

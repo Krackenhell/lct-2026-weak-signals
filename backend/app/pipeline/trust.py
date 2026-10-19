@@ -19,6 +19,9 @@ TYPE_RU = {
     "startup": "Стартап (каталог акселератора)",
     "regulator": "Госорган / регулятор",
     "dataset": "Датасет организатора",
+    "trial": "Клиническое исследование (реестр)",
+    "filing": "Отчётность компании (SEC EDGAR)",
+    "procurement": "Госзакупка (ЕИС)",
 }
 
 TRUST_RU = {"high": "Высокий", "medium": "Средний", "low": "Пониженный"}
@@ -63,7 +66,13 @@ def classify(doc: RawDoc) -> tuple[str, str, str]:
     if doc.source_type == "grant":
         return "grant", "high", "Государственный грант: решение научного фонда после экспертизы заявки"
     if doc.source_type == "patent":
-        return "patent", "high", "Патентная публикация ведомства (EPO OPS): заявка прошла формальную экспертизу"
+        return "patent", "high", "Патентная публикация ведомства (EPO, Роспатент): заявка прошла формальную экспертизу"
+    if doc.source_type == "trial":
+        return "trial", "high", "Реестр клинических исследований ClinicalTrials.gov: исследование зарегистрировано до начала"
+    if doc.source_type == "filing":
+        return "filing", "high", "Официальная отчётность компании в SEC EDGAR: за достоверность отвечает компания по закону"
+    if doc.source_type == "procurement":
+        return "procurement", "high", "Единая информационная система госзакупок (ЕИС): официальная запись о закупке"
     if doc.source_type == "startup":
         return "startup", "medium", "Стартап из каталога акселератора: компания получила инвестиции, но описание пишет она сама"
     if doc.source_type == "preprint":

@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, crossref, epo, europepmc, gdelt, github, grants, hackernews, ml_papers, news_search, openalex, semanticscholar, wikipedia, yc
+from app.collectors import arxiv, crossref, epo, europepmc, science_more, gdelt, github, grants, hackernews, ml_papers, news_search, openalex, semanticscholar, wikipedia, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -37,6 +37,10 @@ class Evidence:
 SOURCE_DEADLINE = 120.0
 
 
+async def _wrap(value):
+    return value
+
+
 async def _safe(name: str, coro, default, failed: list[str]):
     try:
         return await asyncio.wait_for(coro, SOURCE_DEADLINE)
@@ -58,7 +62,7 @@ def search_phrase(name: str) -> str:
 
 async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True, with_extra: bool | None = None,
                  with_gh_count: bool = True, with_news_search: bool | None = None, with_countries: bool = True,
-                 with_europepmc: bool = False, with_ml: bool | None = None) -> Evidence:
+                 with_europepmc: bool = False, with_ml: bool | None = None, profile: str | None = None) -> Evidence:
     """with_countries=False — география считается позже и только для сигналов (экономия 20–30 запросов OpenAlex на запрос);
     with_europepmc — науки о жизни (маршрут источников); with_ml=False — без HF Papers и OpenReview для запросов не про ИИ."""
     phrase = search_phrase(phrase)
@@ -114,6 +118,13 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # Стартапы YC, которые строят технологию: ранний рыночный сигнал (в числовые признаки не входит).
         tasks["yc"] = _safe("yc", yc.search(http, phrase, 3), [], f)
         tasks["yc_yearly"] = _safe("yc", yc.yearly(http, phrase), {}, f)
+    if profile and get_settings().more_sources and with_news_search is not False:
+        # Источники 20.10 по профилю запроса (в признаки не входят): рецензируемая биомедицина, физика и материалы, препринты наук о жизни.
+        if profile == "life_med":
+            tasks["pubmed"] = _safe("pubmed", science_more.pubmed(http, phrase, 5), ([], 0), f)
+            tasks["biorxiv"] = _safe("biorxiv", _wrap(science_more.biorxiv(phrase, 4)), [], f)
+        elif profile in ("materials", "energy"):
+            tasks["ads"] = _safe("ads", science_more.ads(http, phrase, 5), ([], 0), f)
     if get_settings().ml_sources and with_news_search is not False and with_ml is not False:
         # Обсуждаемые ML-статьи и поданные на конференции: независимые от arXiv-поиска подтверждения.
         tasks["hf"] = _safe("hfpapers", ml_papers.hf_papers(http, phrase, 3, min_year=today.year - 3), [], f)
@@ -134,7 +145,8 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     if "github_both" in results:
         ev.gh_repos_12m, results["github_top"] = results["github_both"]
     hn_docs, ev.hn_12m = results["hn"]
-    ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("epmc", []), *results.get("crossref", []), *results.get("s2", []),
+    ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("epmc", []), *(results.get("pubmed") or ([], 0))[0],
+               *(results.get("ads") or ([], 0))[0], *results.get("biorxiv", []), *results.get("crossref", []), *results.get("s2", []),
                *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),
                *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("yc", []),
                *results.get("hf", []), *results.get("or", []), *results.get("patent_docs", []), *results.get("github_top", []), *hn_docs]

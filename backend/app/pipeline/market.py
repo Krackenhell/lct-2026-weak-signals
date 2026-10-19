@@ -11,7 +11,8 @@
 """
 import re
 
-from app.collectors import brave, openalex
+from app.collectors import brave, market_more, openalex
+from app.config import get_settings
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient
 from app.pipeline.questions import build_state
@@ -74,7 +75,7 @@ def _item(d: RawDoc) -> dict:
 
 
 async def market_layer(http: HttpClient, dm, name_en: str, name_ru: str, topic: str, items: list[dict], answers: dict, n_asked: int,
-                       epo_patents: int = 0, budget: brave.Budget | None = None) -> dict:
+                       epo_patents: int = 0, budget: brave.Budget | None = None, profile: str | None = None, registries: bool = False) -> dict:
     """Лестница и доводы «против» для одного сигнала. Веб-поиск — в пределах бюджета прогона; новые документы подтверждает Jev
     одним вызовом (тот же вопрос «описывает ли документ именно эту технологию?» плюс вопрос о провале или массовости)."""
     found: list[RawDoc] = []
@@ -95,8 +96,21 @@ async def market_layer(http: HttpClient, dm, name_en: str, name_ru: str, topic: 
             against = await brave.against(http, phrase, budget)
         except Exception:  # noqa: BLE001
             against = []
+    if registries and get_settings().more_sources:
+        # Реестры (20.10): клинические исследования, отчётность SEC, патенты Роспатента, закупки ЕИС — тоже подтверждает Jev.
+        calls = [market_more.sec_filings(http, phrase, 4), market_more.rospatent(http, name_ru or phrase, 4)]
+        if profile == "life_med":
+            calls.append(market_more.clinical_trials(http, phrase, 4))
+        if name_ru and re.search(r"[а-яё]", name_ru, re.I):
+            calls.append(market_more.procurement(http, name_ru, 5))
+        for coro in calls:
+            try:
+                res = await coro
+                found += res[0] if isinstance(res, tuple) else res
+            except Exception:  # noqa: BLE001 — реестр недоступен: лестница строится по остальным данным
+                pass
     seen, web = set(), []
-    for d in found[:9] + against[:3]:
+    for d in found[:14] + against[:3]:
         if d.url not in seen:
             seen.add(d.url)
             web.append(d)

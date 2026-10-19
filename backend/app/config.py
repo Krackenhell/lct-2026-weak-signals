@@ -80,6 +80,15 @@ class Settings(BaseSettings):
     # Brave Search API: веб- и новостной поиск событий (пилоты, сделки, патенты, закупки) и доводов «против».
     # Бесплатный тариф — 1 запрос/с и 2000 в месяц, поэтому бюджет на прогон и месячный предел.
     brave_api_key: str = ""
+    # Источники, подключённые 20.10 (ключи — только в .env): PubMed, NASA ADS, Stack Exchange, Роспатент; без ключа — bioRxiv/medRxiv,
+    # ClinicalTrials.gov, SEC EDGAR (обязателен User-Agent с почтой), RSS ЕИС госзакупок.
+    ncbi_api_key: str = ""
+    nasa_ads_token: str = ""
+    stackexchange_key: str = ""
+    rospatent_api_key: str = ""
+    sec_user_agent: str = ""
+    more_sources: bool = True
+    biorxiv_days: int = 7  # свежий каталог bioRxiv/medRxiv: дней (≈100 запросов раз в сутки, в фоне)
     brave_max_calls_per_run: int = 30
     brave_monthly_limit: int = 1900
     # Маршрут источников по профилю запроса (науки о жизни, материалы, энергетика, ИТ): Europe PMC и ML-источники
