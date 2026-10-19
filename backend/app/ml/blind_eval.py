@@ -10,7 +10,7 @@
    по вариантам (конвейер / только LLM) и по запросам; при двух разметчиках — согласие (каппа Коэна).
 
 Запуск:
-    python -m app.ml.blind_eval run-holdout              # живые прогоны тем HOLD-OUT (data/bench/queries.json)
+    python -m app.ml.blind_eval run-holdout [--with-llm] [--only "q1;q2"]   # живые прогоны тем HOLD-OUT (data/bench/queries.json)
     python -m app.ml.blind_eval export --runs 61,62,63    # или --queries "q1;q2" — последние прогоны тем
     python -m app.ml.blind_eval score data/bench/blind_ivan.xlsx [data/bench/blind_misha.xlsx]
 Результат: data/bench/blind_sheet.xlsx, data/bench/blind_key.json, data/model/blind_eval.json
@@ -163,19 +163,26 @@ def score(paths: list[Path]) -> dict:
     return res
 
 
-async def run_holdout() -> list[int]:
+async def run_holdout(with_llm: bool = False, only: list[str] | None = None) -> list[int]:
+    """Живые прогоны тем HOLD-OUT; with_llm — для каждой темы ещё и вариант «только LLM» (для сравнения в одном листе).
+    Прогон с исчерпанной квотой OpenAlex (degraded) в лист не берётся: его надо повторить после сброса квоты (03:00 МСК)."""
     from app.pipeline import runner
 
-    qs = json.loads((BENCH() / "queries.json").read_text(encoding="utf-8"))["holdout"]
+    qs = only or json.loads((BENCH() / "queries.json").read_text(encoding="utf-8"))["holdout"]
     ids = []
     for q in qs:
-        with SessionLocal() as s:
-            r = Run(query=q, options={"bench": "holdout"})
-            s.add(r)
-            s.commit()
-            ids.append(r.id)
-        await runner.execute(ids[-1])
-        print("готово:", q, ids[-1], flush=True)
+        for opts in ([{"bench": "holdout"}] + ([{"bench": "holdout", "seed_candidates": True}] if with_llm else [])):
+            with SessionLocal() as s:
+                r = Run(query=q, options=opts)
+                s.add(r)
+                s.commit()
+                rid = r.id
+            await runner.execute(rid)
+            with SessionLocal() as s:
+                bad = bool((s.get(Run, rid).stats or {}).get("degraded"))
+            print("готово:", q, rid, "(НЕДЕЙСТВИТЕЛЕН: OpenAlex недоступен)" if bad else "", flush=True)
+            if not bad:
+                ids.append(rid)
     return ids
 
 
@@ -187,11 +194,13 @@ def main() -> None:
     e.add_argument("--queries", default="")
     sc = sub.add_parser("score")
     sc.add_argument("files", nargs="+")
-    sub.add_parser("run-holdout")
+    rh = sub.add_parser("run-holdout")
+    rh.add_argument("--with-llm", action="store_true", help="добавить вариант «только LLM» по каждой теме")
+    rh.add_argument("--only", default="", help="темы через «;» (по умолчанию — весь HOLD-OUT)")
     args = ap.parse_args()
     init_db()
     if args.cmd == "run-holdout":
-        ids = asyncio.run(run_holdout())
+        ids = asyncio.run(run_holdout(args.with_llm, [q for q in args.only.split(";") if q.strip()] or None))
         print("Лист:", export(ids))
     elif args.cmd == "export":
         ids = [int(x) for x in args.runs.split(",") if x.strip()] or latest_runs([q for q in args.queries.split(";") if q.strip()])
