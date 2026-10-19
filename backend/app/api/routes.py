@@ -24,7 +24,7 @@ from app.models import Candidate, Document, Feedback, ModelCall, Run
 from app.pipeline import runner
 from app.pipeline.decide import EXCLUSION_RU, rank_score
 from app.pipeline.features import FEATURE_RU
-from app.pipeline.passport import card_facts, evidence_checks
+from app.pipeline.passport import card_facts, evidence_checks, why_early
 from app.pipeline.questions import QUESTION_RU
 from app.pipeline.trust import TRUST_RU, TYPE_RU
 
@@ -106,6 +106,9 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
         "score": _score(c, extra),
         # Второе число рядом с оценкой: «Проверки доказательств: k из 5» (счёт проверок, а не вероятность).
         "checks": evidence_checks(extra.get("passport")),
+        # П17: «почему рано» — по каким каналам технология уже видна в подтверждённых документах и где её ещё нет.
+        "why_early": why_early((extra.get("passport") or {}).get("ladder"),
+                               None if "wikipedia" in extra.get("missing", []) else bool((c.features or {}).get("wiki_exists"))),
         "in_training": bool(extra.get("in_training")), "name_check": extra.get("name_check"),
         # Короткие факты для списка: стадия (УГТ), год появления в литературе, рост работ, одна строка описания.
         **card_facts(c.features, c.answers, extra.get("dynamics"), datetime.now(timezone.utc).year, extra.get("missing")),
@@ -269,10 +272,23 @@ def get_run(run_id: int, db: Session = Depends(get_session)) -> dict:
     excluded = sorted([c for c in cands if c.status not in ("signal", "watch")], key=lambda c: -(c.probability or 0))
     return {
         **_run_out(run),
+        "queue": queue_info(db, run) if run.status == "queued" else None,
         "signals": [_cand_out(c) for c in signals],
         "watch": [_cand_out(c) for c in watch],
         "excluded": [_cand_out(c) for c in excluded],
     }
+
+
+def queue_info(db: Session, run: Run) -> dict:
+    """П15: позиция в очереди и ожидаемое время — по медиане длительности последних 20 завершённых прогонов.
+    Одновременно обрабатываются MAX_PARALLEL_RUNS запросов, поэтому ожидание — число «волн» перед запросом."""
+    ahead = db.query(Run).filter(Run.status.in_(["queued", "running"]), Run.id < run.id).count()
+    recent = db.query(Run).filter(Run.status == "done", Run.finished_at.isnot(None)).order_by(desc(Run.id)).limit(20).all()
+    secs = sorted((_aware(r.finished_at) - _aware(r.created_at)).total_seconds() for r in recent if r.created_at)
+    median = secs[len(secs) // 2] if secs else 180.0
+    par = max(1, get_settings().max_parallel_runs)
+    waves = max(0, ahead - par + 1)
+    return {"ahead": ahead, "eta_seconds": int(math.ceil(waves / par) * median + median), "median_run_seconds": int(median)}
 
 
 VERDICTS = {"signal": "Слабый сигнал", "mature": "Зрелая технология", "noise": "Завышенные ожидания без подтверждений", "not_tech": "Не технология"}

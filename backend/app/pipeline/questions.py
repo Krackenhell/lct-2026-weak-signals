@@ -80,10 +80,13 @@ IS_TECHNOLOGY = {
 
 
 # Вопрос о релевантности зависит от запроса и в классификатор не входит: используется для ранжирования.
-def relevance_question(topic: str) -> dict:
+def relevance_question(topic: str, scope: str = "") -> dict:
+    # П11: «как система поняла запрос» (тема и первые подтемы) — уточняет вопрос о релевантности. В признаки классификатора
+    # релевантность не входит, поэтому обучение это не затрагивает.
+    where = f" The topic covers: {scope}." if scope else ""
     return {
         "type": "score",
-        "instructions": f"How relevant is the SUBJECT to the topic '{topic}'?",
+        "instructions": f"How relevant is the SUBJECT to the topic '{topic}'?{where}",
         "criteria": ["Unrelated", "Weakly related", "Related", "Core part of the topic"],
     }
 
@@ -98,8 +101,8 @@ def query_relevance_question(query: str, topic: str) -> dict:
     }
 
 
-# Самое «твёрдое» событие в доказательствах. Пока не входит в классификатор (нужен переопрос обучающей
-# выборки: python -m app.ml.train --reask), используется в паспорте доказательств и в карточке.
+# Самое «твёрдое» событие в доказательствах: признак классификатора (обучающая выборка переопрошена), используется
+# также в паспорте доказательств и в карточке.
 EVENT_LEVELS = [
     "Only discussion, opinion or forecast",
     "Research paper or preprint",

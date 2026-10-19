@@ -48,6 +48,7 @@ export type CandidateBrief = {
   score?: Score | null;
   checks?: Checks | null;
   in_training?: boolean;
+  why_early?: string | null;
   name_check?: string | null;
   stage?: { label: string; trl: string } | null;
   first_year?: number | null;
@@ -127,7 +128,7 @@ export type Run = {
   progress: number;
   error: string | null;
   plan: {
-    topic_en?: string; subqueries?: string[]; ru_terms?: string[]; generated_by?: string; core_term?: string; broad?: boolean; query_en?: string[];
+    topic_en?: string; subqueries?: string[]; ru_terms?: string[]; generated_by?: string; core_term?: string; broad?: boolean; query_en?: string[]; scope_en?: string; plan_cached?: boolean;
     route?: { profile: string; label: string; text: string; enabled: boolean };
     emerging?: { keyword: string; recent: number; prior: number; growth: number; specificity: number }[];
   };
@@ -139,7 +140,10 @@ export type Run = {
   reused?: boolean;
 };
 
-export type RunFull = Run & { signals: CandidateBrief[]; watch?: CandidateBrief[]; excluded: CandidateBrief[] };
+export type RunFull = Run & {
+  signals: CandidateBrief[]; watch?: CandidateBrief[]; excluded: CandidateBrief[];
+  queue?: { ahead: number; eta_seconds: number; median_run_seconds: number } | null;
+};
 
 export type ModelCall = {
   id: number;

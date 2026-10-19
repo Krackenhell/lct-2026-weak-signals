@@ -75,6 +75,8 @@ def find(companies: list[dict], phrase: str) -> list[dict]:
 
 
 async def search(http: HttpClient, phrase: str, n: int = 5, min_year: int | None = None) -> list[RawDoc]:
+    # Карточка каталога YC — это факт «у технологии есть стартап в акселераторе», а не новость о раунде: событие
+    # «startup» стоит не выше гранта, не даёт «твёрдого события» и паспорта A (раньше помечалось как раунд инвестиций).
     found = find(await load(http), phrase)
     found = [c for c in found if batch_date(c.get("batch")) and (min_year is None or int(batch_date(c["batch"])[:4]) >= min_year)]
     found.sort(key=lambda c: batch_date(c["batch"]), reverse=True)
@@ -86,7 +88,7 @@ async def search(http: HttpClient, phrase: str, n: int = 5, min_year: int | None
             snippet=clean(f"Стартап Y Combinator, набор {c.get('batch')}, статус {c.get('status')}. {c.get('long_description') or ''}", 800),
             published=batch_date(c.get("batch")),
             source_name="Y Combinator", source_type="startup", language="en", collector="yc",
-            extra={"event": "funding", "batch": c.get("batch"), "website": c.get("website"), "publisher_domain": "ycombinator.com"},
+            extra={"event": "startup", "batch": c.get("batch"), "website": c.get("website"), "publisher_domain": "ycombinator.com"},
         ))
     return docs
 

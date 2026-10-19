@@ -93,11 +93,22 @@ export default function RunPage() {
         <div className="panel" style={{ marginTop: 16 }}>
           <b>{run.stage || "Ожидание"}</b>
           <div className="progress"><div style={{ width: `${run.progress}%` }} /></div>
-          <span className="muted small">{run.progress}% · новый анализ занимает несколько минут; страница обновляется сама</span>
+          <span className="muted small">
+            {run.status === "queued" && run.queue
+              ? `В очереди: перед вами ${run.queue.ahead} ${run.queue.ahead === 1 ? "запрос" : "запроса"}, ожидание около ${Math.max(1, Math.round(run.queue.eta_seconds / 60))} мин`
+              : `${run.progress}% · новый анализ занимает 2–4 минуты`}
+            {" · страница обновляется сама"}
+          </span>
         </div>
       )}
       {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}
       {run.status === "done" && run.error && <div className="error" style={{ marginTop: 16 }}>{run.error}</div>}
+      {run.status === "done" && s.budget && (
+        <div className="error" style={{ marginTop: 16 }}>
+          Проверено {(s.budget as { checked: number; total: number }).checked} из {(s.budget as { checked: number; total: number }).total} кандидатов —
+          сработал лимит времени обработки; непроверенные кандидаты в выдачу не попали.
+        </div>
+      )}
       {run.status === "done" && s.degraded && (
         <div className="error" style={{ marginTop: 16 }}>
           Статистика публикаций OpenAlex была недоступна для части кандидатов: признаки публикаций заменены средними, и эти числа в карточках
@@ -186,13 +197,14 @@ export default function RunPage() {
                   </div>
                 </>
               )}
+              {run.plan.scope_en && <p style={{ marginBottom: 4 }}>Как система поняла запрос: {run.plan.scope_en}.</p>}
               {run.plan.route && (
                 <p style={{ marginBottom: 4 }}>
                   Маршрут источников: {run.plan.route.text}.{run.plan.broad === false ? " Узкий запрос: подтемы словаря направлений не подмешивались." : ""}
                 </p>
               )}
               <p style={{ marginBottom: 4 }}>
-                Поисковые фразы ({run.plan.generated_by === "lexicon" ? "словарь направлений" : `план: ${run.plan.generated_by}`}):
+                Поисковые фразы ({run.plan.generated_by === "lexicon" ? "словарь направлений" : `план: ${run.plan.generated_by}`}{run.plan.plan_cached ? ", план сохранён с прошлого расчёта темы" : ""}):
               </p>
               <div className="chips">
                 {run.plan.subqueries.map((q) => <span key={q} className="chip static">{q}</span>)}

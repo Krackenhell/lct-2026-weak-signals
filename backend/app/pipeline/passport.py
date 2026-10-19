@@ -54,6 +54,9 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         ev_level, ev_ru = event_label(5 / 6)
     elif "grant" in news_events and ev_level < 3:  # подтверждённый госгрант (NIH, NSF, UKRI)
         ev_level, ev_ru = event_label(3 / 6)
+    elif "startup" in news_events and ev_level < 3:
+        # Стартап в каталоге акселератора — деньги в направлении, но не раунд: уровень гранта, не «твёрдое событие».
+        ev_level, ev_ru = 3, "стартап в акселераторе (Y Combinator)"
     n = len(confirmed)
     if n >= max(5, min_docs) and independent >= 3 and len(domains) >= 2 and (science >= 1 or ev_level >= HARD_EVENT_LEVEL):
         level = "A"
@@ -74,7 +77,53 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         "hard_event": ev_level >= HARD_EVENT_LEVEL,
         "funding_news": sum(1 for e in news_events if e == "funding"),
         "grants": sum(1 for e in news_events if e == "grant"),
+        "startups": sum(1 for e in news_events if e == "startup"),
+        "ladder": ladder(confirmed),
     }
+
+
+# П17. Лестница «почему рано»: по каким каналам технология уже видна в подтверждённых документах. Ранний сигнал обычно
+# виден в науке и сообществе, но ещё не в деловой прессе и не в энциклопедии. Стадия по шкале ТЗ ключевыми словами не
+# определяется (на источниках организатора не лучше константы), поэтому показываем каналы с первой датой и примером.
+LADDER = [("science", "наука"), ("community", "сообщество"), ("money", "деньги"), ("press", "пресса")]
+
+
+def _channel(it: dict) -> str | None:
+    t, ev = it.get("type"), it.get("event")
+    if ev in ("funding", "grant", "startup") or t in ("grant", "startup"):
+        return "money"
+    if t in ("science", "preprint"):
+        return "science"
+    if t in ("community", "repository"):
+        return "community"
+    if t in ("news", "press"):
+        return "press"
+    return None
+
+
+def ladder(confirmed: list[dict]) -> list[dict]:
+    out = []
+    for key, label in LADDER:
+        docs = sorted((it for it in confirmed if _channel(it) == key), key=lambda it: it.get("date") or "9999")
+        first = next((d for d in docs if d.get("date")), docs[0] if docs else None)
+        out.append({"channel": key, "label": label, "n": len(docs), "first_date": (first or {}).get("date"),
+                    "example": (first or {}).get("title", "")[:140] if first else None})
+    return out
+
+
+def why_early(lad: list[dict] | None, wiki: bool | None) -> str | None:
+    """Строка «Почему рано» для карточки: где технология уже есть и где её ещё нет."""
+    if not lad:
+        return None
+    has = [f"{s['label']} ({s['n']}, с {s['first_date'][:4]})" if s.get("first_date") else f"{s['label']} ({s['n']})" for s in lad if s["n"]]
+    lacks = [s["label"] for s in lad if not s["n"]]
+    if wiki is False:
+        lacks.append("энциклопедия")
+    elif wiki:
+        has.append("энциклопедия")
+    if not has:
+        return None
+    return "Уже есть: " + ", ".join(has) + (". Ещё нет: " + ", ".join(lacks) + "." if lacks else ".")
 
 
 def evidence_checks(pp: dict | None) -> dict | None:

@@ -93,7 +93,8 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
     from_date = (today - timedelta(days=int(365 * 2.5))).isoformat()
     subs = plan.get("subqueries", [])[:12]
     tasks = []
-    since_ts = int(time.time()) - 365 * 86400
+    # Округление до суток (как в evidence.gather): иначе граница менялась каждую секунду и запрос к HN никогда не брался из кэша.
+    since_ts = (int(time.time()) // 86400) * 86400 - 365 * 86400
 
     async def hn_docs(q):
         docs, _ = await hackernews.search(http, q, since_ts, 20)

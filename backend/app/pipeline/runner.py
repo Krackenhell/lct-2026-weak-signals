@@ -172,6 +172,12 @@ async def _execute(ctx: RunContext, s) -> None:
         llm = _shared(("llm", get_llm), get_llm)
         dm = _shared(("dm", get_decision_model), get_decision_model)
         model = SignalModel.load()
+        # Режим без Jev (офлайн-правила вместо ответов decision-модели): прежняя модель с признаками GitHub и HN.
+        # Основная модель (П9, без GitHub и признаков с перевёрнутым знаком) обучена на ответах Jev; на правилах она
+        # отсекала почти всё (прогоны 17.10 на правилах: 12 → 1 кандидат выше 0,5).
+        rules_model = SignalModel.load(s.model_dir / "signal_model_rules.json") or model
+        if dm.provider == "heuristic":
+            model = rules_model
         query = ctx.run.query
         ctx.run.status = "running"
         ctx.run.providers = {
@@ -196,7 +202,9 @@ async def _execute(ctx: RunContext, s) -> None:
 
         # 1. План поиска
         ctx.stage("Расширение запроса: подтемы и поисковые фразы", 3)
-        plan, res = await plan_query(for_task(llm, "plan"), query)
+        # П12: план той же темы берётся из кэша (14 дней) — повторные прогоны сравнимы; опция replan строит план заново.
+        plan, res = await plan_query(for_task(llm, "plan"), query, cache_dir=s.cache_dir.parent / "plan_cache",
+                                     refresh=bool((ctx.run.options or {}).get("replan")))
         if res:
             ctx.log_call(res.provider, res.model, "расширение запроса", query, {"query": query}, {"text": res.text[:3000]}, res.latency_ms, res.ok, usage=res.usage)
         plan = {**plan, "query": query}  # исходная формулировка нужна сбору корпуса (выбор тематических баз)
@@ -226,6 +234,8 @@ async def _execute(ctx: RunContext, s) -> None:
         # Маршрут источников по профилю запроса (науки о жизни, материалы, энергетика, ИТ) — виден в «Как искали».
         route = routing.route(query, plan)
         plan["route"] = route
+        # П11: как система поняла запрос (без LLM): тема и первые подтемы — видно в «Как искали» и уточняет вопрос о релевантности.
+        plan["scope_en"] = f"{plan.get('topic_en') or query}: " + "; ".join((plan.get("subqueries") or [])[:5])
         ctx.run.plan = plan
         ctx.session.commit()
 
@@ -258,18 +268,27 @@ async def _execute(ctx: RunContext, s) -> None:
         # Растущим поднаправлениям из литературы — до 6 мест: их рост уже измерен, а документов в корпусе может быть мало.
         growing = [c for c in fresh if "literature-growth" in c["methods"]][: min(6, slots)]
         taken = {id(c) for c in growing}
-        events = [c for c in fresh if id(c) not in taken and any(corpus[i].extra.get("event") for i in c["doc_idx"] if i < len(corpus))]
-        events = events[: min(8, slots - len(growing))]
+        # П11: места под события — только новостям о раундах и запусках (ленты изданий, HN); записи каталога YC и гранты
+        # места не занимают (раньше они вытесняли кандидатов, подтверждённых наукой). Мест 5 вместо 8.
+        def news_event(i: int) -> bool:
+            d = corpus[i]
+            return d.extra.get("event") in ("funding", "launch") and d.collector not in ("yc", "nih", "nsf", "ukri")
+
+        events = [c for c in fresh if id(c) not in taken and any(news_event(i) for i in c["doc_idx"] if i < len(corpus))]
+        events = events[: min(5, slots - len(growing))]
         taken |= {id(c) for c in events}
         pool = watched + growing + events + [c for c in fresh if id(c) not in taken][: slots - len(growing) - len(events)]
-        ctx.run.stats = {**ctx.run.stats, "corpus_docs": len(corpus), "raw_candidates": len(extracted) + len(mined) + len(watch)}
+        ctx.run.stats = {**ctx.run.stats, "corpus_docs": len(corpus), "raw_candidates": len(extracted) + len(mined) + len(watch),
+                         # П11, T0: пул целиком — для воронки (где теряются эталонные технологии: в поиске или при отборе).
+                         "pool": [{"name": c["name_en"], "methods": c["methods"], "docs": len(c["doc_idx"])} for c in pool],
+                         "pool_raw": len(discovery.merge(extracted + lit + mined + watch))}
         ctx.stage(f"Проверка {len(pool)} кандидатов по открытым источникам", 32)
 
         # 4. Доказательства, decision-модель, скоринг
         topic = plan.get("topic_en") or query
         questions = {
             **QUESTIONS,
-            "relevance": relevance_question(topic),
+            "relevance": relevance_question(topic, plan.get("scope_en", "")),
             "relevance_query": query_relevance_question(query, topic),
             "evidence_match": EVIDENCE_MATCH, "product_name": PRODUCT_NAME, "is_technology": IS_TECHNOLOGY,
             "event": EVENT,
@@ -281,11 +300,13 @@ async def _execute(ctx: RunContext, s) -> None:
         # заменяется нейтральным значением (как при сбое источника); новости GDELT берутся в корпусе и для окна
         # для России, а не по каждому кандидату.
         with_gh = bool(s.github_token)
+        # Счётчик новых репозиториев нужен, только если он есть в признаках модели (после П9 — нет): минус вызов GitHub на кандидата.
+        gh_count = with_gh and bool(model) and "log_gh_repos_12m" in model.features
 
         async def assess(c: dict) -> dict:
             nonlocal done
             # География — после решения и только для сигналов (экономия 20–30 запросов OpenAlex); Europe PMC и ML-источники — по маршруту.
-            opts = {"with_news": s.news_per_candidate, "with_repos": with_gh, "with_gh_count": with_gh, "with_countries": False,
+            opts = {"with_news": s.news_per_candidate, "with_repos": with_gh, "with_gh_count": gh_count, "with_countries": False,
                     "with_europepmc": route["europepmc_evidence"], "with_ml": route["ml_evidence"]}
             ev = await evidence_mod.gather(http, c["name_en"], date.today(), **opts)
             for alt in c.get("alt_terms", [])[:1]:
@@ -296,8 +317,11 @@ async def _execute(ctx: RunContext, s) -> None:
                     ev = alt_ev
             numeric = numeric_features(ev)  # до добавления документов корпуса — как при обучении
             missing = []
-            if not with_gh and model and "log_gh_repos_12m" in model.features:
-                numeric["log_gh_repos_12m"] = model.mean[model.features.index("log_gh_repos_12m")]
+            # Счётчик репозиториев не собирался (нет токена или он не нужен основной модели): для модели, где он есть
+            # (режим без Jev), — нейтральное среднее, а не ноль, который давал бы бонус «нет GitHub = сигнал».
+            gm = next((m for m in (model, rules_model) if m and "log_gh_repos_12m" in m.features), None)
+            if not gh_count and gm:
+                numeric["log_gh_repos_12m"] = gm.mean[gm.features.index("log_gh_repos_12m")]
                 missing.append("github")
             if "openalex" in ev.failed and model:
                 # Нет данных о публикациях: нейтральные значения (средние обучающей выборки) вместо нулей,
@@ -343,9 +367,18 @@ async def _execute(ctx: RunContext, s) -> None:
                     log.exception("run %s: candidate %r failed", run_id, c.get("name_en"))
                     return None
 
-        assessed = [a for a in await asyncio.gather(*(guarded(c) for c in pool)) if a is not None]
-        if len(assessed) < len(pool):
-            ctx.run.stats = {**ctx.run.stats, "candidate_errors": len(pool) - len(assessed)}
+        # П15: бюджет времени на проверку кандидатов. Зависшие источники не держат запрос дольше RUN_BUDGET_SECONDS:
+        # непроверенные кандидаты отбрасываются, а на странице прогона видно «проверено N из M — лимит времени».
+        tasks_c = [asyncio.ensure_future(guarded(c)) for c in pool]
+        budget = s.run_budget_seconds or None
+        done_set, pending = await asyncio.wait(tasks_c, timeout=budget) if tasks_c else (set(), set())
+        for t_ in pending:
+            t_.cancel()
+        if pending:
+            ctx.run.stats = {**ctx.run.stats, "budget": {"checked": len(done_set), "total": len(pool), "seconds": budget}}
+        assessed = [a for a in (t_.result() for t_ in tasks_c if t_ in done_set) if a is not None]
+        if len(assessed) < len(done_set):
+            ctx.run.stats = {**ctx.run.stats, "candidate_errors": len(done_set) - len(assessed)}
 
         # Повторный опрос тех, по кому decision-модель не ответила (обычно таймаут под нагрузкой).
         async def reask(a: dict) -> None:
@@ -366,7 +399,7 @@ async def _execute(ctx: RunContext, s) -> None:
                 a["res"] = await rules.ask(a["state"], a["questions"])
                 a["res"].provider, a["res"].error = "heuristic", f"запасной режим: {dm.provider} не ответила ({err})"
                 a["features"] = {**a["features"], **answer_features(a["res"].answers)}
-                a["prob"] = model.predict(a["features"]) if model else None
+                a["prob"] = rules_model.predict(a["features"]) if rules_model else None  # ответы правил — модель режима без Jev
                 a["passport"] = {**pp_mod.passport(a["items"], a["res"].answers, a["n_asked"], s.min_confirmed_docs), "fallback": True}
             ctx.run.stats = {**ctx.run.stats, "decision_fallback": len(failed_dm)}
 

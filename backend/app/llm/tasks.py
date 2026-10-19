@@ -1,7 +1,10 @@
 """Задачи для LLM с жёсткой привязкой к найденным документам, и шаблонные запасные варианты."""
 import asyncio
+import hashlib
+import json
 import re
 import time
+from pathlib import Path
 
 from app.llm.providers import BaseLLM, LLMResult, parse_json
 from app.llm.terms import glossary_hint, normalize_name_ru
@@ -219,9 +222,12 @@ def _narrow_order(subs: list[str], query_en: list[str]) -> list[str]:
     return sorted(subs, key=lambda s: not (words & set(re.findall(r"[a-z0-9]{3,}", s.lower()))))
 
 
-async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
+PLAN_CACHE_DAYS = 14
+
+
+def plan_prompt(query: str) -> str:
     # Примеры в промпте — нейтральные, не из датасета организатора и не из примеров экспертов.
-    prompt = (
+    return (
         f"Запрос аналитика: «{query}».\n"
         "Сформируй план поиска РАННИХ технологических сигналов (новые технические подходы последних 1-2 лет) в научных и отраслевых источниках. "
         "Не включай зрелые общие темы вроде «AI in banking», «blockchain», «biometrics», «machine learning». "
@@ -233,8 +239,36 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
         "\"zh_terms\": 3 короткие китайские поисковые фразы (упрощённые иероглифы) так, как их пишут китайские техно-СМИ}. "
         "Не называй конкретные компании."
     )
-    res = await _within(llm, llm.complete(SYSTEM_ANALYST, prompt, temperature=0.3, max_tokens=700), PLAN_DEADLINE)
+
+
+def plan_cache_key(llm: BaseLLM, query: str) -> str:
+    """Ключ кэша плана: модель, системная роль и сам промпт. Смена промпта или модели — новый план."""
+    return hashlib.sha1(f"{llm.provider}:{llm.model}|{SYSTEM_ANALYST}|{plan_prompt(query)}".encode()).hexdigest()
+
+
+async def plan_query(llm: BaseLLM, query: str, cache_dir: Path | None = None, refresh: bool = False) -> tuple[dict, LLMResult | None]:
+    """План поиска. П12: температура 0 и кэш сырого ответа на PLAN_CACHE_DAYS дней — повторный запрос той же темы идёт по
+    тому же плану, поэтому «Пересчитать» и мониторинг темы сравнивают выдачу, а не случайные подтемы. Кэшируется только
+    успешный план от LLM; сброс — опция прогона replan."""
+    prompt = plan_prompt(query)
+    path = cache_dir / f"{plan_cache_key(llm, query)}.json" if cache_dir else None
+    res = None
+    if path and not refresh and path.exists() and time.time() - path.stat().st_mtime < PLAN_CACHE_DAYS * 86400:
+        try:
+            cached = json.loads(path.read_text(encoding="utf-8"))
+            res = LLMResult(cached["text"], llm.provider, llm.model, 0, usage={})
+        except (OSError, ValueError, KeyError):
+            res = None
+    from_cache = res is not None
+    if res is None:
+        res = await _within(llm, llm.complete(SYSTEM_ANALYST, prompt, temperature=0.0, max_tokens=700), PLAN_DEADLINE)
     data = parse_json(res.text) if res.ok else None
+    if path and not from_cache and isinstance(data, dict) and data.get("subqueries"):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"text": res.text, "query": query, "model": f"{llm.provider}:{llm.model}"}, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
     if isinstance(data, dict) and data.get("subqueries"):
         base = fallback_plan(query)
         broad = base["broad"]
@@ -264,7 +298,8 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
         # Китайские фразы: только строки с иероглифами (модель иногда возвращает пиньинь или английский).
         data["zh_terms"] = [t.strip() for t in data.get("zh_terms", []) if isinstance(t, str) and re.search(r"[一-鿿]", t)][:3]
         data["generated_by"] = f"{res.provider}:{res.model}"
-        return data, res
+        data["plan_cached"] = from_cache
+        return data, (None if from_cache else res)
     return fallback_plan(query), res if llm.provider != "none" else None
 
 

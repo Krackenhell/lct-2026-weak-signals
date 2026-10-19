@@ -86,6 +86,8 @@ export default function Insight() {
           </div>
         </div>
 
+        {c.why_early && <p className="small" style={{ marginTop: 10 }}><b>Почему рано.</b> {c.why_early}</p>}
+
         {c.status !== "signal" && c.exclusion_reason && (
           <div className="error" style={{ marginTop: 12 }}><b>{c.exclusion_label}.</b> {c.exclusion_reason}</div>
         )}
@@ -131,8 +133,8 @@ export default function Insight() {
           <summary>Как считается оценка</summary>
           <p>
             Модель Jev отвечает на вопросы о найденных текстах не «да / нет», а вероятностью ответа «да» от 0 до 1 (новизна, ранняя стадия,
-            массовость, независимые участники и др.). 12 ответов вместе с 11 наблюдаемыми показателями (рост публикаций, возраст темы, GitHub,
-            обсуждения) — 23 признака собственной логистической регрессии с весами, обученными на размеченных примерах. Вклад признака = вес ×
+            массовость, рынок с лидерами и др.). 9 ответов вместе с 9 наблюдаемыми показателями (рост публикаций, возраст темы, Википедия,
+            доля науки) — 18 признаков собственной логистической регрессии с весами, обученными на размеченных примерах. Вклад признака = вес ×
             отклонение от среднего; точка отсчёта плюс все вклады дают итог, из которого получается оценка. Оценка откалибрована на примерах,
             которых модель не видела; выше 95% не показывается, потому что живой поиск сложнее обучающей выборки.
           </p>
@@ -237,7 +239,7 @@ export default function Insight() {
               <tr><td className="small">Рост публикаций (лог-отношение)</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{(c.features.growth ?? 0).toFixed(2)}</b>}</td></tr>
               <tr><td className="small">Возраст темы, лет</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{Math.round(c.features.age_years ?? 0)}</b>}</td></tr>
               <tr><td className="small">Статья в Википедии</td><td className="small">{miss.has("wikipedia") ? NA("Википедия") : <b>{c.features.wiki_exists ? "есть" : "нет"}</b>}</td></tr>
-              <tr><td className="small">Новых репозиториев GitHub за 12 мес</td><td className="small">{miss.has("github") ? NA("GitHub без токена") : <b>{Math.round(Math.expm1(c.features.log_gh_repos_12m ?? 0))}</b>}</td></tr>
+              <tr><td className="small">Новых репозиториев GitHub за 12 мес</td><td className="small">{miss.has("github") ? <span className="muted">не собирался (не входит в модель)</span> : <b>{Math.round(Math.expm1(c.features.log_gh_repos_12m ?? 0))}</b>}</td></tr>
               <tr><td className="small">Обсуждений в инженерном сообществе за 12 мес</td><td className="small"><b>{Math.round(Math.expm1(c.features.log_hn_12m ?? 0))}</b></td></tr>
             </tbody>
           </table>

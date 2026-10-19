@@ -162,7 +162,7 @@ def evidence_items(ev: Evidence, limit: int = 12) -> list[dict]:
     # в доказательства обязательно (decision-модель видит событие, паспорт — независимое издание).
     # Гранту — одно место из трёх, чтобы госфинансирование не вытесняло рынок (раунды, запуски).
     market = [d for d in docs if (d.extra or {}).get("event") in ("funding", "launch")]
-    granted = [d for d in docs if (d.extra or {}).get("event") == "grant"]
+    granted = [d for d in docs if (d.extra or {}).get("event") in ("grant", "startup")]  # гранты и стартапы YC — одно место
     events = market[:2] + granted[:1]
     events += [d for d in market[2:] + granted[1:] if d not in events][: 3 - len(events)]
     rest = [d for d in docs if d not in events]

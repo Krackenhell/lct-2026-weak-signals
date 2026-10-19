@@ -33,7 +33,7 @@ def test_search_matches_whole_words_and_sorts_by_batch():
     docs = asyncio.run(yc.search(http, "agentic payments", 5))
     assert [d.title.split(":")[0] for d in docs] == ["PayBot", "Old"]  # «agencies» и «agent» — не «agentic»
     d = docs[0]
-    assert (d.published, d.source_type, d.extra["event"], d.extra["batch"]) == ("2025-01-01", "startup", "funding", "Winter 2025")
+    assert (d.published, d.source_type, d.extra["event"], d.extra["batch"]) == ("2025-01-01", "startup", "startup", "Winter 2025")  # стартап в акселераторе, а не раунд инвестиций
     assert d.url == "https://www.ycombinator.com/companies/paybot"
     assert [x.title.split(":")[0] for x in asyncio.run(yc.search(http, "agentic payments", 5, min_year=2024))] == ["PayBot"]
     assert calls == ["yc-oss.github.io"]  # каталог загружен один раз на процесс

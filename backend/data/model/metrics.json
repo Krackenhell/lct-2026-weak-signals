@@ -15,35 +15,61 @@
   "neg": 24
  },
  "cv5": {
-  "precision": 0.843,
-  "recall": 1.0,
-  "f1": 0.915,
-  "accuracy": 0.961,
-  "roc_auc": 0.993,
-  "brier": 0.03
+  "precision": 0.824,
+  "recall": 0.977,
+  "f1": 0.894,
+  "accuracy": 0.951,
+  "roc_auc": 0.988,
+  "brier": 0.04
  },
  "cv5_ci95": {
   "precision": [
-   0.733,
-   0.94
+   0.717,
+   0.925
   ],
   "recall": [
-   1.0,
+   0.921,
    1.0
   ],
   "f1": [
-   0.846,
-   0.969
+   0.821,
+   0.954
   ],
   "roc_auc": [
-   0.983,
-   0.999
+   0.976,
+   0.997
   ]
  },
  "cv5_repeated": {
-  "f1_mean": 0.908,
-  "f1_std": 0.014,
+  "f1_mean": 0.897,
+  "f1_std": 0.016,
   "repeats": 10
+ },
+ "slices": {
+  "false_signal_share": {
+   "Хайп": {
+    "n": 20,
+    "false_signals": 0.25
+   },
+   "«Трудные» отрицательные": {
+    "n": 23,
+    "false_signals": 0.174
+   },
+   "Меньше 300 работ": {
+    "n": 29,
+    "false_signals": 0.172
+   },
+   "Зрелые": {
+    "n": 97,
+    "false_signals": 0.041
+   },
+   "Стандарты и широкие": {
+    "n": 45,
+    "false_signals": 0.0
+   }
+  },
+  "positives_p_ge_099": 0.326,
+  "all_p_ge_095": 0.102
  },
  "reference_all_rows": {
   "n": 266,
@@ -51,8 +77,8 @@
   "recall": 0.97,
   "f1": 0.942,
   "accuracy": 0.955,
-  "roc_auc": 0.986,
-  "brier": 0.043
+  "roc_auc": 0.985,
+  "brier": 0.045
  },
  "features_used": [
   "log_total_works",
@@ -61,8 +87,6 @@
   "age_years",
   "wiki_exists",
   "log_wiki_views",
-  "log_gh_repos_12m",
-  "log_hn_12m",
   "fresh_preprints",
   "share_science",
   "log_evidence",
@@ -70,18 +94,31 @@
   "mass_adoption",
   "market_leaders",
   "standard",
-  "early_stage",
-  "independent",
   "hype",
   "novelty",
-  "benefit",
   "textbook",
   "maturity",
   "event"
  ],
- "features_dropped": [],
+ "features_dropped": [
+  "log_gh_repos_12m",
+  "log_hn_12m",
+  "early_stage",
+  "independent",
+  "benefit"
+ ],
+ "model_exclude": {
+  "features": [
+   "log_gh_repos_12m",
+   "log_hn_12m",
+   "independent",
+   "early_stage",
+   "benefit"
+  ],
+  "why": "ворота П9 (app/ml/gates_h4.py, data/model/gates_h4.json)"
+ },
  "limitations": [
-  "Отрицательные примеры собраны командой (включая 26 трудных: малоизвестные зрелые технологии, заглохший хайп, общие направления); пограничных случаев всё равно мало, поэтому метрики — верхняя оценка.",
+  "Отрицательные примеры собраны командой (включая 26 трудных: малоизвестные зрелые технологии, направления с угасшим интересом, общие направления); пограничных случаев всё равно мало, поэтому метрики — верхняя оценка.",
   "В обучение и оценку входят только примеры, у которых есть научная история (OpenAlex находит хотя бы одну работу по термину): без неё признаки не несут информации, и модель училась бы правилу «ничего не нашли — значит сигнал». У части сигналов организатора такой истории нет — они в обучении не участвуют.",
   "Перенос на новую область считается на 20–50 примерах; для областей, где в проверке меньше 5 сигналов, число не публикуется — такая оценка ничего не значит.",
   "В живом поиске кандидат без подтверждённых документов не попадает в топ, а уходит в «Наблюдать»."
@@ -92,28 +129,28 @@
  },
  "ablation": {
   "numeric_only": {
-   "precision": 0.641,
-   "recall": 0.953,
-   "f1": 0.766,
-   "accuracy": 0.878,
-   "roc_auc": 0.953,
-   "brier": 0.082
+   "precision": 0.617,
+   "recall": 0.86,
+   "f1": 0.718,
+   "accuracy": 0.859,
+   "roc_auc": 0.935,
+   "brier": 0.103
   },
   "decision_model_only": {
-   "precision": 0.722,
+   "precision": 0.696,
    "recall": 0.907,
-   "f1": 0.804,
-   "accuracy": 0.907,
-   "roc_auc": 0.975,
-   "brier": 0.065
+   "f1": 0.788,
+   "accuracy": 0.898,
+   "roc_auc": 0.961,
+   "brier": 0.079
   },
   "all": {
-   "precision": 0.843,
-   "recall": 1.0,
-   "f1": 0.915,
-   "accuracy": 0.961,
-   "roc_auc": 0.993,
-   "brier": 0.03
+   "precision": 0.824,
+   "recall": 0.977,
+   "f1": 0.894,
+   "accuracy": 0.951,
+   "roc_auc": 0.988,
+   "brier": 0.04
   }
  },
  "leave_one_domain_out": {
@@ -128,7 +165,7 @@
    "f1": 1.0,
    "accuracy": 1.0,
    "roc_auc": 1.0,
-   "brier": 0.015,
+   "brier": 0.019,
    "f1_ci95": [
     1.0,
     1.0
@@ -149,7 +186,7 @@
    "f1": 1.0,
    "accuracy": 1.0,
    "roc_auc": 1.0,
-   "brier": 0.013,
+   "brier": 0.021,
    "f1_ci95": [
     1.0,
     1.0
@@ -160,17 +197,17 @@
    "n_pos": 6
   },
   "Роботы": {
-   "precision": 0.846,
-   "recall": 1.0,
-   "f1": 0.917,
-   "accuracy": 0.935,
-   "roc_auc": 0.995,
-   "brier": 0.042,
+   "precision": 0.769,
+   "recall": 0.909,
+   "f1": 0.833,
+   "accuracy": 0.871,
+   "roc_auc": 0.959,
+   "brier": 0.077,
    "f1_ci95": [
-    0.769,
-    1.0
+    0.625,
+    0.963
    ],
-   "errors": 2,
+   "errors": 4,
    "n": 31,
    "n_pos": 11
   },
@@ -179,8 +216,8 @@
    "recall": 1.0,
    "f1": 0.9,
    "accuracy": 0.951,
-   "roc_auc": 0.986,
-   "brier": 0.045,
+   "roc_auc": 0.983,
+   "brier": 0.053,
    "f1_ci95": [
     0.71,
     1.0
@@ -195,192 +232,184 @@
   "Защита ИИ": 1.0,
   "Индустриальный ИИ": 1.0,
   "Инфраструктура ИИ": 1.0,
-  "Роботы": 1.0,
+  "Роботы": 0.909,
   "Финтех": 1.0
  },
  "errors": [
   {
-   "name": "Банкинг в метавселенной",
-   "label": 0,
-   "code": "hype",
-   "p": 0.946
-  },
-  {
    "name": "Доставка посылок дронами",
    "label": 0,
    "code": "hype",
-   "p": 0.864
+   "p": 0.921
+  },
+  {
+   "name": "Банкинг в метавселенной",
+   "label": 0,
+   "code": "hype",
+   "p": 0.89
   },
   {
    "name": "Графовые нейросети для антифрода",
    "label": 0,
    "code": "mature",
-   "p": 0.818
+   "p": 0.884
   },
   {
    "name": "Поиск аномалий автоэнкодерами",
    "label": 0,
    "code": "mature",
-   "p": 0.778
+   "p": 0.857
   },
   {
-   "name": "Прунинг нейросетей",
-   "label": 0,
-   "code": "mature",
-   "p": 0.619
+   "name": "App Store для роботов: маркетплейсы навыков/движений",
+   "label": 1,
+   "code": "signal",
+   "p": 0.152
   },
   {
    "name": "ИИ-ПК (маркетинговая категория)",
    "label": 0,
    "code": "hype",
-   "p": 0.543
-  },
-  {
-   "name": "Этические принципы ИИ",
-   "label": 0,
-   "code": "hype",
-   "p": 0.532
+   "p": 0.738
   },
   {
    "name": "Повсеместные роботакси",
    "label": 0,
    "code": "hype",
-   "p": 0.513
+   "p": 0.601
+  },
+  {
+   "name": "Доставка дронами",
+   "label": 0,
+   "code": "hype",
+   "p": 0.552
+  },
+  {
+   "name": "Детекция дипфейков (в целом)",
+   "label": 0,
+   "code": "mature",
+   "p": 0.526
+  },
+  {
+   "name": "Ускорение на FPGA",
+   "label": 0,
+   "code": "mature",
+   "p": 0.504
   }
  ],
  "calibration": {
   "temperature": 1.0,
-  "ece_before": 0.045,
-  "ece_after": 0.045,
-  "max_p_before": 0.9997,
-  "max_p_after": 0.9997,
-  "brier_before": 0.03,
-  "brier_after": 0.03,
+  "ece_before": 0.046,
+  "ece_after": 0.046,
+  "max_p_before": 0.9978,
+  "max_p_after": 0.9978,
+  "brier_before": 0.039,
+  "brier_after": 0.039,
   "bins": [
    {
     "range": "0–25%",
-    "n": 149,
-    "mean_p": 0.023,
+    "n": 143,
+    "mean_p": 0.021,
     "share_signals": 0.0
    },
    {
     "range": "25–50%",
-    "n": 5,
-    "mean_p": 0.358,
-    "share_signals": 0.0
+    "n": 11,
+    "mean_p": 0.348,
+    "share_signals": 0.091
    },
    {
     "range": "50–75%",
     "n": 10,
-    "mean_p": 0.633,
-    "share_signals": 0.6
+    "mean_p": 0.629,
+    "share_signals": 0.5
    },
    {
     "range": "75–90%",
-    "n": 8,
-    "mean_p": 0.811,
-    "share_signals": 0.625
+    "n": 12,
+    "mean_p": 0.837,
+    "share_signals": 0.75
    },
    {
     "range": "90–100%",
-    "n": 33,
+    "n": 29,
     "mean_p": 0.969,
-    "share_signals": 0.97
+    "share_signals": 0.966
    }
   ]
  },
  "weights": [
   {
    "feature": "maturity",
-   "weight": -1.107
-  },
-  {
-   "feature": "log_gh_repos_12m",
-   "weight": -1.061
-  },
-  {
-   "feature": "novelty",
-   "weight": 1.039
+   "weight": -1.559
   },
   {
    "feature": "log_total_works",
-   "weight": -0.892
+   "weight": -1.297
   },
   {
-   "feature": "independent",
-   "weight": -0.855
-  },
-  {
-   "feature": "growth",
-   "weight": 0.693
+   "feature": "novelty",
+   "weight": 0.951
   },
   {
    "feature": "share_science",
-   "weight": 0.576
-  },
-  {
-   "feature": "hype",
-   "weight": -0.559
-  },
-  {
-   "feature": "market_leaders",
-   "weight": -0.503
-  },
-  {
-   "feature": "textbook",
-   "weight": -0.468
+   "weight": 0.618
   },
   {
    "feature": "log_wiki_views",
-   "weight": -0.431
-  },
-  {
-   "feature": "specific_tech",
-   "weight": 0.428
-  },
-  {
-   "feature": "wiki_exists",
-   "weight": -0.377
-  },
-  {
-   "feature": "log_hn_12m",
-   "weight": -0.327
+   "weight": -0.603
   },
   {
    "feature": "event",
-   "weight": 0.292
+   "weight": 0.585
   },
   {
-   "feature": "mass_adoption",
-   "weight": -0.291
-  },
-  {
-   "feature": "recent_share",
-   "weight": 0.273
+   "feature": "market_leaders",
+   "weight": -0.541
   },
   {
    "feature": "log_evidence",
-   "weight": -0.202
+   "weight": -0.536
   },
   {
-   "feature": "standard",
-   "weight": -0.191
+   "feature": "growth",
+   "weight": 0.525
   },
   {
-   "feature": "fresh_preprints",
-   "weight": 0.118
+   "feature": "specific_tech",
+   "weight": 0.392
   },
   {
-   "feature": "early_stage",
-   "weight": -0.085
+   "feature": "wiki_exists",
+   "weight": -0.358
+  },
+  {
+   "feature": "textbook",
+   "weight": -0.356
+  },
+  {
+   "feature": "hype",
+   "weight": -0.335
+  },
+  {
+   "feature": "mass_adoption",
+   "weight": -0.318
   },
   {
    "feature": "age_years",
-   "weight": -0.076
+   "weight": -0.158
   },
   {
-   "feature": "benefit",
-   "weight": -0.046
+   "feature": "recent_share",
+   "weight": 0.156
+  },
+  {
+   "feature": "standard",
+   "weight": -0.051
+  },
+  {
+   "feature": "fresh_preprints",
+   "weight": 0.031
   }
  ]
 }
