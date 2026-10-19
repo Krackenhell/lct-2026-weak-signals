@@ -28,7 +28,7 @@ HOST_INTERVAL = {
     "api.github.com": 2.2,
     "api.openalex.org": 0.15,
     "hn.algolia.com": 0.2,
-    "api.crossref.org": 0.2,
+    "api.crossref.org": 0.34,  # вежливый пул Crossref — около 3 запросов в секунду
     "cyberleninka.ru": 1.0,
     "www.ebi.ac.uk": 0.2,
     "api.semanticscholar.org": 1.1,

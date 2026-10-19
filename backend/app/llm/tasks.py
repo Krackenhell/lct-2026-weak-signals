@@ -303,6 +303,20 @@ async def plan_query(llm: BaseLLM, query: str, cache_dir: Path | None = None, re
     return fallback_plan(query), res if llm.provider != "none" else None
 
 
+async def llm_only_candidates(llm: BaseLLM, query: str, n: int = 15) -> tuple[list[str], LLMResult]:
+    """П10, базовая линия «только LLM»: то, что дал бы простой вопрос к языковой модели без поиска по источникам."""
+    prompt = (f"Назови {n} ранних технологий (слабых сигналов) в теме «{query}», которые появились или начали расти в 2024–2026 годах. "
+              "Только названия технологий на английском, без пояснений. Верни JSON-массив строк.")
+    res = await llm.complete(SYSTEM_ANALYST.replace("Работаешь ТОЛЬКО с предоставленными документами. Не добавляй фактов, которых нет в документах. ", ""),
+                             prompt, temperature=0.0, max_tokens=600)
+    data = parse_json(res.text) if res.ok else None
+    # GigaChat иногда пишет названия слитно («GrapheneNanoribbons») — разбиваем на слова, иначе поиск по фразе ничего
+    # не найдёт и базовая линия проиграет нечестно.
+    unglue = lambda x: re.sub(r"(?<=[a-z])(?=[A-Z])", " ", x)  # noqa: E731
+    names = [clean_phrase(unglue(x)) for x in (data if isinstance(data, list) else []) if isinstance(x, str) and clean_phrase(x)]
+    return list(dict.fromkeys(names))[:n], res
+
+
 async def extract_candidates(llm: BaseLLM, topic: str, docs: list[dict]) -> tuple[list[dict], LLMResult]:
     """Извлекает названия конкретных технологий из пачки документов (со ссылками на номера документов)."""
     listing = "\n".join(f"[{i}] {d['title']}. {d.get('snippet', '')[:260]}" for i, d in enumerate(docs))

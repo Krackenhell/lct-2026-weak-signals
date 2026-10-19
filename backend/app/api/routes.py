@@ -104,6 +104,7 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
         "radar": extra.get("radar"), "dynamics": extra.get("dynamics"), "missing": extra.get("missing", []),
         "geography": extra.get("geography"), "startups_by_year": extra.get("startups_by_year"), "patents": extra.get("patents"),
         "score": _score(c, extra),
+        "impulse": extra.get("impulse"), "topic_rel": extra.get("topic_rel"),
         # Второе число рядом с оценкой: «Проверки доказательств: k из 5» (счёт проверок, а не вероятность).
         "checks": evidence_checks(extra.get("passport")),
         # П17: «почему рано» — по каким каналам технология уже видна в подтверждённых документах и где её ещё нет.
@@ -197,6 +198,13 @@ async def start_search(body: SearchIn, db: Session = Depends(get_session), _: No
         prev = _reusable_run(db, body.query, watch)
         if prev:
             return {**_run_out(prev), "reused": True}
+    s = get_settings()
+    if not s.live_search:
+        raise HTTPException(503, "Новые расчёты временно выключены администратором стенда. Готовые результаты по темам с главной открываются.")
+    day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    if s.live_runs_per_day and db.query(Run).filter(Run.created_at >= day_start.replace(tzinfo=None)).count() >= s.live_runs_per_day:
+        raise HTTPException(429, "Суточный лимит новых расчётов исчерпан (защита квот моделей и источников). Готовые результаты открываются; "
+                                 "новые темы — завтра после 03:00 МСК.")
     run = Run(query=body.query.strip(), options=options)
     db.add(run)
     db.commit()
@@ -375,7 +383,9 @@ def model_info() -> dict:
     comp_path = Path(s.model_dir) / "decision_model_comparison.json"
     comparison = json.loads(comp_path.read_text(encoding="utf-8")) if comp_path.exists() else None
     extra = {}
-    for key, fname in (("backtest", "backtest.json"), ("timemachine", "timemachine.json"), ("sources_check", "sources_check.json")):
+    for key, fname in (("backtest", "backtest.json"), ("timemachine", "timemachine.json"), ("sources_check", "sources_check.json"),
+                       ("emergence", "emergence.json"), ("gates_h4", "gates_h4.json"), ("ab_plan_model", "ab_plan_model.json"),
+                       ("ab_narrow_plan", "ab_narrow_plan.json"), ("llm_baseline", "llm_baseline.json")):
         p = Path(s.model_dir) / fname
         extra[key] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
     weights = []

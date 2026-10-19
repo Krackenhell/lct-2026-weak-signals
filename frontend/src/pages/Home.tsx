@@ -72,7 +72,8 @@ export default function Home() {
           <summary>Дополнительно</summary>
           <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
             <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} />
-            Режим мониторинга: добавить к поиску известные сигналы из базы отслеживания (по умолчанию — поиск только в открытых источниках)
+            Перепроверить известные сигналы из обучающей выборки (режим мониторинга). Их оценка не независимая: модель училась на этих
+            примерах. По умолчанию — поиск только в открытых источниках
           </label>
         </details>
         {err && <div className="error" style={{ marginTop: 12 }}>{err}</div>}

@@ -6,6 +6,7 @@
 Запуск из корня репозитория:  python deploy/supervisor.py   (Windows: run_windows.bat)
 Порт — переменная PORT (по умолчанию 80).
 """
+import json
 import os
 import subprocess
 import sys
@@ -18,6 +19,10 @@ ROOT = Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "backend"
 BRANCH = os.environ.get("DEPLOY_BRANCH", "main")
 CHECK_SECONDS = int(os.environ.get("CHECK_SECONDS", "120"))
+# Обновляться только на коммит с зелёными проверками GitHub (публичный API, без токена). На период оценки рекомендуется
+# DEPLOY_BRANCH=release и DEPLOY_REQUIRE_CI=1: push в main не перезапускает стенд.
+REQUIRE_CI = os.environ.get("DEPLOY_REQUIRE_CI", "0") == "1"
+REPO = os.environ.get("DEPLOY_REPO", "Krackenhell/lct-2026-weak-signals")
 PORT = os.environ.get("PORT", "80")
 LOG = ROOT / "deploy" / "supervisor.log"
 
@@ -65,6 +70,33 @@ def wait_idle(max_wait: int = 1200) -> None:
         waited += 15
 
 
+def ci_green(sha: str) -> bool:
+    """Все check-runs коммита завершены успешно (если CI для коммита не настроен — не блокируем)."""
+    try:
+        req = urllib.request.Request(f"https://api.github.com/repos/{REPO}/commits/{sha}/check-runs", headers={"Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            runs = json.loads(r.read().decode("utf-8")).get("check_runs", [])
+    except (OSError, ValueError) as exc:
+        log(f"проверки CI недоступны ({exc}) — обновление отложено")
+        return False
+    return all(c.get("status") == "completed" and c.get("conclusion") in ("success", "skipped", "neutral") for c in runs)
+
+
+def healthy(timeout: int = 90) -> bool:
+    """После перезапуска сервер отвечает на /api/health и /api/showcase."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            for path in ("/api/health", "/api/showcase"):
+                with urllib.request.urlopen(f"http://127.0.0.1:{PORT}{path}", timeout=10) as r:
+                    if r.status != 200:
+                        raise OSError(f"{path}: {r.status}")
+            return True
+        except OSError:
+            time.sleep(5)
+    return False
+
+
 def stop(p: subprocess.Popen) -> None:
     p.terminate()
     try:
@@ -76,6 +108,7 @@ def stop(p: subprocess.Popen) -> None:
 def main() -> None:
     install()
     proc = start()
+    bad: set[str] = set()  # коммиты, после которых сервер не поднялся
     while True:
         time.sleep(CHECK_SECONDS)
         if proc.poll() is not None:
@@ -88,7 +121,9 @@ def main() -> None:
         except (subprocess.SubprocessError, OSError) as exc:
             log(f"не удалось проверить обновления: {exc}")
             continue
-        if remote and local != remote:
+        if remote and local != remote and remote not in bad:
+            if REQUIRE_CI and not ci_green(remote):
+                continue  # проверки ещё идут или красные — ждём следующего цикла
             log(f"обновление {local[:7]} → {remote[:7]}")
             out = subprocess.run(["git", "pull", "--ff-only", "origin", BRANCH], cwd=ROOT, capture_output=True, text=True)
             if out.returncode != 0:
@@ -98,6 +133,14 @@ def main() -> None:
             wait_idle()
             stop(proc)
             proc = start()
+            if not healthy():
+                # Новая версия не отвечает — откат на прежний коммит; этот коммит больше не берём.
+                log(f"после обновления сервер не отвечает — откат на {local[:7]}, коммит {remote[:7]} пропускается")
+                bad.add(remote)
+                stop(proc)
+                subprocess.run(["git", "reset", "--hard", local], cwd=ROOT, capture_output=True, text=True)
+                install()
+                proc = start()
 
 
 if __name__ == "__main__":

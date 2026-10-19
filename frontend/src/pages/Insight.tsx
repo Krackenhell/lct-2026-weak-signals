@@ -87,6 +87,15 @@ export default function Insight() {
         </div>
 
         {c.why_early && <p className="small" style={{ marginTop: 10 }}><b>Почему рано.</b> {c.why_early}</p>}
+        {c.topic_rel && c.topic_rel.faster >= 1.2 && (
+          <p className="small"><b>Относительно темы:</b> растёт в {c.topic_rel.faster.toLocaleString("ru-RU")} раза быстрее темы запроса
+            ({Math.round(c.topic_rel.share * 1000) / 10}% её работ).</p>
+        )}
+        {c.impulse && (
+          <p className="small" title="Рост публикаций за 2 года, приглушённый возрастом темы. Проверен на машине времени; на место в выдаче не влияет.">
+            <b>Импульс роста:</b> {c.impulse.label}{c.impulse.level ? ` (работ за 4 года: ${c.impulse.works_4y})` : ""}.
+          </p>
+        )}
 
         {c.status !== "signal" && c.exclusion_reason && (
           <div className="error" style={{ marginTop: 12 }}><b>{c.exclusion_label}.</b> {c.exclusion_reason}</div>

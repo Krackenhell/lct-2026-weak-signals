@@ -1,6 +1,7 @@
 """Устойчивость и безопасность: выход за пределы каталога сайта, кривые ответы LLM, повреждённый кэш, очередь запусков."""
 import asyncio
 import json
+import os
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -73,6 +74,8 @@ def test_corrupted_cache_file_is_refetched(tmp_path, monkeypatch):
         asyncio.run(go())
         assert len(calls) == 2
         assert not list(tmp_path.glob("*.tmp"))
+        for p in tmp_path.glob("*.json"):  # файл записан только что: «состариваем», иначе сравнение времени зависит от точности часов
+            os.utime(p, (p.stat().st_mtime - 10, p.stat().st_mtime - 10))
         assert prune_cache(tmp_path, 0) >= 1  # просроченные файлы удаляются
     finally:
         get_settings.cache_clear()
@@ -200,7 +203,7 @@ def test_cost_of_request_in_rubles(monkeypatch):
 
     usage = {"gigachat": {"model": "GigaChat-2-Max", "calls": 20, "tokens": 50_000}, "jev": {"model": "jev-latest", "calls": 30, "tokens": 0}}
     c = cost.estimate(usage)
-    assert c["total_rub"] == 97.5 and {x["provider"] for x in c["lines"]} == {"gigachat", "jev"}  # 50 тыс. токенов × 1,95 ₽
+    assert c["total_rub"] == 32.5 and {x["provider"] for x in c["lines"]} == {"gigachat", "jev"}  # 50 тыс. токенов × 0,65 ₽ (тариф Max, 19.10)
     monkeypatch.setenv("DECISION_RUB_PER_CALL", "0.5")
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     monkeypatch.setenv("OPENAI_BASE_URL", "http://ollama:11434/v1")

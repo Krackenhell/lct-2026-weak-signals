@@ -10,6 +10,7 @@ import time
 import traceback
 import weakref
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -21,7 +22,7 @@ from app.decision import get_decision_model
 from app.decision.heuristic import HeuristicDecision
 from app.llm.providers import for_task, get_llm
 from app.collectors import cyberleninka, gdelt, habr, news_search, openalex
-from app.llm.tasks import check_query, plan_query, summarize_sources, write_dossier
+from app.llm.tasks import check_query, llm_only_candidates, plan_query, summarize_sources, write_dossier
 from app.llm.terms import check_name_ru
 from app.ml.model import SignalModel
 from app.models import Candidate, Document, ModelCall, Run
@@ -29,7 +30,7 @@ from app.pipeline import cost as cost_mod
 from app.pipeline import discovery, evidence as evidence_mod
 from app.pipeline import links as links_mod
 from app.pipeline import passport as pp_mod
-from app.pipeline import routing, subtopics
+from app.pipeline import emergence, routing, subtopics
 from app.pipeline.decide import decide, query_anchors, template_dossier, wiki_fact
 from app.pipeline.features import answer_features, numeric_features
 from app.pipeline.questions import (
@@ -42,7 +43,7 @@ log = logging.getLogger(__name__)
 
 # Версия конвейера: увеличивается вручную при любом изменении, влияющем на выдачу. Готовые результаты другой версии
 # повторно не отдаются (см. api/routes.reuse_blockers) — эксперт не увидит выдачу старого кода.
-PIPELINE_VERSION = "2026-10-19.2"
+PIPELINE_VERSION = "2026-10-20.1"
 
 
 def training_phrases() -> set[str]:
@@ -243,16 +244,26 @@ async def _execute(ctx: RunContext, s) -> None:
         async def corpus_progress(done, total):
             ctx.stage(f"Сбор документов по подтемам: {done}/{total} запросов", 5 + int(20 * done / max(total, 1)))
 
-        corpus = await discovery.build_corpus(http, plan, corpus_progress)
+        llm_only = bool((ctx.run.options or {}).get("seed_candidates"))
+        if llm_only:
+            # П10: режим сравнения «только LLM». GigaChat одним вызовом называет 15 слабых сигналов, корпус не собирается;
+            # дальше те же доказательства, Jev, классификатор, фильтры и паспорт — видно, сколько названий проходит проверки.
+            ctx.stage("Режим сравнения: список технологий от GigaChat без поиска по источникам", 20)
+            names, r = await llm_only_candidates(llm, query)
+            ctx.log_call(r.provider, r.model, "только LLM: список слабых сигналов", query, {"query": query}, {"text": r.text[:3000]}, r.latency_ms, r.ok, usage=r.usage)
+            corpus = []
+        else:
+            corpus = await discovery.build_corpus(http, plan, corpus_progress)
         ctx.stage(f"Извлечение технологий из {len(corpus)} документов", 27)
 
         # 3. Кандидаты
         mined = discovery.mine_phrases(corpus)
-        extracted, llm_res = await discovery.llm_candidates(llm, plan.get("topic_en", query), corpus)
+        extracted, llm_res = ([{"name_en": n, "name_ru": "", "doc_idx": [], "method": "llm-baseline"} for n in names], []) if llm_only \
+            else await discovery.llm_candidates(llm, plan.get("topic_en", query), corpus)
         for r in llm_res:
             ctx.log_call(r.provider, r.model, "извлечение технологий из документов", query, {"docs": "пачка документов корпуса"}, {"text": r.text[:3000]}, r.latency_ms, r.ok, usage=r.usage)
         watch = discovery.watchlist(query, plan, (ctx.run.options or {}).get("use_watchlist"))
-        lit = subtopics.literature_candidates(plan.get("emerging", []), corpus)
+        lit = [] if llm_only else subtopics.literature_candidates(plan.get("emerging", []), corpus)
         pool = discovery.merge(extracted + lit + mined + watch)
         # Предварительный отбор: сначала подтверждённые несколькими документами/методами.
         # Сигналы из базы отслеживания получают зарезервированные места (до 20), остальное — новые кандидаты.
@@ -403,6 +414,10 @@ async def _execute(ctx: RunContext, s) -> None:
                 a["passport"] = {**pp_mod.passport(a["items"], a["res"].answers, a["n_asked"], s.min_confirmed_docs), "fallback": True}
             ctx.run.stats = {**ctx.run.stats, "decision_fallback": len(failed_dm)}
 
+        # Фактическая версия decision-модели из ответов API — в данные прогона (сверка с версией, на которой обучен классификатор).
+        versions = sorted({a["res"].model for a in assessed if a["res"].ok and a["res"].provider not in ("heuristic",)})
+        if versions:
+            ctx.run.providers = {**ctx.run.providers, "decision_model_version": ", ".join(versions)}
         for a in assessed:
             r = a["res"]
             ctx.log_call(r.provider, r.model, "ответы на вопросы-признаки и проверка документов", a["c"]["name_en"], {"state": a["state"][:4000], "questions": list(a["questions"])}, {"answers": r.answers, "error": r.error, "passport": a["passport"]}, r.latency_ms, r.ok, usage=r.usage)
@@ -410,12 +425,30 @@ async def _execute(ctx: RunContext, s) -> None:
 
         # 5. Решение: сигнал / исключение
         ctx.stage("Ранжирование: исключение зрелых технологий, стандартов и тем без технического подтверждения", 82)
+        # П14: объём самой темы — один кэшируемый вызов OpenAlex на запрос. Не в словарном плане без термина и не при сбое OpenAlex.
+        topic_term = plan.get("core_term") or (plan.get("topic_en") if plan.get("generated_by") != "lexicon" else "")
+        topic_yearly = None
+        if topic_term and re.search(r"[a-z]", topic_term, re.I) and not llm_only:
+            topic_yearly = await evidence_mod._safe("openalex", openalex.yearly_counts(http, topic_term), None, [])
+        for a in assessed:
+            a["topic_rel"] = pp_mod.topic_relation(a["ev"].yearly, topic_yearly, date.today().year) \
+                if topic_yearly and "openalex" not in a["ev"].failed else None
+
         # Слова самого запроса не считаются «темой» в правиле разнообразия; без надёжных слов запроса (словарный план без
         # термина из литературы) правило «не больше 3 на тему» отключается — лучше не резать, чем резать по случайным словам.
         anchors = query_anchors(plan, query)
         crowding = not (plan.get("generated_by") == "lexicon" and not plan.get("core_term"))
-        decisions = decide(assessed, model, s.top_k, topic_terms=[t for t in (plan.get("core_term"), plan.get("topic_en"), *plan.get("query_en", [])) if t],
-                           anchors=anchors, crowding=crowding)
+        decide_kw = {"topic_terms": [t for t in (plan.get("core_term"), plan.get("topic_en"), *plan.get("query_en", [])) if t],
+                     "anchors": anchors, "crowding": crowding}
+        decisions = decide(assessed, model, s.top_k, **decide_kw)
+        if s.snapshot_dir:
+            # Раздел 7B: снимок этапов для повтора решения без сети (app/ml/bench.py redecide).
+            try:
+                from app.ml.bench import save_snapshot
+
+                save_snapshot(Path(s.snapshot_dir) / f"run-{run_id}.json.gz", run_id, query, plan, corpus, assessed, decide_kw)
+            except Exception:  # снимок — служебный, на результат не влияет
+                log.exception("run %s: snapshot failed", run_id)
 
         # Честный режим при сбое OpenAlex: доля кандидатов, у которых статистика публикаций заменена средними. Такой прогон
         # помечается (баннер в интерфейсе) и не отдаётся повторно; подставленные значения не показываются как факты.
@@ -456,7 +489,10 @@ async def _execute(ctx: RunContext, s) -> None:
             extra = {"passport": a["passport"], "dynamics": pp_mod.dynamics(a["ev"].yearly, date.today().year) if "openalex" not in a["ev"].failed else None,
                      "missing": a.get("missing", []), "startups_by_year": a["ev"].yc_yearly or None,
                      "geography": pp_mod.geography(a["ev"].countries), "patents": a["ev"].patents, "score": dcs.get("score"),
-                     "name_check": name_check,
+                     "name_check": name_check, "topic_rel": a.get("topic_rel"),
+                     # П13: импульс роста по ряду OpenAlex (только объяснение, на место в выдаче не влияет).
+                     "impulse": emergence.live_impulse(a["ev"].yearly, date.today().year, a["features"].get("age_years"))
+                     if "openalex" not in a["ev"].failed else None,
                      # Совпадает с примером обучающей выборки: высокая оценка ожидаема и не является независимой проверкой.
                      "in_training": re.sub(r"\s+", " ", a["c"]["name_en"].lower()).strip() in trained or bool(a["c"].get("watch_id"))}
             if dcs["status"] == "signal":
@@ -464,7 +500,8 @@ async def _execute(ctx: RunContext, s) -> None:
                 extra["robustness"] = pp_mod.robustness(a["prob"], dcs["contributions"], model.intercept / model.temperature if model else None)
             cand = Candidate(
                 run_id=run_id, name=a["c"]["name_en"], name_ru=a["c"].get("name_ru") or None,
-                origin="watchlist" if "watchlist" in a["c"]["methods"] and not (set(a["c"]["methods"]) - {"watchlist"}) else "discovered",
+                origin="llm_baseline" if "llm-baseline" in a["c"]["methods"] else
+                "watchlist" if "watchlist" in a["c"]["methods"] and not (set(a["c"]["methods"]) - {"watchlist"}) else "discovered",
                 status=dcs["status"], rank=dcs.get("rank"), probability=a["prob"], relevance=dcs["relevance"],
                 exclusion_code=dcs.get("code"), exclusion_reason=dcs.get("reason"), features=a["features"],
                 contributions={"items": dcs["contributions"], "methods": a["c"]["methods"], **extra}, answers=a["res"].answers,

@@ -143,6 +143,13 @@ def evidence_checks(pp: dict | None) -> dict | None:
     return {"passed": sum(1 for i in measured if i["ok"]), "total": len(items), "measured": len(measured), "items": items}
 
 
+def pct_capped(v: float | None) -> str:
+    """Процент без ложной точности для ответов моделей и вероятностей: не бывает «100%» и «0%»."""
+    if v is None:
+        return "—"
+    return "выше 95%" if v >= 0.95 else "ниже 5%" if v <= 0.05 else f"{v:.0%}"
+
+
 def prob_text(p: float | None) -> str:
     """Вероятность словами без ложной точности: логистическая модель не бывает уверена «на 100%»."""
     if p is None:
@@ -190,7 +197,7 @@ def robustness(prob: float | None, contributions: list[dict], intercept: float |
         "feature": top["feature"],
         "feature_label": top["label"],
         "p_without": round(p_without, 3),
-        "text": f"Если убрать самый сильный довод «{top['label']}», вероятность станет {p_without:.0%}.",
+        "text": f"Если убрать самый сильный довод «{top['label']}», оценка станет {pct_capped(p_without)}.",
     }
 
 
@@ -338,6 +345,25 @@ def card_facts(features: dict | None, answers: dict | None, dyn: list[dict] | No
         "works_2y": recent if dyn else None,
         "growth_x": round(recent / prior, 1) if dyn and prior >= 3 else None,
     }
+
+
+def _growth2(c: dict[int, int], year: int) -> float:
+    return math.log1p((c.get(year - 1, 0) + c.get(year - 2, 0)) / 2) - math.log1p((c.get(year - 3, 0) + c.get(year - 4, 0)) / 2)
+
+
+def topic_relation(cand_yearly: dict | None, topic_yearly: dict | None, year: int) -> dict | None:
+    """П14: кандидат относительно объёма самой темы. share — доля работ темы, где есть фраза кандидата (за всё время);
+    faster — во сколько раз рост кандидата за 2 года больше роста темы (по полным годам)."""
+    if not cand_yearly or not topic_yearly:
+        return None
+    c = {int(k): int(v) for k, v in cand_yearly.items()}
+    t = {int(k): int(v) for k, v in topic_yearly.items()}
+    ct, tt = sum(v for k, v in c.items() if k <= year), sum(v for k, v in t.items() if k <= year)
+    if tt < 50:
+        return None
+    excess = _growth2(c, year) - _growth2(t, year)
+    return {"works": ct, "topic_works": tt, "share": round(min(ct / tt, 1.0), 3), "excess_growth": round(excess, 3),
+            "faster": round(math.exp(excess), 1)}
 
 
 def dynamics(yearly: dict, today_year: int, years: int = 8) -> list[dict]:

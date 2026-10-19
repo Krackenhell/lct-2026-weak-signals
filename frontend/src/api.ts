@@ -49,6 +49,8 @@ export type CandidateBrief = {
   checks?: Checks | null;
   in_training?: boolean;
   why_early?: string | null;
+  topic_rel?: { works: number; topic_works: number; share: number; excess_growth: number; faster: number } | null;
+  impulse?: { level: "high" | "medium" | "low" | null; label: string; young_growth?: number; works_4y: number } | null;
   name_check?: string | null;
   stage?: { label: string; trl: string } | null;
   first_year?: number | null;

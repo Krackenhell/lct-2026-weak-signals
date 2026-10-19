@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     decision_provider: str = "heuristic"
     typesafe_api_key: str = ""
     typesafe_base_url: str = "https://api.typesafe.ai"
-    jev_model: str = "jev-latest"
+    # Версия закреплена: классификатор обучен на ответах jev-1.13.0, а jev-latest может переключиться на новую версию
+    # (проверено 19.10: API принимает имя версии и отвечает ею же).
+    jev_model: str = "jev-1.13.0"
     kev_base_url: str = "http://127.0.0.1:8009"
     kev_model: str = "kev-latest"
 
@@ -34,7 +36,12 @@ class Settings(BaseSettings):
     # Модель для плана поиска (пусто — gigachat_model): шаг из 1–2 вызовов, от которого зависит весь корпус, поэтому
     # более сильная модель здесь окупается. Меняется только по результату A/B (docs/research/AB_МОДЕЛЬ_ПЛАНА.md).
     gigachat_model_plan: str = ""
+    gigachat_base_url: str = "https://gigachat.devices.sberbank.ru/api/v1"
+    gigachat_auth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
+    # Проверка TLS: сертификаты Сбера выпущены НУЦ Минцифры, которого нет в стандартном хранилище. Безопасный путь —
+    # указать путь к корневому сертификату (GIGACHAT_CA_BUNDLE); false — без проверки (запасной вариант, виден в коде).
     gigachat_verify_ssl: bool = False
+    gigachat_ca_bundle: str = ""
     # Параллельных запросов к GigaChat: 1 — бесплатный тариф физлица; для корпоративного тарифа можно 4–8,
     # тогда 15 досье пишутся одновременно, а не по очереди.
     gigachat_concurrency: int = 1
@@ -52,6 +59,8 @@ class Settings(BaseSettings):
     # Источники
     openalex_api_key: str = ""
     openalex_email: str = ""
+    # Адрес команды для «вежливых» пулов открытых API (Crossref); пусто — используется OPENALEX_EMAIL
+    contact_email: str = ""
     github_token: str = ""
     s2_api_key: str = ""  # Semantic Scholar: без ключа источник не используется (лимит 429)
     # Дополнительные научные источники и языки: Crossref (все издатели), КиберЛенинка (RU), Europe PMC (науки о жизни),
@@ -77,6 +86,10 @@ class Settings(BaseSettings):
     # чтобы квоту ключа не съели фоновые задачи (бесплатный ключ — около 1000 поисков в сутки).
     openalex_daily_soft_limit: int = 700
 
+    # Живой поиск: аварийный выключатель (false — открываются только готовые результаты) и суточный предел новых расчётов,
+    # чтобы квоты Jev, GigaChat и OpenAlex не исчерпал наплыв или чужой скрипт (быстрое исправление 1 из исследования).
+    live_search: bool = True
+    live_runs_per_day: int = 150
     # Доступ: если задан, запуск поиска и оценки аналитика требуют заголовок X-API-Token (чтение открыто)
     api_token: str = ""
 
@@ -108,6 +121,8 @@ class Settings(BaseSettings):
     # Окно для России: сверка с русскоязычными источниками для сигналов топа.
     russia_window: bool = True
 
+    # Снимки этапов прогона для набора оценки (пусто — не сохранять): data/bench/snapshots
+    snapshot_dir: str = ""
     model_dir: Path = DATA_DIR / "model"
     seed_dir: Path = DATA_DIR / "seed"
 

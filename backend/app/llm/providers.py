@@ -71,9 +71,12 @@ class GigaChat(BaseLLM):
         super().__init__(concurrency=max(1, s.gigachat_concurrency))  # бесплатный тариф — 1 поток, корпоративный — больше
         self.model = s.gigachat_model
         self._auth_key = s.gigachat_auth_key
+        # Адреса настраиваются (быстрое исправление 16): новый адрес API проверяется на стенде один раз, вслепую не переключаем.
+        self._auth_url = s.gigachat_auth_url
+        self._api_url = s.gigachat_base_url.rstrip("/") + "/chat/completions"
         self._scope = s.gigachat_scope
         # Соединение и токен — быстро (10 с), генерация длинного ответа — до 90 с.
-        self._client = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=10), verify=s.gigachat_verify_ssl)
+        self._client = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=10), verify=s.gigachat_ca_bundle or s.gigachat_verify_ssl)
         self._token = ""
         self._token_exp = 0.0
         self._lock = asyncio.Lock()
@@ -83,7 +86,7 @@ class GigaChat(BaseLLM):
             if self._token and time.time() < self._token_exp - 60:
                 return self._token
             r = await self._client.post(
-                "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+                self._auth_url,
                 headers={"Authorization": f"Basic {self._auth_key}", "RqUID": str(uuid.uuid4()), "Content-Type": "application/x-www-form-urlencoded"},
                 data={"scope": self._scope},
             )
@@ -96,7 +99,7 @@ class GigaChat(BaseLLM):
     async def _complete(self, system, user, temperature, max_tokens):
         token = await self._get_token()
         r = await self._client.post(
-            "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
+            self._api_url,
             headers={"Authorization": f"Bearer {token}"},
             json={"model": _MODEL.get() or self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": temperature, "max_tokens": max_tokens},
         )

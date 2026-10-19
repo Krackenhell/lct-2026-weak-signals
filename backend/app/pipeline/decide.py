@@ -8,7 +8,7 @@ import math
 import re
 
 from app.ml.model import SignalModel
-from app.pipeline.passport import prob_text
+from app.pipeline.passport import pct_capped, prob_text
 from app.pipeline.trust import classify
 
 EXCLUSION_RU = {
@@ -30,7 +30,9 @@ EXCLUSION_RU = {
     "paper_title": "Название статьи, а не технологии",
     "crowded": "Тема уже представлена в топе",
     "topic_itself": "Сама тема запроса, а не направление внутри неё",
+    "subfield": "Крупное устоявшееся направление внутри темы",
 }
+SUBFIELD_SHARE, SUBFIELD_MIN_WORKS = 0.25, 1000
 
 # Общие слова в конце названия: «multilayer graphene technologies» — это та же «multilayer graphene».
 _TOPIC_TAIL = {"technology", "technologies", "technique", "techniques", "device", "devices", "application", "applications", "system",
@@ -153,34 +155,40 @@ def _filters(a: dict, topic_terms: list[str] | None = None) -> tuple[str, str] |
     # направлений («rhombohedral graphene», «chiral superconductivity») он давал 0,3 при 10 из 10 подтверждённых документов.
     # Поэтому отсев только если и паспорт доказательств не набрал уровень A/B.
     if _ans(a, "evidence_match", 1.0) < 0.4 and (a.get("passport") or {}).get("level") not in ("A", "B"):
-        return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {_ans(a, 'evidence_match', 1.0):.0%}) — вероятно, это случайное сочетание слов."
+        return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {pct_capped(_ans(a, 'evidence_match', 1.0))}) — вероятно, это случайное сочетание слов."
     if ORG.search(a["c"]["name_en"]):
         return "organization", "Название организации (комиссия, агентство, университет, компания), а не технологии."
     if PAPER_TITLE.search(a["c"]["name_en"]) or len(a["c"]["name_en"].split()) > 7:
         return "paper_title", "Формулировка похожа на заголовок научной статьи, а не на название класса технологий — такой кандидат нельзя проверить поиском по источникам."
     if _ans(a, "is_technology", 1.0) < 0.3:
-        return "not_technology", f"Это не технологическая инновация, а документ, репозиторий, организация или общее рыночное явление (оценка {_ans(a, 'is_technology', 1.0):.0%})."
+        return "not_technology", f"Это не технологическая инновация, а документ, репозиторий, организация или общее рыночное явление (оценка {pct_capped(_ans(a, 'is_technology', 1.0))})."
     if _ans(a, "product_name", 0.0) >= 0.6:
-        return "product", f"Это название конкретного продукта, компании или проекта (оценка {_ans(a, 'product_name', 0.0):.0%}), а не класс технологий."
+        return "product", f"Это название конкретного продукта, компании или проекта (оценка {pct_capped(_ans(a, 'product_name', 0.0))}), а не класс технологий."
     if _ans(a, "specific_tech") < 0.25:
         return "broad", "Это широкая область или общее понятие, а не конкретная технология — такие направления не являются слабыми сигналами."
     if _ans(a, "standard") >= 0.6:
-        return "standard", f"Decision-модель оценивает вероятность того, что это действующий стандарт или протокол, в {_ans(a, 'standard'):.0%}."
+        return "standard", f"Decision-модель оценивает вероятность того, что это действующий стандарт или протокол: {pct_capped(_ans(a, 'standard'))}."
     works = math.expm1(f.get("log_total_works", 0))
     views = math.expm1(f.get("log_wiki_views", 0))
     mature_reasons = []
     if _ans(a, "mass_adoption") >= 0.6:
-        mature_reasons.append(f"признаки массового внедрения ({_ans(a, 'mass_adoption'):.0%})")
+        mature_reasons.append(f"признаки массового внедрения ({pct_capped(_ans(a, 'mass_adoption'))})")
     if _ans(a, "market_leaders") >= 0.65:
-        mature_reasons.append(f"сформированный рынок с лидерами ({_ans(a, 'market_leaders'):.0%})")
+        mature_reasons.append(f"сформированный рынок с лидерами ({pct_capped(_ans(a, 'market_leaders'))})")
     if "wikipedia" not in a.get("missing", []) and f.get("wiki_exists") and views > 5000 and f.get("age_years", 0) >= 8:
         mature_reasons.append(f"устоявшаяся статья в Википедии (~{views:,.0f} просмотров в месяц) и {f['age_years']:.0f} лет в литературе".replace(",", " "))
     if works > 20000:
         mature_reasons.append(f"более {works:,.0f} научных работ".replace(",", " "))
     if mature_reasons:
         return "mature", "Зрелая технология: " + "; ".join(mature_reasons) + "."
+    # П14: порог «20 000 работ» не зависит от размера темы. Внутри темы в 15 тыс. работ поднаправление на 6 тыс. — это половина
+    # поля, а не слабый сигнал. Не применяется в словарном и деградированном режиме (нет надёжного термина темы).
+    rel_t = a.get("topic_rel")
+    if rel_t and rel_t["share"] >= SUBFIELD_SHARE and rel_t["works"] >= SUBFIELD_MIN_WORKS:
+        return "subfield", (f"Крупное устоявшееся направление внутри темы: {rel_t['share']:.0%} работ темы "
+                            f"({rel_t['works']:,} из {rel_t['topic_works']:,}).".replace(",", " "))
     if _ans(a, "hype") >= 0.75 and f.get("share_science", 0) < 0.2:
-        return "hype", f"Доказательства состоят в основном из рекламных материалов (доля рекламных формулировок {_ans(a, 'hype'):.0%}), научных подтверждений мало."
+        return "hype", f"Доказательства состоят в основном из рекламных материалов (доля рекламных формулировок {pct_capped(_ans(a, 'hype'))}), научных подтверждений мало."
     docs = a["ev"].docs
     if len(docs) < 3:
         return "low_evidence", f"В открытых источниках найдено только {len(docs)} подтверждения — недостаточно для вывода."
@@ -221,7 +229,7 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_te
         elif a["prob"] is not None and a["prob"] < 0.5:
             neg = [c for c in contrib if c["contribution"] < 0][:3]
             why = "; ".join(f"{c['label'].lower()} — {c.get('level', '')} значение ({c['value']})" for c in neg)
-            d.update(status="excluded", code="low_probability", reason=f"Модель оценивает вероятность слабого сигнала в {a['prob']:.0%}. Основные факторы против: {why}.")
+            d.update(status="excluded", code="low_probability", reason=f"Модель оценивает вероятность слабого сигнала в {pct_capped(a['prob'])}. Основные факторы против: {why}.")
         elif pp and pp["level"] == "C":
             # Турникет: без подтверждённых документов высокая вероятность ничего не значит — признаки
             # считались по пустым или чужим текстам. Кандидат не попадает в топ, а уходит в «Наблюдать».

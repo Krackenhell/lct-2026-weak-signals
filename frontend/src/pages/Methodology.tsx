@@ -125,8 +125,52 @@ function Backtest({ b }: { b: any }) {
   );
 }
 
-export default function Methodology() {
-  const [info, setInfo] = useState<any>(null);
+function Hypotheses({ info }: { info: any }) {
+  const g = info?.gates_h4, e = info?.emergence, ab = info?.ab_plan_model, lb = info?.llm_baseline, np = info?.ab_narrow_plan;
+  if (!g && !e && !ab && !lb) return null;
+  const main = e?.variants?.["все индикаторы без отбора (заранее заданный вариант)"];
+  return (
+    <>
+      <h2>Проверка гипотез перед финалом</h2>
+      <p className="muted small">Правила принятия каждого решения записаны до прогона; неудачи публикуются наравне с успехами.</p>
+      <div className="tablewrap">
+        <table>
+          <thead><tr><th>Гипотеза</th><th>Результат</th><th>Решение</th></tr></thead>
+          <tbody>
+            {g && (
+              <tr><td>Классификатор без GitHub, HN и признаков с перевёрнутым знаком</td>
+                <td>F1 {g.base.f1_repeated} → {g.candidate.f1_repeated}; AUC {g.base.auc} → {g.candidate.auc}; противоречий знаков {g.base.sign_contradictions.length} → {g.candidate.sign_contradictions.length};
+                  чувствительность к шуму ответов {g.base.noise_dlogit} → {g.candidate.noise_dlogit}</td>
+                <td>{g.passed ? "все ворота пройдены — выкачено" : "ворота не пройдены — не выкатываем"}</td></tr>
+            )}
+            {main && (
+              <tr><td>Импульс роста на машине времени ({e.n} тем)</td>
+                <td>AUC «вне времени» {e.base_auc} → {main.auc} (Δ {main.delta > 0 ? "+" : ""}{main.delta}, 95% ДИ {main.ci95.join("…")}); на малых темах {e.small_topics?.base_auc} → {e.small_topics?.young_growth_auc}</td>
+                <td>{e.success ? "успех — бейдж «Импульс роста» в карточке, на место не влияет" : "отрицательный результат"}</td></tr>
+            )}
+            {np && (
+              <tr><td>План узких запросов без подмешивания словаря</td>
+                <td>{np.runs.map((r: any) => `${r.query}: ${Math.round(r.old.share * 100)}% → ${Math.round(r.new.share * 100)}%`).join("; ")} документов корпуса по теме</td>
+                <td>выкачено</td></tr>
+            )}
+            {ab && (
+              <tr><td>Модель плана: GigaChat-2 против GigaChat-2-Max</td>
+                <td>хороших подтем на план {ab.summary["GigaChat-2"].good_per_plan} против {ab.summary["GigaChat-2-Max"].good_per_plan}; выдуманных {Math.round(ab.summary["GigaChat-2"].invented_share * 100)}% против {Math.round(ab.summary["GigaChat-2-Max"].invented_share * 100)}%</td>
+                <td>{ab.decision}</td></tr>
+            )}
+            {lb && (
+              <tr><td>«Только LLM» против нашего конвейера</td>
+                <td>{lb.pairs.map((p: any) => `${p.query}: ${p.llm_only.signals} против ${p.pipeline?.signals ?? "—"} сигналов`).join("; ")}; названий от LLM, не прошедших наши проверки, — {Math.round(lb.total.llm_only_excluded_share * 100)}%</td>
+                <td>простой вопрос к модели не заменяет поиск по источникам</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+export default function Methodology() {  const [info, setInfo] = useState<any>(null);
   const [fb, setFb] = useState<any>(null);
   useEffect(() => {
     api.model().then(setInfo).catch(() => {});
@@ -250,6 +294,11 @@ export default function Methodology() {
           <p className="small">
             Сигналов с уверенностью ≥ 75%: {Math.round((m.confident_75?.share_of_positives_above_075 ?? 0) * 100)}% от всех положительных,
             точность в этой зоне {Math.round((m.confident_75?.precision_above_075 ?? 0) * 100)}%.
+            {m.slices && (
+              <> Где модель ошибается (доля ложных сигналов по типам отрицательных примеров): {Object.entries(m.slices.false_signal_share)
+                .map(([k, v]: [string, any]) => `${k.toLowerCase()} — ${v.false_signals == null ? "—" : Math.round(v.false_signals * 100) + "%"} из ${v.n}`).join("; ")}.
+                Это ограничение: малоизвестные академические фразы и хайп модель путает чаще, поэтому в топ кандидат попадает только с подтверждёнными документами.</>
+            )}
           </p>
 
           {m.calibration && (
@@ -361,6 +410,7 @@ export default function Methodology() {
       )}
 
       {info?.timemachine && <TimeMachine t={info.timemachine} />}
+      <Hypotheses info={info} />
       {info?.backtest && <Backtest b={info.backtest} />}
 
       {info?.sources_check && (

@@ -1,0 +1,60 @@
+{
+ "n": 118,
+ "reconstruction_max_error": 0.000127,
+ "base_auc": 0.665,
+ "single_indicator_auc": {
+  "young_growth": 0.632,
+  "burst": 0.637,
+  "escore": 0.537,
+  "yoon_quadrant": 0.676
+ },
+ "variants": {
+  "+ young_growth": {
+   "auc": 0.691,
+   "delta": 0.027,
+   "ci95": [
+    0.004,
+    0.052
+   ]
+  },
+  "+ burst": {
+   "auc": 0.663,
+   "delta": -0.002,
+   "ci95": [
+    -0.023,
+    0.02
+   ]
+  },
+  "+ escore": {
+   "auc": 0.692,
+   "delta": 0.027,
+   "ci95": [
+    -0.002,
+    0.061
+   ]
+  },
+  "+ yoon_quadrant": {
+   "auc": 0.681,
+   "delta": 0.017,
+   "ci95": [
+    -0.019,
+    0.049
+   ]
+  },
+  "все индикаторы без отбора (заранее заданный вариант)": {
+   "auc": 0.732,
+   "delta": 0.068,
+   "ci95": [
+    0.022,
+    0.12
+   ]
+  }
+ },
+ "small_topics": {
+  "n": 41,
+  "base_auc": 0.505,
+  "young_growth_auc": 0.635
+ },
+ "success": true,
+ "verdict": "индикаторы улучшают прогноз «вне времени»"
+}

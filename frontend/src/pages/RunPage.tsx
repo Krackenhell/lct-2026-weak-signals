@@ -232,6 +232,7 @@ function facts(c: CandidateBrief) {
   if (c.first_year) parts.push(`в литературе с ${c.first_year} г.`);
   if (c.growth_x && c.growth_x >= 1.2) parts.push(`работ за 2 года больше в ${c.growth_x.toLocaleString("ru-RU")} раза`);
   else if (c.works_2y) parts.push(`${c.works_2y} работ за 2 года`);
+  if (c.impulse?.level) parts.push(`импульс роста: ${c.impulse.label}`);
   return parts.join(" · ");
 }
 

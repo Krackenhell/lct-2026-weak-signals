@@ -8,9 +8,10 @@ from urllib.parse import urlparse
 
 from app.config import get_settings
 
-# ₽ за 1000 токенов (запрос + ответ), публичные тарифы для юрлиц на момент подготовки.
+# ₽ за 1000 токенов (запрос + ответ), с НДС, синхронный режим. GigaChat 2 — сверено 19.10.2026 с
+# developers.sber.ru/docs/ru/gigachat/tariffs/legal-tariffs (65 / 500 / 650 ₽ за 1 млн токенов); прежние значения были втрое выше.
 LLM_TARIFFS = {
-    "GigaChat-2": 0.2, "GigaChat-2-Lite": 0.2, "GigaChat-2-Pro": 1.5, "GigaChat-2-Max": 1.95,
+    "GigaChat-2": 0.065, "GigaChat-2-Lite": 0.065, "GigaChat-2-Pro": 0.5, "GigaChat-2-Max": 0.65,
     "GigaChat": 0.2, "GigaChat-Pro": 1.5, "GigaChat-Max": 1.95,
     "yandexgpt-lite/latest": 0.2, "yandexgpt/latest": 1.2,
 }
