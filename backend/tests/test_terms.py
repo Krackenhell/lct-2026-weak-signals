@@ -42,6 +42,10 @@ def test_normalize_name_ru(en, ru, expected):
     ("chern insulators in moire graphene", "чирновские инсуляторы в муаровом графене", "черновские изоляторы в муаровом графене"),
     ("3d printed microfluidic chips", "3D-печатные микрожидкостные чипы", "3D-печатные микрофлюидные чипы"),
     ("microfluidic live-cell imaging", "микрожидкостное живое клеточное изображение", "microfluidic live-cell imaging"),
+    ("oil and gas digital twin", "цифровой_двойник_нефтегазовой_отрасли", "цифровой двойник нефтегазовой отрасли"),  # живой прогон 20.10
+    ("transdimensional chern insulators", "трансмерные черновые изоляторы", "трансмерные черновские изоляторы"),
+    ("ml-based gas lift optimization", "оптимизация газового подъема на основе машинного обучения", "оптимизация газлифта на основе машинного обучения"),
+    ("tumor educated platelets", "туморо-образованные тромбоциты", "tumor educated platelets"),
 ])
 def test_conditional_calques(en, ru, expected):
     assert normalize_name_ru(en, ru) == expected
