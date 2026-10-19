@@ -51,12 +51,13 @@ HOST_INTERVAL = {
     "gtr.ukri.org": 0.5,
     "huggingface.co": 0.5,
     "api2.openreview.net": 0.5,
+    "api.search.brave.com": 1.1,  # бесплатный тариф Brave — 1 запрос в секунду
 }
 
 
 # Время жизни кэша по хостам (часы), если оно больше общего CACHE_TTL_HOURS. Ряды публикаций OpenAlex за прошлые годы
 # не меняются, а квота ключа — около 13 холодных запросов в сутки: 10 суток кэша экономят её на повторных темах.
-HOST_TTL_HOURS = {"api.openalex.org": 240}
+HOST_TTL_HOURS = {"api.openalex.org": 240, "api.search.brave.com": 240}  # Brave — 2000 запросов в месяц, кэш бережёт квоту
 
 # Сетевые запросы к OpenAlex за текущие сутки (UTC) — сохраняются в data/openalex_usage.json, чтобы предрасчёт
 # не съедал квоту живых запросов (см. OPENALEX_DAILY_SOFT_LIMIT).

@@ -21,7 +21,7 @@ from app.db import SessionLocal
 from app.decision import get_decision_model
 from app.decision.heuristic import HeuristicDecision
 from app.llm.providers import for_task, get_llm
-from app.collectors import cyberleninka, gdelt, habr, news_search, openalex
+from app.collectors import brave, cyberleninka, gdelt, habr, news_search, openalex
 from app.llm.tasks import check_query, llm_only_candidates, plan_query, summarize_sources, write_dossier
 from app.llm.terms import check_name_ru
 from app.ml.model import SignalModel
@@ -31,6 +31,7 @@ from app.pipeline import discovery, evidence as evidence_mod
 from app.pipeline import links as links_mod
 from app.pipeline import passport as pp_mod
 from app.pipeline import emergence, routing, subtopics
+from app.pipeline import market as market_mod
 from app.pipeline.decide import decide, query_anchors, template_dossier, wiki_fact
 from app.pipeline.features import answer_features, numeric_features
 from app.pipeline.questions import (
@@ -43,7 +44,7 @@ log = logging.getLogger(__name__)
 
 # Версия конвейера: увеличивается вручную при любом изменении, влияющем на выдачу. Готовые результаты другой версии
 # повторно не отдаются (см. api/routes.reuse_blockers) — эксперт не увидит выдачу старого кода.
-PIPELINE_VERSION = "2026-10-20.1"
+PIPELINE_VERSION = "2026-10-20.2"
 
 
 def training_phrases() -> set[str]:
@@ -244,6 +245,8 @@ async def _execute(ctx: RunContext, s) -> None:
         async def corpus_progress(done, total):
             ctx.stage(f"Сбор документов по подтемам: {done}/{total} запросов", 5 + int(20 * done / max(total, 1)))
 
+        # Бюджет веб-поиска Brave на прогон: события по теме в корпусе и рыночный слой сигналов (2000 запросов в месяц).
+        brave_budget = brave.Budget()
         llm_only = bool((ctx.run.options or {}).get("seed_candidates"))
         if llm_only:
             # П10: режим сравнения «только LLM». GigaChat одним вызовом называет 15 слабых сигналов, корпус не собирается;
@@ -253,7 +256,7 @@ async def _execute(ctx: RunContext, s) -> None:
             ctx.log_call(r.provider, r.model, "только LLM: список слабых сигналов", query, {"query": query}, {"text": r.text[:3000]}, r.latency_ms, r.ok, usage=r.usage)
             corpus = []
         else:
-            corpus = await discovery.build_corpus(http, plan, corpus_progress)
+            corpus = await discovery.build_corpus(http, plan, corpus_progress, brave_budget=brave_budget)
         ctx.stage(f"Извлечение технологий из {len(corpus)} документов", 27)
 
         # 3. Кандидаты
@@ -360,10 +363,18 @@ async def _execute(ctx: RunContext, s) -> None:
             feats = {**numeric, **answer_features(res.answers)}
             prob = model.predict(feats) if model else None
             done += 1
+            pp_c = pp_mod.passport(items, res.answers, n_asked, s.min_confirmed_docs)
+            # Выдача по мере подтверждения: кандидат с оценкой ≥ 0,5, паспортом A/B и релевантностью ≥ 0,5 сразу виден на
+            # странице как предварительный. Окончательный список (фильтры, разнообразие, синонимы) — после проверки всех.
+            rel_c = min(float((res.answers.get("relevance") or {}).get("value", 0)), float((res.answers.get("relevance_query") or {}).get("value", 1)))
+            if res.ok and prob is not None and prob >= 0.5 and pp_c["level"] in ("A", "B") and rel_c >= 0.5:
+                prelim = list((ctx.run.stats or {}).get("preliminary") or [])
+                prelim.append({"name": c["name_en"], "name_ru": c.get("name_ru") or "", "p": round(min(prob, 0.95), 2), "passport": pp_c["level"]})
+                ctx.run.stats = {**ctx.run.stats, "preliminary": prelim}
             ctx.stage(f"Проверка кандидатов: {done}/{len(pool)} — «{c['name_en']}»", 32 + int(48 * done / len(pool)))
             return {
                 "c": c, "ev": ev, "items": items, "state": state, "questions": q_c, "n_asked": n_asked, "res": res, "features": feats,
-                "prob": prob, "missing": missing, "passport": pp_mod.passport(items, res.answers, n_asked, s.min_confirmed_docs),
+                "prob": prob, "missing": missing, "passport": pp_c,
             }
 
         # Скорость: время этапа — это очереди к источникам с обязательными паузами (arXiv 3 с, GitHub 2 с), а не модели
@@ -622,7 +633,43 @@ async def _execute(ctx: RunContext, s) -> None:
 
             return [r for r in await asyncio.gather(*(safe_dossier(c) for c in signals)) if r is not None]
 
-        win_res, link_res, dos_res = await asyncio.gather(windows_phase(), links_phase(), dossiers_phase())
+        async def market_phase():
+            """Лестница «от науки до рынка», доводы «против» (веб-поиск — первым сигналам в пределах бюджета) и карта игроков."""
+            async def one(cand, with_web: bool):
+                a = by_name[cand.name]
+                try:
+                    m = await market_mod.market_layer(http, dm, cand.name, cand.name_ru or "", topic, a["items"], a["res"].answers, a["n_asked"],
+                                                      ((a["ev"].patents or {}).get("total") or 0), brave_budget if with_web else None)
+                    pl = await market_mod.players(http, a["ev"].phrase, year, a["items"])
+                except Exception:  # слой дополнительный: сбой не роняет прогон
+                    log.exception("run %s: market layer for %r failed", run_id, cand.name)
+                    return cand, None, None
+                return cand, m, pl
+
+            # Веб-поиск — по порядку мест: до бюджета успеют первые сигналы; остальным — лестница по имеющимся документам.
+            return list(await asyncio.gather(*(one(c, i < 8) for i, c in enumerate(signals)))) if signals else []
+
+        win_res, link_res, dos_res, mkt_res = await asyncio.gather(windows_phase(), links_phase(), dossiers_phase(), market_phase())
+        for cand, m, pl in mkt_res:
+            if not m:
+                continue
+            web_ids = []
+            for d in m.pop("web_docs"):
+                if d.url not in doc_ids_by_url:
+                    row = _doc_row(run_id, d)
+                    ctx.session.add(row)
+                    ctx.session.flush()
+                    doc_ids_by_url[d.url] = row.id
+                web_ids.append(doc_ids_by_url[d.url])
+            pp = dict((cand.contributions or {}).get("passport") or {})
+            reached = m["ladder"]["reached"]
+            # Подтверждённое Jev событие из веб-поиска поднимает «самое твёрдое событие» паспорта (но не уровень A/B).
+            lvl = {"funding": 6, "launch": 5, "contract": 5, "pilot": 4, "procurement": 5}.get(reached or "", 0)
+            if lvl > pp.get("event_level", 0):
+                pp.update(event_level=lvl, hard_event=lvl >= 4, event=market_mod.LABEL[reached])
+            cand.document_ids = list(dict.fromkeys((cand.document_ids or []) + web_ids))
+            cand.contributions = {**(cand.contributions or {}), "market": m, "players": pl, "passport": pp}
+        ctx.run.stats = {**ctx.run.stats, "brave_calls": brave_budget.used}
         for cand, w in win_res:
             cand.contributions = {**(cand.contributions or {}), "window": w}
         if link_res:
@@ -704,6 +751,14 @@ async def _execute(ctx: RunContext, s) -> None:
                              "(прокси, файрвол) и повторите запрос кнопкой «Пересчитать заново».")
         ctx.run.status = "done"
         ctx.stage("Готово", 100)
+        if s.forecasts_record and not llm_only:
+            # Прогноз с проверкой: фиксируем на дату, через полгода система проверит сама (app/pipeline/forecasts.py).
+            try:
+                from app.pipeline import forecasts
+
+                ctx.run.stats = {**ctx.run.stats, "forecasts": await forecasts.record(run_id, http)}
+            except Exception:  # служебный шаг: сбой не влияет на результат прогона
+                log.exception("run %s: forecasts not recorded", run_id)
         ctx.run.stats = {**ctx.run.stats, "timing": ctx.finish_timing()}
         ctx.stage("Готово", 100)
     finally:

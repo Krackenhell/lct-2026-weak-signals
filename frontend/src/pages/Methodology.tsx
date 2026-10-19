@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, prob } from "../api";
+import { api, Forecasts, prob } from "../api";
 
 const METRIC_RU: Record<string, string> = { precision: "Precision", recall: "Recall", f1: "F1", accuracy: "Accuracy", roc_auc: "ROC-AUC", brier: "Brier (↓)" };
 const ABL_RU: Record<string, string> = { numeric_only: "Только наблюдаемые показатели", decision_model_only: "Только ответы decision-модели", all: "Все признаки" };
@@ -121,6 +121,47 @@ function Backtest({ b }: { b: any }) {
           </tbody>
         </table>
       </details>
+    </>
+  );
+}
+
+function ForecastsBlock({ blind }: { blind: any }) {
+  const [f, setF] = useState<Forecasts | null>(null);
+  useEffect(() => { api.forecasts().then(setF).catch(() => {}); }, []);
+  return (
+    <>
+      <h2>Прогнозы с проверкой и слепой замер</h2>
+      <div className="panel small">
+        <p>
+          <b>Прогноз с проверкой.</b> По каждому сигналу прогноз фиксируется на дату расчёта, а через полгода система сама проверяет,
+          сбылся ли он. Критерий записан заранее: {f?.criteria ?? "—"}
+        </p>
+        {f && (
+          <p>
+            Зафиксировано прогнозов: <b>{f.total}</b>; ждут срока: {f.pending}
+            {f.next_check ? ` (первая проверка — ${new Date(f.next_check).toLocaleDateString("ru-RU")})` : ""}; проверено: {f.checked}
+            {f.confirmed_share != null ? `, сбылось ${Math.round(f.confirmed_share * 100)}%` : ""}.
+          </p>
+        )}
+        <p>
+          <b>Слепой замер.</b> Карточки топ-15 нашего конвейера и ответа «только LLM» по темам из отраслей, которых нет в примерах, перемешаны.
+          Оценки модели и происхождение скрыты. Люди размечают по рубрике: релевантность, технология, ранняя стадия, русское название.
+          «Полезная карточка» — по теме, конкретная технология и не зрелая.
+        </p>
+        {blind?.by_variant ? (
+          <table>
+            <thead><tr><th>Вариант</th><th>Карточек</th><th>Полезных</th><th>Доля полезных</th><th>Полезных в топ-15 на тему</th></tr></thead>
+            <tbody>
+              {Object.entries(blind.by_variant).map(([k, v]: [string, any]) => (
+                <tr key={k}><td>{k}</td><td>{v.cards}</td><td>{v.useful}</td><td>{v.useful_share != null ? `${Math.round(v.useful_share * 100)}%` : "—"}</td><td>{v["U@15"] ?? "—"}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted">Разметка ещё не выполнена: лист для разметчиков готовит <code>python -m app.ml.blind_eval</code>.</p>
+        )}
+        {blind?.kappa_useful != null && <p className="muted">Согласие двух разметчиков (каппа Коэна): {blind.kappa_useful} на {blind.kappa_n} карточках.</p>}
+      </div>
     </>
   );
 }
@@ -411,6 +452,7 @@ export default function Methodology() {  const [info, setInfo] = useState<any>(n
 
       {info?.timemachine && <TimeMachine t={info.timemachine} />}
       <Hypotheses info={info} />
+      <ForecastsBlock blind={info?.blind_eval} />
       {info?.backtest && <Backtest b={info.backtest} />}
 
       {info?.sources_check && (

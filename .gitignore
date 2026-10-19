@@ -40,3 +40,4 @@ backend/data/model/backup_*/
 deploy/supervisor.log
 backend/data/openalex_usage.json
 backend/data/plan_cache/
+backend/data/brave_usage.json

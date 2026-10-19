@@ -121,6 +121,57 @@ export default function Insight() {
         )}
       </div>
 
+      {c.market?.ladder && (
+        <>
+          <h2>Путь от науки до рынка</h2>
+          <div className="panel">
+            <div className="ladder">
+              {c.market.ladder.steps.map((s) => (
+                <div key={s.key} className={`step ${s.n ? "on" : ""}`} title={s.example ? `${s.example}${s.first_date ? ` (${s.first_date})` : ""}` : "не найдено"}>
+                  <div className="step-label">{s.label}</div>
+                  <div className="step-val">{s.n ? (s.first_date ? `с ${s.first_date.slice(0, 4)}` : `${s.n}`) : "—"}</div>
+                </div>
+              ))}
+            </div>
+            <p className="small">{c.market.ladder.text ?? "Подтверждённых ступеней пока нет."}</p>
+            <p className="muted small">
+              Каждая ступень заполняется документом, который модель Jev подтвердила как описывающий именно эту технологию: из научных баз,
+              грантов, каталога стартапов и открытого веб-поиска (патенты, пилоты, контракты, раунды, российские госзакупки).
+            </p>
+          </div>
+        </>
+      )}
+
+      {(c.market?.against?.length || c.players) && (
+        <div className="grid2" style={{ marginTop: 8 }}>
+          <div className="panel">
+            <h3 style={{ marginTop: 0 }}>Доводы «против»</h3>
+            {c.market?.against?.length ? (
+              <ul className="small">
+                {c.market.against.map((a, i) => (
+                  <li key={i}><span className="badge low">{a.why}</span> <a href={a.url} target="_blank" rel="noreferrer">{a.title}</a>
+                    <span className="muted"> · {a.source}{a.date ? `, ${a.date}` : ""}</span></li>
+                ))}
+              </ul>
+            ) : (
+              <p className="small muted">Сообщений о провале, отказе или массовом внедрении не найдено{c.market?.web_checked ? "" : " (веб-поиск для этой карточки не выполнялся)"}.</p>
+            )}
+            <p className="small muted">Признаки модели «против» — красные полосы в разделе «Почему такая оценка».</p>
+          </div>
+          {c.players && (
+            <div className="panel">
+              <h3 style={{ marginTop: 0 }}>Кто работает (2 года)</h3>
+              {c.players.institutions.length > 0 && <p className="small">{c.players.institutions.map((x) => `${x.name} (${x.works})`).join(" · ")}</p>}
+              <p className="small"><b>Россия:</b> {c.players.russia.length ? c.players.russia.map((x) => `${x.name} (${x.works})`).join(" · ") : "работ российских организаций не найдено"}</p>
+              {c.players.companies.length > 0 && (
+                <p className="small"><b>Компании:</b> {c.players.companies.map((x) => `${x.name} (${x.kind})`).join(" · ")}</p>
+              )}
+              <p className="muted small">Число в скобках — научные работы с этим термином (OpenAlex).</p>
+            </div>
+          )}
+        </div>
+      )}
+
       <h2>Почему такая оценка</h2>
       <div className="panel">
         <div className="gauge">

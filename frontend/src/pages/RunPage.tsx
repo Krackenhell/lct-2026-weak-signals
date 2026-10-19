@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, fmtScore, ModelCall, rankScore, RunFull, SCORE_HINT } from "../api";
+import { api, CandidateBrief, Changes, ContextMatch, EXPORT_FORMATS, exportUrl, fmtScore, ModelCall, rankScore, RunFull, SCORE_HINT } from "../api";
 import { ChecksBadge, ScoreBadge } from "../components/ui";
 
 const TOP_K = 15;
@@ -14,6 +14,7 @@ export default function RunPage() {
   const [log, setLog] = useState<ModelCall[] | null>(null);
   const [err, setErr] = useState("");
   const [rerun, setRerun] = useState(false);
+  const [subscribed, setSubscribed] = useState("");
   const nav = useNavigate();
 
   useEffect(() => {
@@ -48,6 +49,15 @@ export default function RunPage() {
   // Добор до 15 строк — только в интерфейсе и только из «Наблюдать»: статус, экспорт и статистика не меняются.
   const topUp = run.signals.length > 0 ? watch.slice(0, Math.max(0, TOP_K - run.signals.length)) : [];
 
+  async function subscribe() {
+    try {
+      const sub = await api.subscribe(run!.query, 7);
+      setSubscribed(`Подписка оформлена: пересчёт раз в ${sub.every_days} дн., изменения — на странице «Подписки».`);
+    } catch (e) {
+      setErr(String(e));
+    }
+  }
+
   async function recompute() {
     setRerun(true);
     try {
@@ -78,6 +88,12 @@ export default function RunPage() {
             {rerun ? "Запуск…" : "Пересчитать"}
           </button>
         )}
+        {run.status === "done" && (
+          <button className="chip" type="button" onClick={subscribe} title="Пересчёт темы раз в неделю и сводка: что появилось, что выпало, что усилилось">
+            Подписаться на тему
+          </button>
+        )}
+        {subscribed && <span className="small">{subscribed}</span>}
       </div>
 
       {run.status === "rejected" && (
@@ -93,6 +109,13 @@ export default function RunPage() {
         <div className="panel" style={{ marginTop: 16 }}>
           <b>{run.stage || "Ожидание"}</b>
           <div className="progress"><div style={{ width: `${run.progress}%` }} /></div>
+          {(s.preliminary as { name: string; name_ru: string; p: number; passport: string }[] | undefined)?.length ? (
+            <div className="small" style={{ marginTop: 8 }}>
+              <b>Уже подтверждено (предварительно):</b>{" "}
+              {(s.preliminary as { name: string; name_ru: string; passport: string }[]).map((p) => `${p.name_ru || p.name} (${p.passport})`).join(" · ")}
+              <div className="muted">Окончательный список — после проверки всех кандидатов: дубли и сама тема запроса будут убраны.</div>
+            </div>
+          ) : null}
           <span className="muted small">
             {run.status === "queued" && run.queue
               ? `В очереди: перед вами ${run.queue.ahead} ${run.queue.ahead === 1 ? "запрос" : "запроса"}, ожидание около ${Math.max(1, Math.round(run.queue.eta_seconds / 60))} мин`
@@ -179,6 +202,8 @@ export default function RunPage() {
             ))}
           </div>
 
+          {run.signals.length + watch.length > 0 && <CompanyContext runId={run.id} />}
+
           {run.plan?.subqueries && (
             <details className="panel small" style={{ marginTop: 12 }}>
               <summary><b>Как искали</b> <span className="muted">— поисковые фразы и растущие поднаправления</span></summary>
@@ -215,6 +240,53 @@ export default function RunPage() {
         </>
       )}
     </>
+  );
+}
+
+function CompanyContext({ runId }: { runId: number }) {
+  const [res, setRes] = useState<{ filename: string; matches: ContextMatch[]; checked: number; note: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function upload(file: File) {
+    setBusy(true);
+    setErr("");
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      setRes(await api.context(runId, file.name, btoa(bin)));
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <details className="panel small" style={{ marginTop: 12 }}>
+      <summary><b>Под вашу компанию</b> <span className="muted">— какие сигналы связаны с вашим документом (стратегия, ТЗ, план НИОКР)</span></summary>
+      <p className="muted">Файл .docx, .txt, .md, .xlsx или .pdf до 5 МБ. Сравнение — по тексту, без языковой модели; документ не сохраняется.</p>
+      <input type="file" accept=".docx,.txt,.md,.xlsx,.pdf,.csv" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+      {busy && <span className="muted"> Сравниваем…</span>}
+      {err && <div className="error">{err}</div>}
+      {res && (
+        res.matches.length === 0 ? (
+          <p>Явных связей документа «{res.filename}» с {res.checked} найденными технологиями нет.</p>
+        ) : (
+          <ul>
+            {res.matches.map((m) => (
+              <li key={m.id} style={{ marginBottom: 8 }}>
+                <Link to={`/insight/${m.id}`}><b>{m.name_ru || m.name}</b></Link> <span className="badge neutral">связь {m.strength}</span>
+                {m.status !== "signal" && <span className="badge low"> под наблюдением</span>}
+                <div className="muted">Абзац {m.paragraph}: «{m.quote}»</div>
+                {m.common.length > 0 && <div className="muted">Общие слова: {m.common.join(", ")}</div>}
+              </li>
+            ))}
+          </ul>
+        )
+      )}
+    </details>
   );
 }
 

@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import RunPage from "./pages/RunPage";
 import Insight from "./pages/Insight";
 import Methodology from "./pages/Methodology";
+import Subscriptions from "./pages/Subscriptions";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -23,6 +24,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </Link>
         <nav>
           <NavLink to="/" end>Поиск</NavLink>
+          <NavLink to="/subscriptions">Подписки</NavLink>
           <NavLink to="/methodology">Методология и качество</NavLink>
         </nav>
       </header>
@@ -41,6 +43,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/runs/:id" element={<RunPage />} />
           <Route path="/insight/:id" element={<Insight />} />
           <Route path="/methodology" element={<Methodology />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
         </Routes>
       </Layout>
     </BrowserRouter>

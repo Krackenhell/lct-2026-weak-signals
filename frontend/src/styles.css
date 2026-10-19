@@ -175,3 +175,10 @@ details.fold > .panel { border-top: 0; border-radius: 0 0 var(--radius) var(--ra
 .dyn-val, .dyn-year { font-size: 12px; }
 .dyn-year { color: var(--muted, #777); margin-top: 4px; }
 
+
+/* Лестница «от науки до рынка» */
+.ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.ladder .step { border: 1px solid var(--line, #e6e3f0); border-radius: 8px; padding: 6px 8px; opacity: 0.55; }
+.ladder .step.on { opacity: 1; border-color: var(--accent); background: rgba(91, 47, 179, 0.06); }
+.ladder .step-label { font-size: 12px; }
+.ladder .step-val { font-weight: 600; font-size: 13px; margin-top: 2px; }

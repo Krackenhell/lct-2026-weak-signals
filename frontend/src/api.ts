@@ -28,6 +28,23 @@ export type RussiaWindow = { status: "open" | "closing" | "closed" | "thin" | "u
 /** «Проверки доказательств: k из 5» — счёт выполненных проверок, а не вероятность. ok = null — не измерялось. */
 export type Checks = { passed: number; total: number; measured: number; items: { label: string; ok: boolean | null }[] };
 
+export type LadderStep = { key: string; label: string; n: number; first_date: string | null; example: string | null; url: string | null };
+export type Market = {
+  ladder: { steps: LadderStep[]; reached: string | null; text: string | null };
+  against: { title: string; url: string; date: string | null; source: string; why: string }[];
+  web_checked: number;
+};
+export type Players = { institutions: { name: string; works: number }[]; russia: { name: string; works: number }[]; companies: { name: string; kind: string; url?: string }[] };
+export type ContextMatch = { id: number; name: string; name_ru: string | null; score: number; quote: string; paragraph: number; common: string[]; strength: string; status: string; rank: number | null };
+export type Subscription = {
+  id: number; query: string; every_days: number; active: boolean; has_webhook: boolean; next_at: string | null; last_run_id: number | null;
+  events: { id: number; run_id: number; prev_run_id: number | null; summary: string; created_at: string }[];
+};
+export type Forecasts = {
+  total: number; pending: number; checked: number; confirmed: number; confirmed_share: number | null; next_check: string | null; criteria: string;
+  items: { name: string; query: string; made_at: string; check_after: string; status: string; result: Record<string, unknown> }[];
+};
+
 export type Score = { probability: number | null; relevance: number; final: number | null; intercept?: number | null; outside_training: string[] };
 
 export type Verification = { by: string | null; checked: number; supported: number; removed: { field: string; text: string; why: string }[]; note?: string };
@@ -49,6 +66,8 @@ export type CandidateBrief = {
   checks?: Checks | null;
   in_training?: boolean;
   why_early?: string | null;
+  market?: Market | null;
+  players?: Players | null;
   topic_rel?: { works: number; topic_works: number; share: number; excess_growth: number; faster: number } | null;
   impulse?: { level: "high" | "medium" | "low" | null; label: string; young_growth?: number; works_4y: number } | null;
   name_check?: string | null;
@@ -227,6 +246,14 @@ export const api = {
   model: () => req<any>("/api/model"),
   showcase: () => req<Showcase[]>("/api/showcase"),
   examples: () => req<string[]>("/api/examples"),
+  context: (runId: number | string, filename: string, content_base64: string) =>
+    req<{ filename: string; paragraphs: number; matches: ContextMatch[]; checked: number; note: string }>(`/api/runs/${runId}/context`, {
+      method: "POST", body: JSON.stringify({ filename, content_base64 }),
+    }),
+  subscribe: (query: string, every_days = 7) => req<Subscription>("/api/subscriptions", { method: "POST", body: JSON.stringify({ query, every_days }) }),
+  subscriptions: () => req<Subscription[]>("/api/subscriptions"),
+  unsubscribe: (id: number) => req<{ ok: boolean }>(`/api/subscriptions/${id}`, { method: "DELETE" }),
+  forecasts: () => req<Forecasts>("/api/forecasts"),
   feedback: (candId: number | string, verdict: string, comment = "") =>
     req<{ id: number; verdict: string; label: string }>(`/api/candidates/${candId}/feedback`, { method: "POST", body: JSON.stringify({ verdict, comment }) }),
   feedbackStats: () => req<{ total: number; by_verdict: Record<string, number>; labels: Record<string, string>; agreement: number | null }>("/api/feedback/stats"),

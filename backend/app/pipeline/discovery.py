@@ -15,7 +15,7 @@ from pathlib import Path
 
 import time
 
-from app.collectors import arxiv, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, ml_papers, news_search, openalex, semanticscholar, yc
+from app.collectors import arxiv, brave, crossref, cyberleninka, europepmc, gdelt, grants, habr, hackernews, ml_papers, news_search, openalex, semanticscholar, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -51,7 +51,7 @@ AI_QUERY = r"\bии\b|искусственн|нейросет|\bai\b|artificial 
 LIFE_SCIENCE = routing.LIFE_MED
 # Обрывки фраз, которые статистика выдаёт за технологии: заголовки Hacker News, биржевые новости,
 # фрагменты через «and» («detection and anti-money»), фразы, обрывающиеся на прилагательном («adoption of digital»).
-INDUSTRY_COLLECTORS = {"rss", "siliconangle", "yc"}
+INDUSTRY_COLLECTORS = {"rss", "siliconangle", "yc", "brave"}
 MAX_LLM_DOCS, INDUSTRY_DOCS = 300, 60
 JUNK_FIRST = {"show", "ask", "tell", "hn", "launch"}
 JUNK_ANY = {"shares", "stock", "stocks", "ipo", "earnings", "revenue", "billion", "million", "percent", "quarter",
@@ -88,7 +88,7 @@ def _norm(name: str) -> str:
     return " ".join(words)
 
 
-async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[RawDoc]:
+async def build_corpus(http: HttpClient, plan: dict, on_progress=None, brave_budget=None) -> list[RawDoc]:
     today = date.today()
     from_date = (today - timedelta(days=int(365 * 2.5))).isoformat()
     subs = plan.get("subqueries", [])[:12]
@@ -160,6 +160,11 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
         # Стартапы YC последних двух лет по подтемам: описания продуктов, в которые уже вложены деньги.
         for sq in subs[:6]:
             add(yc.search(http, sq, 10, min_year=today.year - 2), sq)
+    if brave_budget is not None and brave.enabled():
+        # Отраслевые события по самой теме (пилоты, контракты, раунды) из открытого веба: их почти нет в научных базах, а ленты
+        # изданий покрывают в основном ИТ. Два запроса из бюджета прогона: термин темы и английское название запроса.
+        for term in list(dict.fromkeys([t for t in (plan.get("core_term"), *(plan.get("query_en") or []), topic) if t and re.search(r"[a-z]", t, re.I)]))[:2]:
+            add(brave.search(http, brave.EVENT_Q.format(p=term), 20, budget=brave_budget), term)
     if s.news_sources and topic:
         if plan.get("zh_terms"):  # китайские техно-СМИ: 36Kr, IT之家, cnBeta, InfoQ China
             add(news_search.for_topic(http, topic_text, plan["zh_terms"], "zh", 30))

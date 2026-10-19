@@ -105,6 +105,7 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
         "geography": extra.get("geography"), "startups_by_year": extra.get("startups_by_year"), "patents": extra.get("patents"),
         "score": _score(c, extra),
         "impulse": extra.get("impulse"), "topic_rel": extra.get("topic_rel"),
+        "market": extra.get("market"), "players": extra.get("players"),
         # Второе число рядом с оценкой: «Проверки доказательств: k из 5» (счёт проверок, а не вероятность).
         "checks": evidence_checks(extra.get("passport")),
         # П17: «почему рано» — по каким каналам технология уже видна в подтверждённых документах и где её ещё нет.
@@ -287,6 +288,105 @@ def get_run(run_id: int, db: Session = Depends(get_session)) -> dict:
     }
 
 
+class SubscriptionIn(BaseModel):
+    query: str = Field(min_length=2, max_length=300)
+    every_days: int = Field(default=7, ge=1, le=90)
+    webhook: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/subscriptions")
+def subscribe(body: SubscriptionIn, db: Session = Depends(get_session), _: None = Depends(require_token)) -> dict:
+    """Подписка на тему: пересчёт раз в every_days дней и сводка «что изменилось»."""
+    from app.models import Subscription
+    from app.pipeline.links import _internal
+
+    if body.webhook and (not body.webhook.startswith("https://") or _internal(body.webhook)):
+        raise HTTPException(400, "Webhook — только внешний адрес https://")
+    q = body.query.strip()
+    sub = next((x for x in db.query(Subscription).filter(Subscription.active.is_(True)) if _norm_query(x.query) == _norm_query(q)), None)
+    if not sub:
+        last = next((r for r in db.query(Run).filter(Run.status == "done").order_by(desc(Run.id)).limit(300) if _norm_query(r.query) == _norm_query(q)), None)
+        sub = Subscription(query=q, every_days=body.every_days, webhook=body.webhook, last_run_id=last.id if last else None,
+                           next_at=datetime.now(timezone.utc) + timedelta(days=body.every_days) if last else datetime.now(timezone.utc))
+        db.add(sub)
+        db.commit()
+    return _sub_out(db, sub)
+
+
+def _sub_out(db: Session, sub) -> dict:
+    from app.models import SubscriptionEvent
+
+    events = db.query(SubscriptionEvent).filter_by(subscription_id=sub.id).order_by(desc(SubscriptionEvent.id)).limit(10).all()
+    return {"id": sub.id, "query": sub.query, "every_days": sub.every_days, "active": sub.active, "has_webhook": bool(sub.webhook),
+            "next_at": _aware(sub.next_at).isoformat() if sub.next_at else None, "last_run_id": sub.last_run_id,
+            "events": [{"id": e.id, "run_id": e.run_id, "prev_run_id": e.prev_run_id, "summary": e.summary, "payload": e.payload,
+                        "created_at": _aware(e.created_at).isoformat()} for e in events]}
+
+
+@router.get("/subscriptions")
+def subscriptions(db: Session = Depends(get_session)) -> list[dict]:
+    from app.models import Subscription
+
+    return [_sub_out(db, x) for x in db.query(Subscription).filter(Subscription.active.is_(True)).order_by(desc(Subscription.id))]
+
+
+@router.delete("/subscriptions/{sub_id}")
+def unsubscribe(sub_id: int, db: Session = Depends(get_session), _: None = Depends(require_token)) -> dict:
+    from app.models import Subscription
+
+    sub = db.get(Subscription, sub_id)
+    if not sub:
+        raise HTTPException(404, "Подписка не найдена")
+    sub.active = False
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/forecasts")
+def forecasts_out(db: Session = Depends(get_session)) -> dict:
+    """Прогнозы с проверкой: сводка и последние прогнозы (сбылись / не сбылись / ждут срока)."""
+    from app.models import Forecast
+    from app.pipeline import forecasts as fc
+
+    rows = db.query(Forecast).order_by(desc(Forecast.id)).limit(50).all()
+    return {**fc.summary(), "items": [{"name": f.name, "query": f.query, "made_at": _aware(f.made_at).isoformat(),
+                                       "check_after": _aware(f.check_after).isoformat(), "status": f.status, "result": f.result,
+                                       "baseline": f.baseline} for f in rows]}
+
+
+class ContextIn(BaseModel):
+    filename: str = Field(default="документ.txt", max_length=200)
+    content_base64: str | None = Field(default=None, max_length=8_000_000)
+    text: str | None = Field(default=None, max_length=400_000)
+
+
+@router.post("/runs/{run_id}/context")
+def company_context(run_id: int, body: ContextIn, db: Session = Depends(get_session)) -> dict:
+    """«Под вашу компанию»: какие сигналы прогона связаны с документом компании и чем. Документ не сохраняется."""
+    from app.pipeline import context as ctx_mod
+
+    run = db.get(Run, run_id)
+    if not run:
+        raise HTTPException(404, "Запуск не найден")
+    try:
+        fn, text = ctx_mod.decode(body.model_dump())
+    except ctx_mod.ContextError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    cands = db.query(Candidate).filter(Candidate.run_id == run_id, Candidate.status.in_(["signal", "watch"])).all()
+    signals = []
+    for c in cands:
+        docs = [db.get(Document, i) for i in (c.document_ids or [])[:6]]
+        dossier = c.dossier if (c.dossier or {}).get("generated_by") not in (None, "template") else {}
+        signals.append({"id": c.id, "name": c.name, "name_ru": c.name_ru,
+                        "profile": ctx_mod.signal_profile(c.name, c.name_ru, dossier, [d.title for d in docs if d])})
+    found = ctx_mod.match(text, signals)
+    by_id = {c.id: c for c in cands}
+    for r in found:
+        r["status"], r["rank"] = by_id[r["id"]].status, by_id[r["id"]].rank
+    return {"filename": fn, "paragraphs": len(ctx_mod.paragraphs(text)), "matches": found, "checked": len(signals),
+            "note": "Документ обработан в памяти и не сохранён."}
+
+
 def queue_info(db: Session, run: Run) -> dict:
     """П15: позиция в очереди и ожидаемое время — по медиане длительности последних 20 завершённых прогонов.
     Одновременно обрабатываются MAX_PARALLEL_RUNS запросов, поэтому ожидание — число «волн» перед запросом."""
@@ -385,7 +485,7 @@ def model_info() -> dict:
     extra = {}
     for key, fname in (("backtest", "backtest.json"), ("timemachine", "timemachine.json"), ("sources_check", "sources_check.json"),
                        ("emergence", "emergence.json"), ("gates_h4", "gates_h4.json"), ("ab_plan_model", "ab_plan_model.json"),
-                       ("ab_narrow_plan", "ab_narrow_plan.json"), ("llm_baseline", "llm_baseline.json")):
+                       ("ab_narrow_plan", "ab_narrow_plan.json"), ("llm_baseline", "llm_baseline.json"), ("blind_eval", "blind_eval.json")):
         p = Path(s.model_dir) / fname
         extra[key] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
     weights = []

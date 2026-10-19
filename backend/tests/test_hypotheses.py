@@ -218,7 +218,7 @@ def test_country_counts_only_for_signals(monkeypatch):
     rid = _execute("edge AI география", web, monkeypatch)
     with SessionLocal() as s:
         n_signals = s.query(Candidate).filter_by(run_id=rid, status="signal").count()
-    calls = [u for u in web.urls if "authorships.institutions.country_code" in u]
+    calls = [u for u in web.urls if "group_by=authorships.institutions.country_code" in u]  # запросы стран (не организаций России)
     assert len(calls) == n_signals
 
 
