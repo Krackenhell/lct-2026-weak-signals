@@ -37,3 +37,4 @@ backend/data/local.db
 .coverage
 htmlcov/
 backend/data/model/backup_*/
+deploy/supervisor.log

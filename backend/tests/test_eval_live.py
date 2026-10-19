@@ -36,3 +36,19 @@ def test_fresh_report_with_nonsense_and_domain(tmp_path, monkeypatch):
         assert all(t["passport"] in ("A", "B") for t in r["top"])
     # В режиме мониторинга сигналы датасета без подтверждений уходят в «Наблюдать», а не в топ.
     assert fin[0]["watch"] > 0
+
+
+def test_run_is_recorded_in_experiments_and_journal(tmp_path, monkeypatch):
+    model_dir = tmp_path / "backend" / "data" / "model"
+    model_dir.mkdir(parents=True)
+    (tmp_path / "docs").mkdir()
+    journal = tmp_path / "docs" / "ЖУРНАЛ_ИСПЫТАНИЙ.md"
+    journal.write_text("# Журнал\n", encoding="utf-8")
+    monkeypatch.setattr(get_settings(), "model_dir", model_dir)
+    monkeypatch.setattr(runner, "HttpClient", FakeWeb().client)
+    args = argparse.Namespace(only_discovery=False, queries="edge AI", domains="", extras=False, nonsense=False, fresh=True, label="проверка журнала")
+    asyncio.run(eval_live.main_async(args))
+    files = list((tmp_path / "backend" / "data" / "experiments").glob("*.json"))
+    assert len(files) == 1 and json.loads(files[0].read_text(encoding="utf-8"))["label"] == "проверка журнала"
+    text = journal.read_text(encoding="utf-8")
+    assert "проверка журнала" in text and "| edge AI |" in text

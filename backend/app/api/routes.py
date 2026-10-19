@@ -2,6 +2,7 @@
 import asyncio
 import hmac
 import json
+import os
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -310,7 +311,8 @@ def model_info() -> dict:
 
 @router.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    # Версия кода на стенде: по ней видно, что обновление из GitHub применилось.
+    return {"status": "ok", "commit": os.environ.get("APP_COMMIT", "")}
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
