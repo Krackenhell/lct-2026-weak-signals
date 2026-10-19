@@ -38,3 +38,4 @@ backend/data/local.db
 htmlcov/
 backend/data/model/backup_*/
 deploy/supervisor.log
+backend/data/openalex_usage.json

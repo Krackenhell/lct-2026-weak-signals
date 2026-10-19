@@ -129,6 +129,8 @@ details summary { cursor: pointer; }
 
 /* Список сигналов: карточка на строку — название, одна строка описания, ключевые факты, оценка */
 .signal-list { display: grid; gap: 10px; }
+.signal-list.dim .signal-card { opacity: 0.6; }
+.divider { margin: 18px 0 8px; padding-top: 10px; border-top: 1px dashed var(--line, #ccc); }
 .signal-card { display: grid; grid-template-columns: 36px 1fr auto; gap: 14px; align-items: center; color: inherit; padding: 14px 18px; }
 .signal-card:hover { text-decoration: none; border-color: var(--accent); }
 .signal-rank { font-size: 20px; font-weight: 700; color: var(--accent); text-align: center; }

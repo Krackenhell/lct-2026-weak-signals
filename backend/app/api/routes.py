@@ -2,6 +2,7 @@
 import asyncio
 import hmac
 import json
+import math
 import os
 import re
 from datetime import datetime, timedelta, timezone
@@ -16,12 +17,14 @@ from sqlalchemy.orm import Session
 from app import export as export_mod
 from app.config import get_settings
 from app.db import get_session
+from app.examples import EXAMPLES
+from app.llm.providers import llm_label
 from app.ml.model import SignalModel
 from app.models import Candidate, Document, Feedback, ModelCall, Run
 from app.pipeline import runner
-from app.pipeline.decide import EXCLUSION_RU
+from app.pipeline.decide import EXCLUSION_RU, rank_score
 from app.pipeline.features import FEATURE_RU
-from app.pipeline.passport import card_facts
+from app.pipeline.passport import card_facts, evidence_checks
 from app.pipeline.questions import QUESTION_RU
 from app.pipeline.trust import TRUST_RU, TYPE_RU
 
@@ -72,6 +75,21 @@ def _first_sentence(text: str, limit: int = 220) -> str:
     return s if len(s) <= limit else s[: limit - 1].rsplit(" ", 1)[0] + "…"
 
 
+def _score(c: Candidate, extra: dict) -> dict | None:
+    """Балл места по текущей формуле и для прогонов, сохранённых до неё: min(p; 0,95) × (0,6 + 0,4 × релевантность).
+    Точка отсчёта модели для старых прогонов восстанавливается как logit(p) − сумма вкладов."""
+    sc = dict(extra.get("score") or {})
+    if c.probability is None:
+        return sc or None
+    rel = c.relevance if c.relevance is not None else sc.get("relevance", 0.0)
+    sc.update(probability=round(c.probability, 4), relevance=round(rel, 3), final=round(rank_score(c.probability, rel), 4))
+    if sc.get("intercept") is None and extra.get("items"):
+        p = min(max(c.probability, 1e-6), 1 - 1e-6)
+        sc["intercept"] = round(math.log(p / (1 - p)) - sum(i["contribution"] for i in extra["items"]), 3)
+    sc.setdefault("outside_training", [])
+    return sc
+
+
 def _cand_out(c: Candidate, brief: bool = True) -> dict:
     extra = c.contributions or {}
     items = extra.get("items", [])
@@ -85,9 +103,12 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
         "passport": extra.get("passport"), "robustness": extra.get("robustness"), "window": extra.get("window"),
         "radar": extra.get("radar"), "dynamics": extra.get("dynamics"), "missing": extra.get("missing", []),
         "geography": extra.get("geography"), "startups_by_year": extra.get("startups_by_year"), "patents": extra.get("patents"),
-        "score": extra.get("score"),
+        "score": _score(c, extra),
+        # Второе число рядом с оценкой: «Проверки доказательств: k из 5» (счёт проверок, а не вероятность).
+        "checks": evidence_checks(extra.get("passport")),
+        "in_training": bool(extra.get("in_training")), "name_check": extra.get("name_check"),
         # Короткие факты для списка: стадия (УГТ), год появления в литературе, рост работ, одна строка описания.
-        **card_facts(c.features, c.answers, extra.get("dynamics"), datetime.now(timezone.utc).year),
+        **card_facts(c.features, c.answers, extra.get("dynamics"), datetime.now(timezone.utc).year, extra.get("missing")),
         "summary": _first_sentence((c.dossier or {}).get("description", "")) if (c.dossier or {}).get("generated_by") not in (None, "template") else "",
     }
     if not brief:
@@ -100,23 +121,59 @@ def _cand_out(c: Candidate, brief: bool = True) -> dict:
     return out
 
 
+_PREP = {"в", "во", "на", "для", "и", "с", "со", "по", "из", "от", "к", "о", "об", "при", "без", "или", "а", "the", "of", "in", "for", "and", "on"}
+_ENDING = re.compile(r"(ами|ями|ого|его|ому|ему|ыми|ими|ах|ях|ов|ев|ей|ий|ый|ой|ая|яя|ое|ее|ые|ие|ых|их|ым|им|ую|юю|ам|ям|а|я|о|е|ы|и|у|ю|ь)$")
+
+
 def _norm_query(q: str) -> str:
-    return " ".join(re.findall(r"\w+", q.lower().replace("ё", "е")))
+    """Ключ темы: слова без окончаний и предлогов, порядок сохраняется. «Технология многослойного графена» и «технологии
+    многослойного графена» — одна тема; «безопасность ИИ» и «ИИ для безопасности», «графен» и «графит» — разные."""
+    words = re.findall(r"\w+", q.lower().replace("ё", "е"))
+    key = [_ENDING.sub("", w) if len(w) >= 4 and re.search(r"[а-я]", w) else w for w in words if w not in _PREP]
+    return " ".join(key) or " ".join(words)
 
 
 def _aware(dt: datetime | None) -> datetime | None:
     return dt.replace(tzinfo=timezone.utc) if dt and dt.tzinfo is None else dt  # SQLite не хранит часовой пояс
 
 
+def reuse_blockers(r: Run) -> list[str]:
+    """Почему готовый результат нельзя отдать повторно (пусто — можно). Сломанный прогон не должен отвечать экспертам 4 дня."""
+    s = get_settings()
+    prov, st = r.providers or {}, r.stats or {}
+    out = []
+    if prov.get("llm") != _current_llm_label():
+        out.append("другая LLM")
+    if prov.get("pipeline") != runner.PIPELINE_VERSION:
+        out.append("другая версия конвейера")
+    if prov.get("decision_model") and not prov["decision_model"].startswith("heuristic") and prov["decision_model"] != _current_decision_label():
+        out.append("другая decision-модель")
+    if (st.get("decision_fallback") or 0) > 0.2 * max(st.get("candidates") or 0, 1):
+        out.append("decision-модель не ответила по части кандидатов")
+    if st.get("degraded"):
+        out.append("статистика публикаций OpenAlex была недоступна")
+    if (r.plan or {}).get("generated_by") == "lexicon" and s.llm_provider.lower() != "none" and _current_llm_label() != "none:template":
+        out.append("план поиска построен без LLM")
+    if not st.get("signals"):
+        out.append("нет сигналов")
+    return out
+
+
+def _current_decision_label() -> str:
+    s = get_settings()
+    p = s.decision_provider.lower()
+    return f"{p}:{s.jev_model if p == 'jev' else s.kev_model if p == 'kev' else 'rules'}"
+
+
 def _reusable_run(db: Session, query: str, use_watchlist: bool) -> Run | None:
-    """Тот же запрос уже выполняется или выполнен недавно той же рабочей моделью — отдаём его сразу.
+    """Тот же запрос уже выполняется или выполнен недавно той же рабочей конфигурацией — отдаём его сразу.
 
     Повторный клик жюри не запускает вторую обработку, а готовые темы открываются за секунду, а не за 5 минут.
-    Свежесть — REUSE_HOURS (по умолчанию сутки); «Пересчитать» в интерфейсе передаёт fresh=true."""
+    Свежесть — REUSE_HOURS; «Пересчитать» в интерфейсе передаёт fresh=true. Не отдаём повторно прогоны другой версии
+    конвейера или модели, со сбоем decision-модели или OpenAlex, с планом без LLM (см. reuse_blockers)."""
     hours = get_settings().reuse_hours
     key = _norm_query(query)
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
-    llm = _current_llm_label()
     recent = db.query(Run).filter(Run.status.in_(["queued", "running", "done"])).order_by(desc(Run.id)).limit(300).all()
     for r in recent:
         if _norm_query(r.query) != key or bool((r.options or {}).get("use_watchlist", get_settings().use_watchlist)) != use_watchlist:
@@ -124,7 +181,7 @@ def _reusable_run(db: Session, query: str, use_watchlist: bool) -> Run | None:
         if r.status in ("queued", "running"):
             return r
         fresh_enough = hours > 0 and (_aware(r.created_at) or since) > since
-        if fresh_enough and (r.providers or {}).get("llm") == llm and (r.stats or {}).get("signals"):
+        if fresh_enough and not reuse_blockers(r):
             return r
     return None
 
@@ -180,15 +237,25 @@ def showcase(db: Session = Depends(get_session)) -> list[dict]:
 
 def _current_llm_label() -> str:
     """Подпись рабочей LLM в том же виде, что пишет прогон в providers.llm (без подключения к модели)."""
-    s = get_settings()
-    p = s.llm_provider.lower()
-    if p == "gigachat" and s.gigachat_auth_key:
-        return f"gigachat:{s.gigachat_model}"
-    if p == "yandexgpt" and s.yandex_api_key:
-        return f"yandexgpt:{s.yandex_model}"
-    if p == "openai" and s.openai_api_key:
-        return f"openai:{s.openai_model}"
-    return "none:template"
+    return llm_label()
+
+
+@router.get("/examples")
+def examples() -> list[str]:
+    """Темы для кнопок на главной — тот же список, что рассчитывается заранее: клик открывает готовый ответ."""
+    return EXAMPLES
+
+
+@router.post("/precompute")
+async def start_precompute(_: None = Depends(require_token)) -> dict:
+    """Предрасчёт тем в том же процессе (общая очередь и общий поток GigaChat): запускать один раз после заморозки кода.
+    Требует API_TOKEN, если он задан."""
+    from app import precompute
+
+    task = asyncio.create_task(precompute.refresh_once())
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
+    return {"started": True, "topics": precompute.queries()}
 
 
 @router.get("/runs/{run_id}")

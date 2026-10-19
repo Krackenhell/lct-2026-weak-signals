@@ -38,16 +38,21 @@ _TOPIC_TAIL = {"technology", "technologies", "technique", "techniques", "device"
 
 
 def is_topic_itself(name: str, topic_terms: list[str]) -> bool:
-    """Кандидат совпадает с темой запроса с точностью до общих слов: тема не может быть слабым сигналом внутри себя."""
+    """Кандидат ничего не добавляет к теме запроса: его ключевые слова (без общих) — часть слов темы.
+    «multilayer graphene» и «graphene» при запросе о многослойном графене — сама тема, а «rhombohedral multilayer graphene» —
+    направление внутри неё (есть новое слово)."""
     def core(s: str) -> set[str]:
         return {w for w in _key_words(s) if w not in _TOPIC_TAIL and w.rstrip("s") not in _TOPIC_TAIL}
     cand = core(name)
-    return bool(cand) and any(cand == core(t) for t in topic_terms if t and core(t))
+    return bool(cand) and any(cand <= core(t) for t in topic_terms if t and core(t))
 
-# Формулировки научных статей, а не технологий: «Stackelberg Model of AI Security», «Stablecoin under stress».
+# Формулировки научных статей, а не технологий: «Stackelberg Model of AI Security», «Stablecoin under stress»,
+# «Towards Scalable Graphene Growth». Артикль внутри устойчивого термина — не заголовок: «lab on a chip platforms»,
+# «organ on a chip», «human in the loop control», «software as a service».
 PAPER_TITLE = re.compile(
     r"\b(model|characteri[sz]ation|manipulation|analysis|study|survey|review|evaluation|investigation|assessment|case|role|impact|"
-    r"perspective|overview|comparison|understanding) of\b|\bunder (stress|attack|uncertainty)\b|\b(towards?|a|an|the)\b \w+ \w+",
+    r"perspective|overview|comparison|understanding) of\b|\bunder (stress|attack|uncertainty)\b|"
+    r"^(towards?|a|an|the)\s|\btowards?\b \w+ \w+|(?<!on )(?<!in )(?<!as )(?<!of )\b(a|an|the)\b \w+ \w+",
     re.I,
 )
 # Слова, по которым темы не считаются «одинаковыми» при проверке разнообразия топа.
@@ -67,14 +72,52 @@ RELEVANT = 0.5  # минимальная релевантность по отв�
 _LINK_WORDS = {"in", "on", "of", "for", "the", "and", "a", "an", "based", "driven", "enabled"}
 
 
+def _singular(w: str) -> str:
+    if len(w) > 4 and w.endswith("ies"):
+        return w[:-3] + "y"  # batteries → battery (раньше «batterie» ≠ «battery», и тройка твердотельных не склеивалась)
+    return w[:-1] if len(w) > 4 and w.endswith("s") and not w.endswith("ss") else w
+
+
 def _key_words(name: str) -> set[str]:
+    name = re.sub(r"\([^)]*\)", " ", name)  # аббревиатура в скобках: «solid-state batteries (SSB)»
     words = re.findall(r"[a-zа-яё0-9]+", name.lower().replace("-", " "))
-    return {w[:-1] if len(w) > 4 and w.endswith("s") else w for w in words if w not in _LINK_WORDS}
+    return {_singular(w) for w in words if w not in _LINK_WORDS}
+
+
+# Слова, которые не делают технологию другой: «solid-state battery technology» = «solid-state battery systems».
+DEDUP_DROP = {"all", "technology", "technologie", "development", "system", "solution", "platform"}
 
 
 def _stems(name: str) -> set[str]:
     """Основы слов для сравнения синонимов: «superconductivity» и «superconductors» — одна основа «superc»."""
-    return {w[:6] if len(w) >= 7 else w for w in _key_words(name)}
+    return {w[:6] if len(w) >= 7 else w for w in _key_words(name) if w not in DEDUP_DROP}
+
+
+def query_anchors(plan: dict, query: str) -> frozenset[str]:
+    """Слова самого запроса: их разделяют все кандидаты, поэтому «темой» для правила разнообразия они не считаются.
+
+    Источники: английский термин запроса (query_en / topic_en / ключевой термин литературы — если план не словарный или
+    термин найден в литературе), латинские слова самого запроса и слова, которые есть хотя бы в половине первых 6 подзапросов LLM.
+    Все слова подзапросов не берём: подзапросы — это поднаправления, их разнообразие и нужно сохранить."""
+    words: set[str] = set()
+    terms = list(plan.get("query_en") or [])
+    if plan.get("core_term"):
+        terms.append(plan["core_term"])
+    if plan.get("generated_by") != "lexicon":
+        terms.append(plan.get("topic_en") or "")
+    for t in terms:
+        if re.search(r"[a-z]", t or "", re.I):
+            words |= _key_words(t)
+    words |= _key_words(" ".join(re.findall(r"[a-zA-Z][a-zA-Z0-9\-]+", query or "")))
+    if plan.get("generated_by") != "lexicon":
+        subs = [_key_words(s) for s in (plan.get("subqueries") or [])[:6]]
+        if subs:
+            counts: dict[str, int] = {}
+            for ws in subs:
+                for w in ws:
+                    counts[w] = counts.get(w, 0) + 1
+            words |= {w for w, n in counts.items() if n * 2 >= len(subs)}
+    return frozenset(w for w in words if w not in _GENERIC_WORDS and w not in _TOPIC_TAIL and len(w) > 2)
 
 
 def near_duplicate(a: str, b: str) -> bool:
@@ -147,16 +190,28 @@ def _filters(a: dict, topic_terms: list[str] | None = None) -> tuple[str, str] |
     return None
 
 
-def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_terms: list[str] | None = None) -> list[dict]:
+P_CAP = 0.95  # оценка выше 0,95 не различается: 0,991 и 0,982 — одно и то же, порядок решает релевантность
+
+
+def rank_score(p: float | None, rel: float) -> float | None:
+    """Балл места в выдаче: min(p; 0,95) × (0,6 + 0,4 × релевантность). Не бывает больше 0,95 — «1,00» не появится."""
+    return None if p is None else min(p, P_CAP) * (0.6 + 0.4 * rel)
+
+
+def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_terms: list[str] | None = None,
+           anchors: frozenset[str] | set[str] = frozenset(), crowding: bool = True) -> list[dict]:
     out: list[dict] = []
     for a in assessed:
         contrib = model.explain(a["features"]) if model else []
         rel = relevance(a)
         p = a["prob"]
         # Как получается место в выдаче — открыто в карточке: Jev отвечает степенью (0…1) на вопросы,
-        # регрессия складывает ответы и числовые признаки в вероятность, балл = вероятность × (0,6 + 0,4 × релевантность).
+        # регрессия складывает ответы и числовые признаки в оценку p, балл = min(p; 0,95) × (0,6 + 0,4 × релевантность).
+        fin = rank_score(p, rel)
         score = {"probability": None if p is None else round(p, 4), "relevance": round(rel, 3),
-                 "final": None if p is None else round(p * (0.6 + 0.4 * rel), 4),
+                 "final": None if fin is None else round(fin, 4),
+                 # Точка отсчёта модели (свободный член, делённый на температуру калибровки): вместе с вкладами даёт логит.
+                 "intercept": round(model.intercept / getattr(model, "temperature", 1.0), 3) if model and hasattr(model, "intercept") else None,
                  "outside_training": model.outside(a["features"]) if model else []}
         d = {"relevance": rel, "contributions": contrib, "score": score}
         flt = _filters(a, topic_terms)
@@ -181,20 +236,23 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_te
 
     ranked = sorted(
         [i for i, d in enumerate(out) if d["status"] == "signal"],
-        key=lambda i: -((assessed[i]["prob"] or 0.5) * (0.6 + 0.4 * out[i]["relevance"])),
+        key=lambda i: (-rank_score(assessed[i]["prob"] if assessed[i]["prob"] is not None else 0.5, out[i]["relevance"]),
+                       -(assessed[i]["prob"] or 0)),  # при равном балле — по оценке модели
     )
     # Синонимы не занимают два места в топе: остаётся вариант с более высоким баллом.
     # Разнообразие: одна узкая тема (например, «quantum») — не больше MAX_PER_THEME мест, иначе топ по
     # «инфраструктуре для ИИ» превращается в список вариантов квантового машинного обучения.
     kept: list[int] = []
     themes: dict[str, int] = {}
-    # Слова самой темы запроса («graphene» в запросе о многослойном графене) есть у всех кандидатов — темой их не считаем.
+    # Слова самой темы запроса («graphene» в запросе о многослойном графене) есть у всех кандидатов — темой их не считаем:
+    # места распределяются между поднаправлениями запроса, а не штрафуется сам запрос.
     topic_words = set().union(*(_key_words(t) for t in topic_terms)) if topic_terms else set()
-    ignore = _GENERIC_WORDS | topic_words
+    ignore = _GENERIC_WORDS | topic_words | set(anchors)
     for i in ranked:
         name = assessed[i]["c"]["name_en"]
         twin = next((k for k in kept if near_duplicate(name, assessed[k]["c"]["name_en"])), None)
-        theme = next((w for w in sorted(_key_words(name) - ignore) if len(w) > 3 and themes.get(w, 0) >= MAX_PER_THEME), None)
+        theme = None if not crowding else next(
+            (w for w in sorted(_key_words(name) - ignore) if len(w) > 3 and themes.get(w, 0) >= MAX_PER_THEME), None)
         if twin is not None:
             out[i].update(status="excluded", code="duplicate", reason=f"Синоним технологии «{assessed[twin]['c']['name_en']}», которая уже в списке.")
         elif theme and len(kept) < top_k:
@@ -223,12 +281,16 @@ def template_dossier(a: dict, d: dict) -> dict:
     f = a["features"]
     works = int(round(math.expm1(f.get("log_total_works", 0))))
     parts = []
-    if works:
-        parts.append(f"в научной литературе найдено около {works} работ, из них {f.get('recent_share', 0):.0%} — за последние 3 года")
-    if f.get("age_years"):
-        parts.append(f"тема заметна в публикациях около {f['age_years']:.0f} лет")
+    if "openalex" in a.get("missing", []):
+        # Подставленные средние — не измерения: «около 1417 работ» на каждой карточке выглядело бы как факт.
+        parts.append("статистика публикаций недоступна (OpenAlex не ответил)")
+    else:
+        if works:
+            parts.append(f"в научной литературе найдено около {works} работ, из них {f.get('recent_share', 0):.0%} — за последние 3 года")
+        if f.get("age_years"):
+            parts.append(f"тема заметна в публикациях около {f['age_years']:.0f} лет")
     parts.append(wiki_fact(f, a.get("missing", [])).lower())
-    if f.get("log_gh_repos_12m"):
+    if f.get("log_gh_repos_12m") and "github" not in a.get("missing", []):
         parts.append(f"за 12 месяцев создано ~{int(math.expm1(f['log_gh_repos_12m']))} репозиториев GitHub")
     stage = a["res"].answers.get("maturity", {}).get("value")
     contrib = d.get("contributions", [])
@@ -236,7 +298,8 @@ def template_dossier(a: dict, d: dict) -> dict:
     neg = [f"{c['label']} — {c.get('level', '')} значение" for c in contrib if c["contribution"] < 0][:2]
     conf = ""
     if a["prob"] is not None:
-        conf = f"Вероятность слабого сигнала по модели {prob_text(a['prob'])}. Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}."
+        conf = (f"Оценка классификатора {prob_text(a['prob'])} — сходство с размеченными слабыми сигналами, не вероятность успеха технологии. "
+                f"Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}.")
         pp = a.get("passport")
         if pp:
             conf += f" Паспорт доказательств {pp['level']}: подтверждено {pp['confirmed']} из {pp['checked']} документов, {pp['domains']} разных источника."

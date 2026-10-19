@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, Run, Showcase } from "../api";
 
-const EXAMPLES = [
-  "микрофлюидные технологии",
-  "технологии многослойного графена",
+// Запасной список, если API недоступен. Основной — GET /api/examples: те же темы рассчитываются заранее (app/examples.py),
+// поэтому клик по примеру открывает готовый ответ.
+const FALLBACK_EXAMPLES = [
+  "технология многослойного графена",
+  "микрофлюидные чипы",
+  "твердотельные аккумуляторы",
   "газлифт в газоконденсатных скважинах",
   "перспективные решения в финтехе",
-  "кибербезопасность ИИ",
-  "робототехника",
-  "энергетика и накопители",
 ];
 
 const STATUS_RU: Record<string, string> = { queued: "в очереди", running: "выполняется", done: "готово", failed: "ошибка", rejected: "отклонён" };
@@ -21,11 +21,13 @@ export default function Home() {
   const [err, setErr] = useState("");
   const [runs, setRuns] = useState<Run[]>([]);
   const [ready, setReady] = useState<Showcase[]>([]);
+  const [examples, setExamples] = useState<string[]>(FALLBACK_EXAMPLES);
   const nav = useNavigate();
 
   useEffect(() => {
     api.runs().then(setRuns).catch(() => {});
     api.showcase().then(setReady).catch(() => {});
+    api.examples().then((x) => x.length && setExamples(x)).catch(() => {});
   }, []);
 
   async function start(query: string) {
@@ -60,7 +62,7 @@ export default function Home() {
           <button disabled={busy || q.trim().length < 2}>{busy ? "Запуск…" : "Найти сигналы"}</button>
         </form>
         <div className="chips">
-          {EXAMPLES.map((ex) => (
+          {examples.map((ex) => (
             <button key={ex} className="chip" type="button" onClick={() => setQ(ex)}>
               {ex}
             </button>
@@ -80,7 +82,8 @@ export default function Home() {
         <>
           <h2>Готовые результаты</h2>
           <p className="muted small">
-            Посчитаны заранее по типовым темам и открываются сразу; дата расчёта указана. Новые темы и кнопка «Пересчитать» запускают анализ с нуля.
+            Посчитаны заранее по темам-примерам и открываются за секунду; дата расчёта указана. Новый запрос считается с нуля за 2–3 минуты,
+            кнопка «Пересчитать» на странице результата — тоже.
           </p>
           <div className="showcase">
             {ready.map((r) => (

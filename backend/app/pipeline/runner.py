@@ -19,18 +19,18 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.decision import get_decision_model
 from app.decision.heuristic import HeuristicDecision
-from app.llm.providers import get_llm
-from app.collectors import cyberleninka, gdelt, habr, news_search
+from app.llm.providers import for_task, get_llm
+from app.collectors import cyberleninka, gdelt, habr, news_search, openalex
 from app.llm.tasks import check_query, plan_query, summarize_sources, write_dossier
-from app.llm.terms import normalize_name_ru
+from app.llm.terms import check_name_ru
 from app.ml.model import SignalModel
 from app.models import Candidate, Document, ModelCall, Run
 from app.pipeline import cost as cost_mod
 from app.pipeline import discovery, evidence as evidence_mod
 from app.pipeline import links as links_mod
 from app.pipeline import passport as pp_mod
-from app.pipeline import subtopics
-from app.pipeline.decide import decide, template_dossier, wiki_fact
+from app.pipeline import routing, subtopics
+from app.pipeline.decide import decide, query_anchors, template_dossier, wiki_fact
 from app.pipeline.features import answer_features, numeric_features
 from app.pipeline.questions import (
     EVENT, EVIDENCE_MATCH, IS_TECHNOLOGY, PRODUCT_NAME, QUESTIONS, build_state, claim_questions, count_items,
@@ -39,6 +39,22 @@ from app.pipeline.questions import (
 from app.pipeline.trust import classify
 
 log = logging.getLogger(__name__)
+
+# Версия конвейера: увеличивается вручную при любом изменении, влияющем на выдачу. Готовые результаты другой версии
+# повторно не отдаются (см. api/routes.reuse_blockers) — эксперт не увидит выдачу старого кода.
+PIPELINE_VERSION = "2026-10-19.2"
+
+
+def training_phrases() -> set[str]:
+    """Фразы обучающей выборки классификатора (сигналы организатора): оценка таких кандидатов не независима."""
+    import json
+    from pathlib import Path
+
+    try:
+        terms = json.loads((Path(get_settings().seed_dir) / "positive_terms.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    return {re.sub(r"\s+", " ", p.lower()).strip() for k, v in terms.items() if not k.startswith("_") and isinstance(v, list) for p in v}
 
 
 # Клиенты моделей и ограничитель параллельных запусков — общие на процесс (точнее, на цикл событий).
@@ -84,7 +100,9 @@ class RunContext:
         if usage:
             response = {**response, "usage": usage}
         if provider not in ("none", "heuristic"):  # шаблоны и офлайн-правила бесплатны и в расчёт стоимости не входят
-            u = self.usage.setdefault(provider, {"model": model, "calls": 0, "tokens": 0})
+            # Ключ — провайдер и модель: план на GigaChat-2-Max и остальное на GigaChat-2 считаются по своим тарифам.
+            key = provider if provider in ("jev", "kev") else f"{provider}:{model}"
+            u = self.usage.setdefault(key, {"provider": provider, "model": model, "calls": 0, "tokens": 0})
             u["calls"] += 1
             u["tokens"] += int((usage or {}).get("total") or (usage or {}).get("total_tokens") or 0)
         self.session.add(
@@ -158,7 +176,9 @@ async def _execute(ctx: RunContext, s) -> None:
         ctx.run.status = "running"
         ctx.run.providers = {
             "decision_model": f"{dm.provider}:{dm.model}",
-            "llm": f"{llm.provider}:{llm.model}",
+            # Та же подпись, что у llm_label() (по ней проверяется повторное использование результата).
+            "llm": f"{llm.provider}:{llm.model}" + (f" (план поиска: {pm.model})" if (pm := for_task(llm, "plan")) is not llm else ""),
+            "pipeline": PIPELINE_VERSION,
             "classifier": "logistic-regression" + (f" (обучена на {model.meta.get('trained_on')} примерах)" if model else " (не обучена)"),
         }
         ctx.session.commit()
@@ -176,7 +196,7 @@ async def _execute(ctx: RunContext, s) -> None:
 
         # 1. План поиска
         ctx.stage("Расширение запроса: подтемы и поисковые фразы", 3)
-        plan, res = await plan_query(llm, query)
+        plan, res = await plan_query(for_task(llm, "plan"), query)
         if res:
             ctx.log_call(res.provider, res.model, "расширение запроса", query, {"query": query}, {"text": res.text[:3000]}, res.latency_ms, res.ok, usage=res.usage)
         plan = {**plan, "query": query}  # исходная формулировка нужна сбору корпуса (выбор тематических баз)
@@ -193,11 +213,16 @@ async def _execute(ctx: RunContext, s) -> None:
             core, found = "", []
         if core and re.search(r"[a-z]", core, re.I):
             kws = [e["keyword"] for e in found]
-            llm_subs = [x for x in subtopics.drop_buzz(plan.get("subqueries", []), query) if x.lower() not in kws and x.lower() != core.lower()]
+            # Запасные подтемы словаря (узкий запрос без перевода) больше не нужны: термин найден в литературе.
+            subs0 = [] if plan.get("backup") else plan.get("subqueries", [])
+            llm_subs = [x for x in subtopics.drop_buzz(subs0, query) if x.lower() not in kws and x.lower() != core.lower()]
             plan["subqueries"] = (kws + [core] + llm_subs)[:12]
             if not re.search(r"[a-z]", plan.get("topic_en", ""), re.I):
                 plan["topic_en"] = core  # без LLM русская фраза не находит ничего в англоязычных базах
         plan = {**plan, "core_term": core, "emerging": found}
+        # Маршрут источников по профилю запроса (науки о жизни, материалы, энергетика, ИТ) — виден в «Как искали».
+        route = routing.route(query, plan)
+        plan["route"] = route
         ctx.run.plan = plan
         ctx.session.commit()
 
@@ -256,7 +281,9 @@ async def _execute(ctx: RunContext, s) -> None:
 
         async def assess(c: dict) -> dict:
             nonlocal done
-            opts = {"with_news": s.news_per_candidate, "with_repos": with_gh, "with_gh_count": with_gh}
+            # География — после решения и только для сигналов (экономия 20–30 запросов OpenAlex); Europe PMC и ML-источники — по маршруту.
+            opts = {"with_news": s.news_per_candidate, "with_repos": with_gh, "with_gh_count": with_gh, "with_countries": False,
+                    "with_europepmc": route["europepmc_evidence"], "with_ml": route["ml_evidence"]}
             ev = await evidence_mod.gather(http, c["name_en"], date.today(), **opts)
             for alt in c.get("alt_terms", [])[:1]:
                 if len(ev.docs) >= 5:
@@ -347,12 +374,40 @@ async def _execute(ctx: RunContext, s) -> None:
 
         # 5. Решение: сигнал / исключение
         ctx.stage("Ранжирование: исключение зрелых технологий, стандартов и тем без технического подтверждения", 82)
-        decisions = decide(assessed, model, s.top_k, topic_terms=[t for t in (plan.get("core_term"), plan.get("topic_en")) if t])
+        # Слова самого запроса не считаются «темой» в правиле разнообразия; без надёжных слов запроса (словарный план без
+        # термина из литературы) правило «не больше 3 на тему» отключается — лучше не резать, чем резать по случайным словам.
+        anchors = query_anchors(plan, query)
+        crowding = not (plan.get("generated_by") == "lexicon" and not plan.get("core_term"))
+        decisions = decide(assessed, model, s.top_k, topic_terms=[t for t in (plan.get("core_term"), plan.get("topic_en"), *plan.get("query_en", [])) if t],
+                           anchors=anchors, crowding=crowding)
+
+        # Честный режим при сбое OpenAlex: доля кандидатов, у которых статистика публикаций заменена средними. Такой прогон
+        # помечается (баннер в интерфейсе) и не отдаётся повторно; подставленные значения не показываются как факты.
+        n_imputed = sum(1 for a in assessed if "openalex" in a.get("missing", []))
+        imputed_share = round(n_imputed / max(len(assessed), 1), 3)
+        oa = (http.stats or {}).get("api.openalex.org", {})
+        ctx.run.stats = {**ctx.run.stats, "openalex": {**oa, "imputed": n_imputed, "imputed_share": imputed_share},
+                         "degraded": imputed_share > 0.2}
+
+        # География работ — только для сигналов, после решения (раньше — для каждого из 30 кандидатов).
+        async def countries(a):
+            if "openalex" in a["ev"].failed or not s.extra_sources:
+                return
+            a["ev"].countries = await evidence_mod._safe("openalex_countries", openalex.country_counts(http, a["ev"].phrase, date.today().year - 2), {}, a["ev"].failed)
+
+        await asyncio.gather(*(countries(a) for a, d in zip(assessed, decisions, strict=False) if d["status"] == "signal"))
 
         # 6. Сохранение документов и кандидатов
         doc_ids_by_url: dict[str, int] = {}
         total_docs = 0
+        trained = training_phrases()
         for a, dcs in zip(assessed, decisions, strict=False):
+            # Русское название: названия организатора (база отслеживания) не трогаем; остальные — через валидатор
+            # (глоссарий, кальки, утечка запроса, длина). Не прошло — показывается английский термин, причина пишется в карточку.
+            name_check = None
+            if "watchlist" not in a["c"]["methods"]:
+                ru, name_check = check_name_ru(a["c"]["name_en"], a["c"].get("name_ru"), query)
+                a["c"]["name_ru"] = ru if ru and ru != a["c"]["name_en"] else ""
             ids = []
             for d in a["ev"].docs[:20]:
                 if d.url not in doc_ids_by_url:
@@ -364,7 +419,10 @@ async def _execute(ctx: RunContext, s) -> None:
                 ids.append(doc_ids_by_url[d.url])
             extra = {"passport": a["passport"], "dynamics": pp_mod.dynamics(a["ev"].yearly, date.today().year) if "openalex" not in a["ev"].failed else None,
                      "missing": a.get("missing", []), "startups_by_year": a["ev"].yc_yearly or None,
-                     "geography": pp_mod.geography(a["ev"].countries), "patents": a["ev"].patents, "score": dcs.get("score")}
+                     "geography": pp_mod.geography(a["ev"].countries), "patents": a["ev"].patents, "score": dcs.get("score"),
+                     "name_check": name_check,
+                     # Совпадает с примером обучающей выборки: высокая оценка ожидаема и не является независимой проверкой.
+                     "in_training": re.sub(r"\s+", " ", a["c"]["name_en"].lower()).strip() in trained or bool(a["c"].get("watch_id"))}
             if dcs["status"] == "signal":
                 # Вклады уже поделены на температуру калибровки — свободный член делим так же.
                 extra["robustness"] = pp_mod.robustness(a["prob"], dcs["contributions"], model.intercept / model.temperature if model else None)
@@ -389,9 +447,11 @@ async def _execute(ctx: RunContext, s) -> None:
 
         async def window(cand: Candidate):
             a = by_name[cand.name]
-            terms = [evidence_mod.search_phrase(cand.name), cand.name_ru or ""]
+            # Русское название передаём в поиск, только если оно прошло проверку (кальку искать бессмысленно).
+            name_ru = cand.name_ru if cand.name_ru and not (cand.contributions or {}).get("name_check") else ""
+            terms = [evidence_mod.search_phrase(cand.name), name_ru]
             failed: list[str] = []
-            ru_query = cand.name_ru or evidence_mod.search_phrase(cand.name)
+            ru_query = name_ru or evidence_mod.search_phrase(cand.name)
             hb = await evidence_mod._safe("habr", habr.search(http, ru_query, 15), [], failed)
             gd = await evidence_mod._safe("gdelt", gdelt.search(http, evidence_mod.search_phrase(cand.name), "24m", 20, lang="russian"), [], failed)
             sources = 2
@@ -406,6 +466,7 @@ async def _execute(ctx: RunContext, s) -> None:
             world = None if "openalex" in a["ev"].failed else pp_mod.world_recent_works(a["ev"].yearly, year)
             w = pp_mod.russia_window(world, ru)
             w["failed"] = failed
+            w["terms"] = [t for t in terms if t]  # по каким словам искали — видно в карточке
             return cand, w
 
         sem_w = asyncio.Semaphore(4)
@@ -434,11 +495,17 @@ async def _execute(ctx: RunContext, s) -> None:
             a = by_name[cand.name]
             f = cand.features
             total = round(2.718281828 ** f.get("log_total_works", 0) - 1)
-            facts = [
+            # При сбое OpenAlex признаки публикаций — средние обучающей выборки: в досье их как факты не передаём.
+            pubs = ["Статистика публикаций недоступна (OpenAlex не ответил) — признаки заменены средними, чисел о публикациях не приводи."] \
+                if "openalex" in a.get("missing", []) else [
                 f"Научных работ с этим термином за всё время: {total}; из них за последние 3 года: {f.get('recent_share', 0):.0%}.",
                 f"Тема заметна в литературе около {f.get('age_years', 0):.0f} лет." if f.get("age_years") else "Устойчивой истории публикаций нет — тема новая.",
+            ]
+            facts = [
+                *pubs,
                 wiki_fact(f, a.get("missing", [])) + ".",
-                f"Модель оценивает вероятность того, что это слабый сигнал, {pp_mod.prob_text(cand.probability)} (это {'высокая' if (cand.probability or 0) >= 0.75 else 'средняя'} уверенность).",
+                f"Оценка классификатора {pp_mod.prob_text(cand.probability)} ({'высокая' if (cand.probability or 0) >= 0.75 else 'средняя'}): "
+                "это сходство с размеченными слабыми сигналами, а не вероятность того, что технология станет трендом.",
                 f"Паспорт доказательств: decision-модель подтвердила {a['passport']['confirmed']} документов из {a['passport']['domains']} разных источников; самое твёрдое событие — {a['passport']['event']}.",
                 *([f"Новостей о раундах или сделках среди подтверждений: {a['passport']['funding_news']}."] if a["passport"].get("funding_news") else []),
                 *([f"Госгрантов среди подтверждений: {a['passport']['grants']}."] if a["passport"].get("grants") else []),
@@ -508,7 +575,14 @@ async def _execute(ctx: RunContext, s) -> None:
                     ctx.log_call(r.provider, r.model, "проверка утверждений досье", cand.name, {"claims": [c for _, c in claims]}, {"answers": r.answers, "error": r.error}, r.latency_ms, r.ok, usage=r.usage)
                 if data:
                     cand.dossier = {**cand.dossier, **{k: v for k, v in data.items() if v}, "generated_by": f"{res.provider}:{res.model}"}
-                    cand.name_ru = normalize_name_ru(cand.name, data.get("name_ru")) or cand.name_ru
+                    # Досье больше не затирает название: названия организатора и уже проверенные переводы остаются;
+                    # название из досье берётся, только если своего нет и оно прошло тот же валидатор.
+                    methods = (cand.contributions or {}).get("methods", [])
+                    if not cand.name_ru and "watchlist" not in methods and data.get("name_ru"):
+                        ru, why = check_name_ru(cand.name, data["name_ru"], query)
+                        if ru and ru != cand.name and not why:
+                            cand.name_ru = ru
+                            cand.contributions = {**cand.contributions, "name_check": None}
             ctx.session.commit()
 
             ctx.stage("Русские резюме иностранных источников", 94)

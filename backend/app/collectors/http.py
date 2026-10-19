@@ -54,6 +54,41 @@ HOST_INTERVAL = {
 }
 
 
+# Время жизни кэша по хостам (часы), если оно больше общего CACHE_TTL_HOURS. Ряды публикаций OpenAlex за прошлые годы
+# не меняются, а квота ключа — около 13 холодных запросов в сутки: 10 суток кэша экономят её на повторных темах.
+HOST_TTL_HOURS = {"api.openalex.org": 240}
+
+# Сетевые запросы к OpenAlex за текущие сутки (UTC) — сохраняются в data/openalex_usage.json, чтобы предрасчёт
+# не съедал квоту живых запросов (см. OPENALEX_DAILY_SOFT_LIMIT).
+_OA_USAGE: dict[str, int] = {}
+
+
+def _usage_path() -> Path:
+    return Path(get_settings().cache_dir).parent / "openalex_usage.json"
+
+
+def openalex_calls_today() -> int:
+    day = time.strftime("%Y-%m-%d", time.gmtime())
+    if day not in _OA_USAGE:
+        try:
+            _OA_USAGE.clear()
+            _OA_USAGE.update({k: int(v) for k, v in json.loads(_usage_path().read_text(encoding="utf-8")).items() if k == day})
+        except (OSError, ValueError):
+            pass
+        _OA_USAGE.setdefault(day, 0)
+    return _OA_USAGE[day]
+
+
+def _count_openalex() -> None:
+    day = time.strftime("%Y-%m-%d", time.gmtime())
+    _OA_USAGE[day] = openalex_calls_today() + 1
+    if _OA_USAGE[day] % 10 == 0:  # не пишем файл на каждый запрос
+        try:
+            _usage_path().write_text(json.dumps({day: _OA_USAGE[day]}), encoding="utf-8")
+        except OSError:
+            pass
+
+
 BREAKER_COOLDOWN = 60.0
 # Источники, которые при перегрузке почти никогда не восстанавливаются за секунды: повторять бессмысленно,
 # каждый повтор — это 5–15 секунд ожидания в запросе аналитика.
@@ -80,9 +115,11 @@ def _write_cache(path: Path, data: Any) -> None:
 
 
 def prune_cache(cache_dir: Path, ttl_hours: int) -> int:
-    """Удаляет просроченные файлы кэша (при запуске сервера), чтобы кэш не рос без предела."""
+    """Удаляет просроченные файлы кэша (при запуске сервера), чтобы кэш не рос без предела.
+    По имени файла хост не определить (это хэш), поэтому срок — наибольший из общего и по хостам."""
     if not cache_dir.exists():
         return 0
+    ttl_hours = max([ttl_hours, *HOST_TTL_HOURS.values()]) if ttl_hours else ttl_hours
     limit, n = time.time() - ttl_hours * 3600, 0
     for f in cache_dir.iterdir():
         try:
@@ -168,7 +205,8 @@ class HttpClient:
         host = urlparse(url).netloc
         retries = max(retries, 5) if self.patient else min(retries, HOST_RETRIES.get(host, retries))
         path = self._cache_path(url, params if json_body is None else {"__post__": json_body, **(params or {})})
-        if cache and path.exists() and time.time() - path.stat().st_mtime < self._ttl:
+        ttl = max(self._ttl, HOST_TTL_HOURS.get(host, 0) * 3600) if self._ttl else 0  # CACHE_TTL_HOURS=0 — кэш выключен везде
+        if cache and path.exists() and time.time() - path.stat().st_mtime < ttl:
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 self._bump(host, "cached")
@@ -186,6 +224,8 @@ class HttpClient:
         last_exc: Exception | None = None
         for attempt in range(retries):
             await self._throttle(host)
+            if host == "api.openalex.org":
+                _count_openalex()
             backoff = 1.5 * (attempt + 1) + self._interval.get(host, 0)
             try:
                 if json_body is None:

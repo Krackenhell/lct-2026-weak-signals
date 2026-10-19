@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, CandidateFull, Feedback, pct, prob, VERDICTS } from "../api";
-import { ContributionBars, DynamicsBars, LinkBadge, PassportBadge, RobustnessBadge, ScoreBadge, TrustBadge, WindowBadge } from "../components/ui";
+import { api, CandidateFull, CLASSIFIER_HINT, Feedback, fmtScore, pct, prob, SCORE_HINT, VERDICTS } from "../api";
+import { ContributionBars, DynamicsBars, LinkBadge, PassportBadge, RobustnessBadge, TrustBadge, WindowBadge } from "../components/ui";
 
 // Порядок разделов справки: сначала что это и почему сигнал, затем пример, польза, применение и риски.
 const SECTIONS: [string, string][] = [
@@ -49,6 +49,9 @@ export default function Insight() {
   const v = d.verification;
   const sections = SECTIONS.filter(([k]) => d[k] && !(k === "bank_application" && d.application));
   const sources = allSources ? c.sources : c.sources.slice(0, SOURCES_SHOWN);
+  const miss = new Set(c.missing ?? []);
+  const NA = (src: string) => <span className="muted">нет данных ({src} недоступен)</span>;
+  const level = c.probability == null ? "" : c.probability >= 0.75 ? " · высокая" : c.probability >= 0.5 ? " · средняя" : " · низкая";
 
   return (
     <article className="report">
@@ -60,20 +63,25 @@ export default function Insight() {
         </div>
         <h1>{c.name_ru || c.name}</h1>
         {c.name_ru && c.name_ru !== c.name && <div className="muted">{c.name}</div>}
+        {c.name_check && <div className="muted small">Русское название не показано: {c.name_check}.</div>}
+        {c.in_training && (
+          <p className="small"><span className="badge neutral">пример из обучающей выборки</span> Оценка классификатора не является независимой проверкой: модель училась на этом примере.</p>
+        )}
 
         <div className="facts">
-          <div className="fact"><div className="label">Оценка модели</div><div className="value">{prob(c.probability)}</div></div>
-          <div className="fact">
-            <div className="label">Доказательства</div>
-            <div className="value">{p ? `${p.level} · подтверждено ${p.confirmed} из ${p.checked}` : "—"}</div>
+          <div className="fact" title={CLASSIFIER_HINT}><div className="label">Оценка классификатора</div><div className="value">{prob(c.probability)}{level}</div></div>
+          <div className="fact" title="Счёт выполненных проверок, а не вероятность">
+            <div className="label">Проверки доказательств</div>
+            <div className="value">{c.checks ? `${c.checks.passed} из ${c.checks.total}` : "—"}{p ? ` · уровень ${p.level}` : ""}</div>
           </div>
           <div className="fact"><div className="label">Стадия</div><div className="value">{c.stage ? `${c.stage.label}, УГТ ${c.stage.trl}` : "—"}</div></div>
           <div className="fact">
             <div className="label">Публикации</div>
             <div className="value">
+              {miss.has("openalex") ? "нет данных (OpenAlex недоступен)" : ""}
               {c.first_year ? `с ${c.first_year} г.` : ""}
               {c.growth_x && c.growth_x >= 1.2 ? ` · рост ×${c.growth_x.toLocaleString("ru-RU")} за 2 года` : c.works_2y ? ` · ${c.works_2y} работ за 2 года` : ""}
-              {!c.first_year && !c.works_2y ? "—" : ""}
+              {!c.first_year && !c.works_2y && !miss.has("openalex") ? "—" : ""}
             </div>
           </div>
         </div>
@@ -107,9 +115,10 @@ export default function Insight() {
         <div className="gauge">
           <div className="num">{prob(c.probability)}</div>
           <div className="small">
-            Вероятность, что это слабый сигнал. Зелёные полосы — признаки «за», красные — «против».
+            Оценка классификатора: насколько кандидат похож на слабые сигналы из эталона организатора (не вероятность того, что технология
+            станет трендом). Зелёные полосы — признаки «за», красные — «против».
             {c.score && c.score.probability != null && (
-              <> Место в выдаче: {prob(c.score.probability)} × (0,6 + 0,4 × релевантность {c.score.relevance.toFixed(2)}) = {c.score.final?.toFixed(3)}.</>
+              <span title={SCORE_HINT}> Балл места: min({prob(c.score.probability)}; 95%) × (0,6 + 0,4 × релевантность {c.score.relevance.toFixed(2).replace(".", ",")}) = <b>{fmtScore(c.score.final)}</b>.</span>
             )}
           </div>
         </div>
@@ -117,14 +126,15 @@ export default function Insight() {
           <p className="small"><span className="badge med">оценка приблизительная</span> Значения признаков вне диапазона обучающей выборки:
             {" "}{c.score.outside_training.join(", ")}. Ориентируйтесь прежде всего на доказательства.</p>
         )}
-        <ContributionBars items={c.contributions || []} />
+        <ContributionBars items={c.contributions || []} intercept={c.score?.intercept} p={c.probability} />
         <details className="small" style={{ marginTop: 10 }}>
           <summary>Как считается оценка</summary>
           <p>
-            Модель Jev отвечает на 12 вопросов о найденных текстах не «да / нет», а степенью от 0 до 1 (новизна, ранняя стадия, массовость,
-            независимые участники и др.). Собственная логистическая регрессия складывает эти ответы и 11 наблюдаемых показателей
-            (рост публикаций, возраст темы, GitHub, обсуждения) с весами, обученными на размеченных примерах. Вклад признака = вес × отклонение
-            от среднего. Оценка откалибрована на примерах, которых модель не видела; выше 95% не показывается, потому что живой поиск сложнее обучающей выборки.
+            Модель Jev отвечает на вопросы о найденных текстах не «да / нет», а вероятностью ответа «да» от 0 до 1 (новизна, ранняя стадия,
+            массовость, независимые участники и др.). 12 ответов вместе с 11 наблюдаемыми показателями (рост публикаций, возраст темы, GitHub,
+            обсуждения) — 23 признака собственной логистической регрессии с весами, обученными на размеченных примерах. Вклад признака = вес ×
+            отклонение от среднего; точка отсчёта плюс все вклады дают итог, из которого получается оценка. Оценка откалибрована на примерах,
+            которых модель не видела; выше 95% не показывается, потому что живой поиск сложнее обучающей выборки.
           </p>
         </details>
       </div>
@@ -202,7 +212,8 @@ export default function Insight() {
             {c.window && (
               <p className="small">
                 <WindowBadge w={c.window} /> {c.window.text} Мир: научные работы за 2 года — {c.window.world ?? "нет данных"};
-                Россия: упоминания в русскоязычных источниках — {c.window.ru ?? "нет данных"}.
+                Россия: упоминания в русскоязычных источниках — {c.window.ru ?? "нет данных"}
+                {c.window.terms && c.window.terms.length > 0 ? ` (искали: ${c.window.terms.join(", ")})` : ""}.
               </p>
             )}
           </div>
@@ -210,7 +221,7 @@ export default function Insight() {
       )}
 
       <details className="fold">
-        <summary>Ответы модели Jev и наблюдаемые показатели</summary>
+        <summary>Ответы Jev (вероятность ответа «да», {answers.length} вопросов) и наблюдаемые показатели</summary>
         <div className="panel grid2">
           <table>
             <tbody>
@@ -221,12 +232,12 @@ export default function Insight() {
           </table>
           <table>
             <tbody>
-              <tr><td className="small">Научных работ (OpenAlex)</td><td className="small"><b>{Math.round(Math.expm1(c.features.log_total_works ?? 0))}</b></td></tr>
-              <tr><td className="small">Доля работ за 3 года</td><td className="small"><b>{pct(c.features.recent_share)}</b></td></tr>
-              <tr><td className="small">Рост публикаций (лог-отношение)</td><td className="small"><b>{(c.features.growth ?? 0).toFixed(2)}</b></td></tr>
-              <tr><td className="small">Возраст темы, лет</td><td className="small"><b>{c.features.age_years ?? 0}</b></td></tr>
-              <tr><td className="small">Статья в Википедии</td><td className="small"><b>{c.features.wiki_exists ? "есть" : "нет"}</b></td></tr>
-              <tr><td className="small">Новых репозиториев GitHub за 12 мес</td><td className="small"><b>{Math.round(Math.expm1(c.features.log_gh_repos_12m ?? 0))}</b></td></tr>
+              <tr><td className="small">Научных работ (OpenAlex)</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{Math.round(Math.expm1(c.features.log_total_works ?? 0))}</b>}</td></tr>
+              <tr><td className="small">Доля работ за 3 года</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{pct(c.features.recent_share)}</b>}</td></tr>
+              <tr><td className="small">Рост публикаций (лог-отношение)</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{(c.features.growth ?? 0).toFixed(2)}</b>}</td></tr>
+              <tr><td className="small">Возраст темы, лет</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{Math.round(c.features.age_years ?? 0)}</b>}</td></tr>
+              <tr><td className="small">Статья в Википедии</td><td className="small">{miss.has("wikipedia") ? NA("Википедия") : <b>{c.features.wiki_exists ? "есть" : "нет"}</b>}</td></tr>
+              <tr><td className="small">Новых репозиториев GitHub за 12 мес</td><td className="small">{miss.has("github") ? NA("GitHub без токена") : <b>{Math.round(Math.expm1(c.features.log_gh_repos_12m ?? 0))}</b>}</td></tr>
               <tr><td className="small">Обсуждений в инженерном сообществе за 12 мес</td><td className="small"><b>{Math.round(Math.expm1(c.features.log_hn_12m ?? 0))}</b></td></tr>
             </tbody>
           </table>

@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app import main as main_mod
@@ -132,22 +133,53 @@ def test_repeat_query_opens_recent_result_instantly(monkeypatch):
         started.append(run_id)
 
     monkeypatch.setattr(routes.runner, "execute", fake_execute)
+    prov = {"llm": "none:template", "pipeline": runner.PIPELINE_VERSION}
     with SessionLocal() as s:
-        done = Run(query="Квантовые  сенсоры!", status="done", stats={"signals": 3}, providers={"llm": "none:template"}, options={})
-        old = Run(query="микрофлюидика", status="done", stats={"signals": 2}, providers={"llm": "none:template"}, options={},
-                  created_at=datetime.now(timezone.utc) - timedelta(days=3))
+        done = Run(query="Квантовые  сенсоры!", status="done", stats={"signals": 3}, providers=prov, options={})
+        old = Run(query="микрофлюидика", status="done", stats={"signals": 2}, providers=prov, options={},
+                  created_at=datetime.now(timezone.utc) - timedelta(days=5))
         s.add_all([done, old])
         s.commit()
         done_id = done.id
     with TestClient(main_mod.app) as c:
-        r = c.post("/api/search", json={"query": "квантовые сенсоры"}).json()
+        r = c.post("/api/search", json={"query": "квантовый сенсор"}).json()  # другая словоформа — та же тема
         assert r["id"] == done_id and r["reused"] is True and not started
         r = c.post("/api/search", json={"query": "квантовые сенсоры", "fresh": True}).json()
         assert r["id"] != done_id and "reused" not in r and started == [r["id"]]
-        assert c.post("/api/search", json={"query": "микрофлюидика"}).json().get("reused") is None  # старше суток — пересчёт
+        assert c.post("/api/search", json={"query": "микрофлюидика"}).json().get("reused") is None  # старше REUSE_HOURS — пересчёт
         r2 = c.post("/api/search", json={"query": "квантовые сенсоры"}).json()
         assert r2["id"] == r["id"] and r2["status"] == "queued"  # тот же запрос уже в работе — второй не запускается
         assert len(started) == 2
+
+
+@pytest.mark.parametrize("a, b, same", [
+    ("технология многослойного графена", "технологии многослойного графена", True),
+    ("микрофлюидные чипы", "Микрофлюидный чип", True),
+    ("органы на чипе", "органы-на-чипе", True),
+    ("технологии в финтехе", "решения в финтехе", False),
+    ("безопасность ИИ", "ИИ для безопасности", False),
+    ("графен", "графит", False),
+    ("квантовые сенсоры", "квантовые компьютеры", False),
+])
+def test_query_key_matches_word_forms_only(a, b, same):
+    from app.api.routes import _norm_query
+
+    assert (_norm_query(a) == _norm_query(b)) is same
+
+
+@pytest.mark.parametrize("change, blocked", [
+    ({}, False),
+    ({"providers": {"llm": "none:template", "pipeline": "старая"}}, True),  # другая версия конвейера
+    ({"stats": {"signals": 3, "candidates": 30, "decision_fallback": 10}}, True),  # decision-модель не ответила по трети
+    ({"stats": {"signals": 3, "degraded": True}}, True),  # OpenAlex был недоступен
+    ({"stats": {"signals": 0}}, True),
+])
+def test_reuse_gates(change, blocked):
+    from app.api.routes import reuse_blockers
+
+    base = {"query": "x", "status": "done", "stats": {"signals": 3, "candidates": 30},
+            "providers": {"llm": "none:template", "pipeline": runner.PIPELINE_VERSION}, "plan": {"generated_by": "lexicon"}}
+    assert bool(reuse_blockers(Run(**{**base, **change}))) is blocked
 
 
 def test_precompute_runs_topics_once(monkeypatch):

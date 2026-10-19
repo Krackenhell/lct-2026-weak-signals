@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, ModelCall, RunFull } from "../api";
-import { PassportBadge, ScoreBadge } from "../components/ui";
+import { api, CandidateBrief, Changes, EXPORT_FORMATS, exportUrl, fmtScore, ModelCall, rankScore, RunFull, SCORE_HINT } from "../api";
+import { ChecksBadge, ScoreBadge } from "../components/ui";
+
+const TOP_K = 15;
 
 type Tab = "signals" | "watch" | "excluded" | "log";
 
@@ -42,6 +44,9 @@ export default function RunPage() {
   const changes = s.changes as Changes | undefined;
   const seconds = run.finished_at && run.created_at ? Math.round((Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000) : null;
   const emerging = run.plan?.emerging ?? [];
+  const confident = s.confident_signals as number | undefined;
+  // Добор до 15 строк — только в интерфейсе и только из «Наблюдать»: статус, экспорт и статистика не меняются.
+  const topUp = run.signals.length > 0 ? watch.slice(0, Math.max(0, TOP_K - run.signals.length)) : [];
 
   async function recompute() {
     setRerun(true);
@@ -63,12 +68,13 @@ export default function RunPage() {
         {run.status === "done" && run.created_at && (
           <span>
             Результат от {new Date(run.created_at).toLocaleString("ru-RU")}
+            {run.options?.precompute ? " · рассчитано заранее" : ""}
             {seconds != null ? ` · обработка ${Math.floor(seconds / 60)} мин ${seconds % 60} с` : ""}
           </span>
         )}
         {run.providers?.llm && <span>· {modelsLine(run.providers)}</span>}
         {run.status === "done" && (
-          <button className="chip" type="button" disabled={rerun} onClick={recompute} title="Повторный запрос темы в течение суток открывает готовый результат; эта кнопка считает заново">
+          <button className="chip" type="button" disabled={rerun} onClick={recompute} title="Повторный запрос темы в течение 4 суток открывает готовый результат; эта кнопка считает заново">
             {rerun ? "Запуск…" : "Пересчитать"}
           </button>
         )}
@@ -92,10 +98,20 @@ export default function RunPage() {
       )}
       {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}
       {run.status === "done" && run.error && <div className="error" style={{ marginTop: 16 }}>{run.error}</div>}
+      {run.status === "done" && s.degraded && (
+        <div className="error" style={{ marginTop: 16 }}>
+          Статистика публикаций OpenAlex была недоступна для части кандидатов: признаки публикаций заменены средними, и эти числа в карточках
+          не показываются. Выдачу стоит пересчитать позже.
+        </div>
+      )}
 
       {run.status === "done" && (
         <div className="kpis">
           <div className="kpi"><div className="label">Слабых сигналов</div><div className="value accent">{run.signals.length}</div></div>
+          <div className="kpi" title="Показатель ТЗ. Оценка классификатора — сходство с эталонными слабыми сигналами, а не вероятность успеха технологии.">
+            <div className="label">Оценка классификатора ≥ 0,75</div>
+            <div className="value">{confident != null ? `${confident} из ${run.signals.length}` : "—"}</div>
+          </div>
           <div className="kpi"><div className="label">Кандидатов проверено</div><div className="value">{(s.candidates as number) ?? "—"}</div></div>
           <div className="kpi"><div className="label">Документов обработано</div><div className="value">{(s.sources_processed as number)?.toLocaleString("ru-RU") ?? "—"}</div></div>
         </div>
@@ -127,6 +143,12 @@ export default function RunPage() {
             </>
           )}
           {tab === "signals" && (run.signals.length > 0 || watch.length === 0) && <SignalList items={run.signals} />}
+          {tab === "signals" && topUp.length > 0 && (
+            <>
+              <p className="muted small divider">Ниже планки — под наблюдением: модель подтвердила меньше трёх документов, в топ не входят.</p>
+              <SignalList items={topUp} dim />
+            </>
+          )}
           {tab === "watch" && (
             <>
               <p className="muted small">
@@ -164,6 +186,11 @@ export default function RunPage() {
                   </div>
                 </>
               )}
+              {run.plan.route && (
+                <p style={{ marginBottom: 4 }}>
+                  Маршрут источников: {run.plan.route.text}.{run.plan.broad === false ? " Узкий запрос: подтемы словаря направлений не подмешивались." : ""}
+                </p>
+              )}
               <p style={{ marginBottom: 4 }}>
                 Поисковые фразы ({run.plan.generated_by === "lexicon" ? "словарь направлений" : `план: ${run.plan.generated_by}`}):
               </p>
@@ -196,10 +223,10 @@ function facts(c: CandidateBrief) {
   return parts.join(" · ");
 }
 
-function SignalList({ items }: { items: CandidateBrief[] }) {
+function SignalList({ items, dim = false }: { items: CandidateBrief[]; dim?: boolean }) {
   if (!items.length) return <p className="muted">Список пуст. Причины по каждому кандидату — во вкладке «Не вошли в топ».</p>;
   return (
-    <div className="signal-list">
+    <div className={`signal-list${dim ? " dim" : ""}`}>
       {items.map((c) => (
         <Link key={c.id} to={`/insight/${c.id}`} className="panel signal-card">
           <div className="signal-rank">{c.rank ?? "·"}</div>
@@ -209,11 +236,16 @@ function SignalList({ items }: { items: CandidateBrief[] }) {
               {c.name_ru && c.name_ru !== c.name && <span className="en"> {c.name}</span>}
             </div>
             {c.summary && <div className="small">{c.summary}</div>}
-            <div className="muted small">{facts(c)}</div>
+            <div className="muted small">
+              {facts(c)}
+              {c.missing?.includes("openalex") && <span className="badge med" style={{ marginLeft: 6 }}>публикации не проверены</span>}
+              {c.in_training && <span className="badge neutral" style={{ marginLeft: 6 }} title="Совпадает с примером обучающей выборки: высокая оценка ожидаема и не является независимой проверкой">пример из обучения</span>}
+            </div>
           </div>
           <div className="signal-badges">
+            {c.status === "signal" && <span className="badge neutral" title={SCORE_HINT}>балл {fmtScore(c.score?.final ?? rankScore(c.probability, c.relevance))}</span>}
             <ScoreBadge p={c.probability} />
-            <PassportBadge p={c.passport} />
+            <ChecksBadge c={c.checks} />
           </div>
         </Link>
       ))}

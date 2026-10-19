@@ -5,6 +5,7 @@ LLM используется только для работы с найденн�
 Решение «сигнал / не сигнал» LLM не принимает.
 """
 import asyncio
+import contextvars
 import json
 import re
 import time
@@ -14,6 +15,9 @@ from dataclasses import dataclass, field
 import httpx
 
 from app.config import get_settings
+
+# Модель для текущей задачи (ModelView): пусто — модель клиента из настроек.
+_MODEL: contextvars.ContextVar[str] = contextvars.ContextVar("llm_model_override", default="")
 
 
 @dataclass
@@ -94,7 +98,7 @@ class GigaChat(BaseLLM):
         r = await self._client.post(
             "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {token}"},
-            json={"model": self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": temperature, "max_tokens": max_tokens},
+            json={"model": _MODEL.get() or self.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": temperature, "max_tokens": max_tokens},
         )
         r.raise_for_status()
         d = r.json()
@@ -156,6 +160,48 @@ class NoLLM(BaseLLM):
 
     async def complete(self, system, user, temperature=0.2, max_tokens=1500) -> LLMResult:
         return LLMResult("", self.provider, self.model, 0, ok=False, error="LLM отключена")
+
+
+class ModelView(BaseLLM):
+    """Тот же клиент (общий поток, токен и очередь), но другая модель для отдельной задачи — например, план поиска на
+    GigaChat-2-Max при остальных задачах на GigaChat-2. Подмена модели передаётся через contextvar: параллельные задачи
+    на общем клиенте не мешают друг другу."""
+
+    def __init__(self, base: BaseLLM, model: str) -> None:  # noqa: D107 — семафор не нужен: работает семафор базового клиента
+        self._base, self.provider, self.model = base, base.provider, model
+
+    async def complete(self, system, user, temperature=0.2, max_tokens=1500) -> LLMResult:
+        token = _MODEL.set(self.model)
+        try:
+            res = await self._base.complete(system, user, temperature, max_tokens)
+        finally:
+            _MODEL.reset(token)
+        res.model = self.model
+        return res
+
+
+def for_task(llm: BaseLLM, task: str) -> BaseLLM:
+    """Клиент для задачи: «plan» — модель из GIGACHAT_MODEL_PLAN, если она задана и отличается от основной."""
+    s = get_settings()
+    model = s.gigachat_model_plan if task == "plan" else ""
+    if llm.provider == "gigachat" and model and model != llm.model:
+        return ModelView(llm, model)
+    return llm
+
+
+def llm_label() -> str:
+    """Подпись рабочей LLM — одна для прогона (providers.llm) и для проверки повторного использования результата.
+    Без общей подписи смена модели плана молча ломала бы повторное использование (каждый клик — новый расчёт)."""
+    s = get_settings()
+    p = s.llm_provider.lower()
+    if p == "gigachat" and s.gigachat_auth_key:
+        plan = s.gigachat_model_plan
+        return f"gigachat:{s.gigachat_model}" + (f" (план поиска: {plan})" if plan and plan != s.gigachat_model else "")
+    if p == "yandexgpt" and s.yandex_api_key:
+        return f"yandexgpt:{s.yandex_model}"
+    if p == "openai" and s.openai_api_key:
+        return f"openai:{s.openai_model}"
+    return "none:template"
 
 
 def get_llm(provider: str | None = None) -> BaseLLM:

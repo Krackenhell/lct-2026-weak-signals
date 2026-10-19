@@ -1,4 +1,4 @@
-import { Passport, Predictor, prob, Radar, Robustness, RussiaWindow, YearPoint } from "../api";
+import { Checks, CLASSIFIER_HINT, Passport, Predictor, prob, Radar, Robustness, RussiaWindow, YearPoint } from "../api";
 
 export function RadarBadge({ r }: { r?: Radar | null }) {
   if (!r) return null;
@@ -37,8 +37,15 @@ export function DynamicsBars({ points }: { points?: YearPoint[] | null }) {
 export function ScoreBadge({ p }: { p: number | null }) {
   if (p == null) return <span className="badge neutral">—</span>;
   const cls = p >= 0.75 ? "high" : p >= 0.5 ? "med" : "low";
-  const label = p >= 0.75 ? "Высокая" : p >= 0.5 ? "Средняя" : "Низкая";
-  return <span className={`badge ${cls}`} title="Вероятность слабого сигнала по классификатору">{label} ({prob(p)})</span>;
+  const label = p >= 0.75 ? "высокая" : p >= 0.5 ? "средняя" : "низкая";
+  return <span className={`badge ${cls}`} title={CLASSIFIER_HINT}>Оценка: {label} ({prob(p)})</span>;
+}
+
+export function ChecksBadge({ c }: { c?: Checks | null }) {
+  if (!c) return null;
+  const cls = c.passed >= 4 ? "high" : c.passed >= 2 ? "med" : "low";
+  const lines = c.items.map((i) => `${i.ok == null ? "·" : i.ok ? "✓" : "✗"} ${i.label}${i.ok == null ? " (не измерено)" : ""}`).join("\n");
+  return <span className={`badge ${cls}`} title={`Проверки доказательств — это счёт выполненных проверок, а не вероятность:\n${lines}`}>Проверки: {c.passed} из {c.total}</span>;
 }
 
 export function PassportBadge({ p }: { p?: Passport | null }) {
@@ -76,9 +83,13 @@ export function OriginBadge({ origin }: { origin: string }) {
   );
 }
 
-export function ContributionBars({ items, limit = 12 }: { items: Predictor[]; limit?: number }) {
+export function ContributionBars({ items, limit = 12, intercept, p }: { items: Predictor[]; limit?: number; intercept?: number | null; p?: number | null }) {
   const top = items.slice(0, limit);
+  const rest = items.slice(limit);
   const max = Math.max(0.01, ...top.map((i) => Math.abs(i.contribution)));
+  const restSum = rest.reduce((s, i) => s + i.contribution, 0);
+  const logit = intercept != null ? intercept + items.reduce((s, i) => s + i.contribution, 0) : null;
+  const sign = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(2).replace(".", ",")}`;
   return (
     <div className="bars">
       {top.map((i) => {
@@ -96,6 +107,12 @@ export function ContributionBars({ items, limit = 12 }: { items: Predictor[]; li
           </div>
         );
       })}
+      {intercept != null && logit != null && (
+        <p className="small muted" style={{ marginTop: 8 }}>
+          Точка отсчёта модели (все признаки на среднем уровне): {sign(intercept)}
+          {rest.length > 0 ? `; остальные ${rest.length} признаков: ${sign(restSum)}` : ""}. Сумма = {sign(logit)} → оценка {prob(p ?? 1 / (1 + Math.exp(-logit)))}.
+        </p>
+      )}
     </div>
   );
 }

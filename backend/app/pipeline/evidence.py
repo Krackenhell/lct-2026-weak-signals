@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-from app.collectors import arxiv, crossref, epo, gdelt, github, grants, hackernews, ml_papers, news_search, openalex, semanticscholar, wikipedia, yc
+from app.collectors import arxiv, crossref, epo, europepmc, gdelt, github, grants, hackernews, ml_papers, news_search, openalex, semanticscholar, wikipedia, yc
 from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
@@ -57,7 +57,10 @@ def search_phrase(name: str) -> str:
 
 
 async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True, with_extra: bool | None = None,
-                 with_gh_count: bool = True, with_news_search: bool | None = None) -> Evidence:
+                 with_gh_count: bool = True, with_news_search: bool | None = None, with_countries: bool = True,
+                 with_europepmc: bool = False, with_ml: bool | None = None) -> Evidence:
+    """with_countries=False — география считается позже и только для сигналов (экономия 20–30 запросов OpenAlex на запрос);
+    with_europepmc — науки о жизни (маршрут источников); with_ml=False — без HF Papers и OpenReview для запросов не про ИИ."""
     phrase = search_phrase(phrase)
     today = today or date.today()
     year_ago = today - timedelta(days=365)
@@ -97,9 +100,12 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # Поиск SiliconANGLE по каждому кандидату убран: сайт отвечает медленно, и 30 запросов с паузами занимали до 100 с
         # (замер 19.10); его новости и так попадают в корпус при сборе по подтемам и ленте издания.
         tasks["gnews"] = _safe("rss", news_search.matching(http, [phrase], "en", 10, min_score=3), [], f)
-    if with_news_search is not False and (with_extra if with_extra is not None else get_settings().extra_sources):
+    if with_countries and with_news_search is not False and (with_extra if with_extra is not None else get_settings().extra_sources):
         # География работ за 2 года: доля Китая, США, России (один запрос group_by в OpenAlex).
         tasks["countries"] = _safe("openalex_countries", openalex.country_counts(http, phrase, today.year - 2), {}, f)
+    if with_europepmc:
+        # Науки о жизни: биомедицинские статьи и препринты (микрофлюидика, органы на чипе, биосенсоры).
+        tasks["epmc"] = _safe("europepmc", europepmc.search(http, phrase, (today - timedelta(days=3 * 365)).isoformat(), 5), [], f)
     if epo.enabled() and with_news_search is not False:
         # Патенты за 3 года и доля Китая (EPO OPS, только при наличии ключа).
         tasks["patents"] = _safe("epo", epo.patent_counts(http, phrase), None, f)
@@ -108,7 +114,7 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         # Стартапы YC, которые строят технологию: ранний рыночный сигнал (в числовые признаки не входит).
         tasks["yc"] = _safe("yc", yc.search(http, phrase, 3), [], f)
         tasks["yc_yearly"] = _safe("yc", yc.yearly(http, phrase), {}, f)
-    if get_settings().ml_sources and with_news_search is not False:
+    if get_settings().ml_sources and with_news_search is not False and with_ml is not False:
         # Обсуждаемые ML-статьи и поданные на конференции: независимые от arXiv-поиска подтверждения.
         tasks["hf"] = _safe("hfpapers", ml_papers.hf_papers(http, phrase, 3, min_year=today.year - 3), [], f)
         tasks["or"] = _safe("openreview", ml_papers.openreview(http, phrase, 3, min_year=today.year - 3), [], f)
@@ -128,7 +134,7 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     if "github_both" in results:
         ev.gh_repos_12m, results["github_top"] = results["github_both"]
     hn_docs, ev.hn_12m = results["hn"]
-    ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("crossref", []), *results.get("s2", []),
+    ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("epmc", []), *results.get("crossref", []), *results.get("s2", []),
                *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),
                *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("yc", []),
                *results.get("hf", []), *results.get("or", []), *results.get("patent_docs", []), *results.get("github_top", []), *hn_docs]

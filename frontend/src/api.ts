@@ -23,7 +23,12 @@ export type YearPoint = { year: number; works: number; partial: boolean };
 
 export type Robustness = { level: "strong" | "stable" | "fragile"; label: string; text: string; p_without: number; feature_label?: string };
 
-export type RussiaWindow = { status: "open" | "closing" | "closed" | "thin" | "unknown"; label: string; text: string; world: number; ru: number | null; failed?: string[] };
+export type RussiaWindow = { status: "open" | "closing" | "closed" | "thin" | "unknown"; label: string; text: string; world: number; ru: number | null; failed?: string[]; terms?: string[] };
+
+/** «Проверки доказательств: k из 5» — счёт выполненных проверок, а не вероятность. ok = null — не измерялось. */
+export type Checks = { passed: number; total: number; measured: number; items: { label: string; ok: boolean | null }[] };
+
+export type Score = { probability: number | null; relevance: number; final: number | null; intercept?: number | null; outside_training: string[] };
 
 export type Verification = { by: string | null; checked: number; supported: number; removed: { field: string; text: string; why: string }[]; note?: string };
 
@@ -40,7 +45,10 @@ export type CandidateBrief = {
   radar?: Radar | null;
   dynamics?: YearPoint[] | null;
   geography?: Geography | null;
-  score?: { probability: number | null; relevance: number; final: number | null; outside_training: string[] } | null;
+  score?: Score | null;
+  checks?: Checks | null;
+  in_training?: boolean;
+  name_check?: string | null;
   stage?: { label: string; trl: string } | null;
   first_year?: number | null;
   works_2y?: number | null;
@@ -119,12 +127,13 @@ export type Run = {
   progress: number;
   error: string | null;
   plan: {
-    topic_en?: string; subqueries?: string[]; ru_terms?: string[]; generated_by?: string; core_term?: string;
+    topic_en?: string; subqueries?: string[]; ru_terms?: string[]; generated_by?: string; core_term?: string; broad?: boolean; query_en?: string[];
+    route?: { profile: string; label: string; text: string; enabled: boolean };
     emerging?: { keyword: string; recent: number; prior: number; growth: number; specificity: number }[];
   };
   stats: Record<string, number | object>;
   providers: Record<string, string>;
-  options?: { use_watchlist?: boolean };
+  options?: { use_watchlist?: boolean; precompute?: boolean };
   created_at: string | null;
   finished_at: string | null;
   reused?: boolean;
@@ -211,6 +220,7 @@ export const api = {
   candidate: (id: number | string) => req<CandidateFull>(`/api/candidates/${id}`),
   model: () => req<any>("/api/model"),
   showcase: () => req<Showcase[]>("/api/showcase"),
+  examples: () => req<string[]>("/api/examples"),
   feedback: (candId: number | string, verdict: string, comment = "") =>
     req<{ id: number; verdict: string; label: string }>(`/api/candidates/${candId}/feedback`, { method: "POST", body: JSON.stringify({ verdict, comment }) }),
   feedbackStats: () => req<{ total: number; by_verdict: Record<string, number>; labels: Record<string, string>; agreement: number | null }>("/api/feedback/stats"),
@@ -222,3 +232,10 @@ export const pct = (v: number | null | undefined) => (v == null ? "—" : `${Mat
 
 // Вероятность модели без ложной точности: логистическая регрессия не бывает уверена «на 100%».
 export const prob = (v: number | null | undefined) => (v == null ? "—" : v >= 0.95 ? "> 95%" : v <= 0.05 ? "< 5%" : `${Math.round(v * 100)}%`);
+
+// Балл места в выдаче: min(p; 0,95) × (0,6 + 0,4 × релевантность), два знака. Не бывает больше 0,95 — «1,00» не появится.
+export const rankScore = (p: number | null | undefined, rel: number | null | undefined) =>
+  p == null ? null : Math.min(p, 0.95) * (0.6 + 0.4 * (rel ?? 0));
+export const fmtScore = (v: number | null | undefined) => (v == null ? "—" : Math.min(v, 0.95).toFixed(2).replace(".", ","));
+export const SCORE_HINT = "Балл места = min(оценка; 0,95) × (0,6 + 0,4 × релевантность). Оценка выше 0,95 не различается, поэтому наверху порядок решает релевантность.";
+export const CLASSIFIER_HINT = "Оценка классификатора: насколько кандидат похож на слабые сигналы из эталона организатора. Это не вероятность того, что технология станет трендом.";

@@ -34,20 +34,21 @@ SYSTEM_ANALYST = (
 NAME_RU_RULE = (
     "название на русском так, как его написал бы отраслевой аналитик или русскоязычное IT-издание; "
     "грамматически согласованное; если устоявшегося русского термина нет — оставь английский термин или аббревиатуру "
-    "(например «zero-knowledge KYC», «федеративное обучение», «оркестрация инференса на периферии»); "
+    "(например «direct air capture», «федеративное обучение», «оркестрация инференса на периферии»); "
     "слова пиши через пробел, не склеивай дефисами; принятые переводы: " + glossary_hint()
 )
 
-# Словарь для расширения запроса без LLM: широкие направления -> англоязычные поисковые темы.
+# Словарь для расширения ШИРОКОГО запроса без LLM: направления -> англоязычные поисковые темы.
+# «Чип» — только чипы для ИИ: голое «чип» отправляло «микрофлюидные чипы» и «органы на чипе» в дата-центры ИИ.
 DOMAIN_LEXICON = {
     r"финтех|финанс|банк|платеж|платёж|fintech|payment|bank": ["fintech", "digital payments", "tokenization banking", "AI agents payments", "stablecoin", "credit scoring", "anti-money laundering", "digital identity verification", "decentralized finance", "regtech compliance"],
     r"кибер|безопасн|защит|security|cyber": ["AI security", "LLM security", "prompt injection", "agent security", "post-quantum cryptography", "confidential computing", "model supply chain security", "deepfake detection", "zero trust AI"],
     r"робот|robot": ["robot learning", "humanoid robot", "robot manipulation", "vision-language-action", "legged robot", "soft robotics", "robot foundation model", "swarm robotics", "teleoperation"],
     r"edge|периферийн|iot|интернет вещей|устройств": ["edge AI", "on-device LLM", "TinyML", "neuromorphic", "in-sensor computing", "edge inference accelerator", "federated learning edge", "NPU"],
-    r"инфраструктур|дата-центр|цод|чип|полупровод|hardware|infrastructure|datacenter|gpu": ["AI accelerator", "AI data center", "optical interconnect", "photonic computing", "memory disaggregation CXL", "KV cache", "inference optimization", "chiplet", "in-memory computing"],
+    r"инфраструктур|дата-центр|цод|ии-чип|чип\w* для ии|ai chip|полупровод|hardware|infrastructure|datacenter|gpu": ["AI accelerator", "AI data center", "optical interconnect", "photonic computing", "memory disaggregation CXL", "KV cache", "inference optimization", "chiplet", "in-memory computing"],
     r"индустр|промышлен|производств|завод|industrial|manufactur": ["industrial AI", "AI manufacturing", "industrial foundation model", "predictive quality", "AI process control", "industrial agents", "generative design", "robotic welding"],
     r"\bии\b|искусственн|нейросет|машинн|\bai\b|artificial intelligence|llm|генератив": ["large language model", "AI agents", "multimodal model", "small language model", "reasoning model", "model compression", "AI evaluation", "agentic workflow"],
-    r"энерг|energy|батар|аккумул": ["energy storage", "virtual power plant", "solid-state battery", "grid AI", "small modular reactor", "hydrogen electrolysis", "sodium-ion battery"],
+    r"энерг|energy|батар|аккумул|накопит": ["energy storage", "virtual power plant", "solid-state battery", "grid AI", "small modular reactor", "hydrogen electrolysis", "sodium-ion battery"],
     r"медиц|здрав|health|биотех|biotech|фарм": ["AI drug discovery", "digital pathology", "medical foundation model", "gene editing", "wearable diagnostics", "microrobots medicine"],
     r"квант|quantum": ["quantum error correction", "quantum sensing", "post-quantum cryptography", "quantum networking", "quantum-inspired algorithms"],
     r"космос|спутник|space|satellite": ["satellite edge computing", "orbital data center", "direct-to-device satellite", "space robotics", "in-orbit servicing"],
@@ -117,29 +118,117 @@ def clean_phrase(s: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[\"«»“”]", "", s)).strip()
 
 
+# Слова, которые не задают предмет запроса: «перспективные решения», «слабые сигналы», «новые технологии».
+FILLER = re.compile(
+    r"^(перспективн|решени|слаб|сигнал|технолог|нов|направлени|тренд|развити|област|сфер|современн|инновац|вычисл|"
+    r"emerging|new|novel|technolog|solution|trend|signal|weak|promising)", re.I)
+STOPWORDS = {"в", "во", "на", "для", "и", "с", "со", "по", "из", "от", "к", "о", "об", "при", "без", "или", "а", "the", "of", "in",
+             "for", "and", "on", "to", "a", "an", "дело", "отрасль", "отрасли"}
+
+
+def content_words(query: str) -> list[str]:
+    """Содержательные слова запроса: без предлогов и слов-наполнителей."""
+    return [w for w in re.findall(r"[a-zа-яё0-9][a-zа-яё0-9\-]*", query.lower().replace("ё", "е"))
+            if w not in STOPWORDS and len(w) >= 2 and not FILLER.match(w)]
+
+
+def is_broad(query: str) -> bool:
+    """Широкий запрос — каждое содержательное слово относится к направлению из словаря («финтех», «кибербезопасность ИИ»,
+    «энергетика и накопители»). Узкий — есть слово вне словаря («микрофлюидные чипы», «многослойный графен», «газлифт»).
+    Правило детерминированное и объяснимое: флаг от LLM нестабилен. Для узкого запроса подтемы словаря не подмешиваются —
+    иначе «чип» уводил «микрофлюидные чипы» в дата-центры ИИ, а «устройства» — в edge AI."""
+    words = content_words(query)
+    return bool(words) and all(any(re.search(p, w) for p in DOMAIN_LEXICON) for w in words)
+
+
+# Корни слов для перевода узкого запроса без LLM (когда GigaChat не ответил за PLAN_DEADLINE или не настроен).
+# Порядок слов в русской и английской фразе совпадает («многослойный графен» → «multilayer graphene»).
+ROOTS_RU_EN: list[tuple[str, str]] = [
+    # Предлоги уже убраны (content_words): «органы на чипе» здесь — «органы чипе».
+    (r"орган\w* чип", "organ-on-a-chip"), (r"лаборатори\w* чип", "lab-on-a-chip"), (r"термоядерн\w* синтез", "nuclear fusion"),
+    (r"многослойн", "multilayer"), (r"двухслойн|бислойн", "bilayer"), (r"графен", "graphene"), (r"графит", "graphite"),
+    (r"микрофлюид", "microfluidic"), (r"перовскит", "perovskite"), (r"солнечн", "solar"), (r"элемент", "cell"),
+    (r"твердотельн", "solid-state"), (r"аккумулятор|батаре", "battery"), (r"натрий-ионн", "sodium-ion"), (r"литий-ионн", "lithium-ion"),
+    (r"биопечат", "bioprinting"), (r"нейроморфн", "neuromorphic"), (r"чип", "chip"), (r"квантов", "quantum"), (r"сенсор|датчик", "sensor"),
+    (r"спинтроник", "spintronics"), (r"биосенсор", "biosensor"), (r"термоядерн", "fusion"), (r"синтез", "synthesis"),
+    (r"мрнк", "mRNA"), (r"вакцин", "vaccine"), (r"противоопухолев", "cancer"), (r"персонализированн", "personalized"),
+    (r"нейроинтерфейс", "brain-computer interface"), (r"беспилотн", "autonomous"), (r"грузовик", "truck"), (r"мембран", "membrane"),
+    (r"опреснени", "desalination"), (r"гибк", "flexible"), (r"устройств", "device"), (r"газлифт", "gas lift"), (r"скважин", "well"),
+    (r"нефтегаз", "oil and gas"), (r"нефт", "oil"), (r"водород", "hydrogen"), (r"электролиз", "electrolysis"), (r"топливн", "fuel"), (r"катализ|катализатор", "catalyst"),
+    (r"полимер", "polymer"), (r"композит", "composite"), (r"метаматериал", "metamaterial"), (r"наноч|наночастиц", "nanoparticle"),
+    (r"постквантов", "post-quantum"), (r"криптограф", "cryptography"), (r"шифровани", "encryption"), (r"гомоморфн", "homomorphic"),
+    (r"агентн", "agentic"), (r"платеж|платёж", "payments"), (r"диагностик", "diagnostics"), (r"crispr", "CRISPR"),
+    (r"редактировани\w* генов|генн\w* редактир", "gene editing"), (r"спайков|импульсн\w* нейр", "spiking neural network"),
+    (r"оптическ", "optical"), (r"фотонн", "photonic"), (r"лазер", "laser"), (r"сверхпровод", "superconducting"), (r"магнит", "magnetic"),
+]
+
+
+def translate_roots(query: str) -> str:
+    """Перевод узкого запроса по корням, только если переведено каждое содержательное слово (иначе — пустая строка:
+    наполовину переведённая фраза в точном поиске хуже, чем перевод через Википедию)."""
+    rest = " ".join(content_words(query))
+    out: list[str] = []
+    while rest.strip():
+        best = None
+        for pat, en in ROOTS_RU_EN:
+            m = re.match(r"\s*(" + pat + r")[а-яёa-z\-]*", rest)
+            if m and (best is None or m.end() > best[0]):
+                best = (m.end(), en)
+        if not best:
+            return ""
+        out.append(best[1])
+        rest = rest[best[0]:]
+    return " ".join(dict.fromkeys(out))
+
+
+def _latin(phrases) -> list[str]:
+    """Только англоязычные поисковые фразы: кириллица в arXiv и OpenAlex ищет точную русскую фразу и находит 0 работ."""
+    return [p for p in phrases if p and not re.search(r"[а-яё]", p, re.I)]
+
+
 def fallback_plan(query: str) -> dict:
     q = query.lower()
+    latin = [t.strip() for t in re.findall(r"[a-zA-Z][a-zA-Z0-9\- ]{2,}", query) if t.strip()]
+    if not is_broad(query):
+        # Узкий запрос: сам предмет по-английски (корни слов), без подтем словаря. Если корней не хватило,
+        # английский термин найдёт шаг «растущие поднаправления» через межъязыковые ссылки Википедии.
+        en = latin or [t for t in [translate_roots(query)] if t]
+        if en:
+            return {"topic_en": en[0], "query_en": en[:3], "subqueries": en[:3], "ru_terms": [query], "generated_by": "lexicon", "broad": False}
+        # Перевести не удалось: последний запасной вариант — подтемы словаря для слов запроса, которые в нём есть
+        # («квантовые сенсоры для медицины» → quantum sensing, …). Помечены backup: как только шаг «растущие
+        # поднаправления» найдёт английский термин в литературе, эти подтемы отбрасываются.
+        topics = [t for p, terms in DOMAIN_LEXICON.items() if re.search(p, q) for t in terms]
+        return {"topic_en": query, "query_en": [], "subqueries": list(dict.fromkeys(topics))[:10], "ru_terms": [query],
+                "generated_by": "lexicon", "broad": False, "backup": bool(topics)}
     topics: list[str] = []
     for pattern, terms in DOMAIN_LEXICON.items():
         if re.search(pattern, q):
             topics += [t for t in terms if t not in topics]
-    latin = re.findall(r"[a-zA-Z][a-zA-Z0-9\- ]{2,}", query)
-    topics = [t.strip() for t in latin if t.strip()] + topics
+    topics = latin + topics
     seen: set[str] = set()
     topics = [t for t in topics if not (t.lower() in seen or seen.add(t.lower()))]  # без повторов («edge AI» из запроса и словаря)
     if not topics:
         topics = [query]
-    return {"topic_en": topics[0], "subqueries": topics[:10], "ru_terms": [query], "generated_by": "lexicon"}
+    return {"topic_en": topics[0], "subqueries": topics[:10], "ru_terms": [query], "generated_by": "lexicon", "broad": True}
+
+
+def _narrow_order(subs: list[str], query_en: list[str]) -> list[str]:
+    """Сначала подзапросы, которые делят слово с самим запросом: точный поиск и вопрос о релевантности совпадают с запросом."""
+    words = {w for q in query_en for w in re.findall(r"[a-z0-9]{3,}", q.lower())}
+    return sorted(subs, key=lambda s: not (words & set(re.findall(r"[a-z0-9]{3,}", s.lower()))))
 
 
 async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
+    # Примеры в промпте — нейтральные, не из датасета организатора и не из примеров экспертов.
     prompt = (
         f"Запрос аналитика: «{query}».\n"
         "Сформируй план поиска РАННИХ технологических сигналов (новые технические подходы последних 1-2 лет) в научных и отраслевых источниках. "
         "Не включай зрелые общие темы вроде «AI in banking», «blockchain», «biometrics», «machine learning». "
-        "Верни JSON: {\"topic_en\": краткое название области на английском, "
+        "Верни JSON: {\"query_en\": 1-3 устоявшихся английских названия самого предмета запроса (как в заголовках научных статей), "
+        "\"topic_en\": краткое название области на английском, "
         "\"subqueries\": 10 англоязычных поисковых фраз по 2-4 слова, каждая — узкое новое направление внутри области "
-        "(например для финтеха: «agentic payments», «tokenized deposits», «zero-knowledge KYC»), "
+        "(например для энергетики: «agrivoltaics», «direct air capture sorbents»; для переработки пластика: «enzymatic PET recycling»), "
         "\"ru_terms\": 3 русскоязычные поисковые фразы так, как их пишут в российских научных статьях и на Хабре, "
         "\"zh_terms\": 3 короткие китайские поисковые фразы (упрощённые иероглифы) так, как их пишут китайские техно-СМИ}. "
         "Не называй конкретные компании."
@@ -148,14 +237,30 @@ async def plan_query(llm: BaseLLM, query: str) -> tuple[dict, LLMResult | None]:
     data = parse_json(res.text) if res.ok else None
     if isinstance(data, dict) and data.get("subqueries"):
         base = fallback_plan(query)
-        # Половина подтем — от LLM (новые узкие направления), половина — из проверенного словаря области.
+        broad = base["broad"]
         # GigaChat иногда склеивает слова дефисом («synthetic-data credit-scoring») или подчёркиванием
         # («smart_wellhead_monitoring», замечено на запросе «нефтегазовое дело») — точный поиск по фразе в arXiv
         # и OpenAlex такое не находит. Склейку заменяем пробелом (термины вроде «zero-knowledge» поиск по словам находит).
-        subs = [p for p in (clean_phrase(s) for s in data["subqueries"] if isinstance(s, str)) if p and len(p.split()) <= 6][:6]
+        raw = data["subqueries"] if isinstance(data["subqueries"], list) else []
+        subs = _latin(p for p in (clean_phrase(s) for s in raw if isinstance(s, str)) if p and len(p.split()) <= 6)
+        q_en = data.get("query_en")
+        q_en = _latin(clean_phrase(t) for t in (q_en if isinstance(q_en, list) else [q_en]) if isinstance(t, str))[:3]
         data["ru_terms"] = [clean_phrase(t) for t in data.get("ru_terms", []) if isinstance(t, str) and clean_phrase(t)]
-        data["topic_en"] = clean_phrase(str(data.get("topic_en") or "")) or base["topic_en"]
-        data["subqueries"] = subs + [t for t in base["subqueries"] if t not in subs][: max(0, 12 - len(subs))]
+        topic = clean_phrase(str(data.get("topic_en") or ""))
+        data["topic_en"] = topic if topic and not re.search(r"[а-яё]", topic, re.I) else base["topic_en"]
+        data["broad"] = broad
+        if broad:
+            # Широкий запрос: половина подтем — от LLM (новые узкие направления), половина — из проверенного словаря области.
+            subs = subs[:6]
+            data["subqueries"] = subs + [t for t in base["subqueries"] if t not in subs][: max(0, 12 - len(subs))]
+        else:
+            # Узкий запрос: сам предмет по-английски первым, затем подтемы LLM; словарь не подмешивается.
+            q_en = q_en or base.get("query_en") or []
+            subs = _narrow_order([s for s in subs if s.lower() not in {q.lower() for q in q_en}], q_en)
+            data["query_en"] = q_en
+            data["subqueries"] = (q_en + subs)[:12]
+            if q_en:
+                data["topic_en"] = q_en[0]
         # Китайские фразы: только строки с иероглифами (модель иногда возвращает пиньинь или английский).
         data["zh_terms"] = [t.strip() for t in data.get("zh_terms", []) if isinstance(t, str) and re.search(r"[一-鿿]", t)][:3]
         data["generated_by"] = f"{res.provider}:{res.model}"
@@ -169,7 +274,7 @@ async def extract_candidates(llm: BaseLLM, topic: str, docs: list[dict]) -> tupl
     prompt = (
         f"Область: {topic}.\nДокументы:\n{listing}\n\n"
         "Выдели КОНКРЕТНЫЕ технологии или технические подходы, которые обсуждаются в документах "
-        "(например «tokenized deposits», «optical circuit switching», «machine unlearning»), а не общие области "
+        "(например «agrivoltaics», «enzymatic PET recycling», «direct air capture sorbents»), а не общие области "
         "(не «AI», не «blockchain», не «robotics»), не компании и не продукты. Объединяй синонимы. "
         "Название — короткий термин класса технологий, каким его написали бы в заголовке отраслевой новости, а НЕ заголовок статьи: "
         "не «Characterization of …», не «… Model of …», не «… under stress», без хвостов «development», «applications», «technologies». "

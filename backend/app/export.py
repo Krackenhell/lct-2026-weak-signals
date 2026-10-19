@@ -10,19 +10,22 @@ import math
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from app.pipeline.decide import rank_score
 from app.pipeline.passport import prob_text
 
 # Колонки датасета организатора (id, name, domain, companies, why, stage, trend, score, sources) + наша проверяемость.
 COLUMNS = [
     ("rank", "№"), ("name", "Технология"), ("name_en", "Technology (EN)"), ("domain", "Направление (запрос)"),
     ("companies", "Организации из источников"), ("why", "Почему это слабый сигнал"), ("stage", "Стадия (самое твёрдое событие)"),
-    ("trend", "Тренд публикаций"), ("score", "Оценка 1–10"), ("probability", "Вероятность по модели"),
+    ("trend", "Тренд публикаций"), ("score", "Балл места (не больше 0,95)"), ("probability", "Оценка классификатора"),
     ("passport", "Паспорт доказательств"), ("robustness", "Запас прочности"), ("window", "Окно для России"),
     ("origin", "Происхождение"), ("sources", "Источники"),
 ]
 
 
-def _trend(f: dict) -> str:
+def _trend(f: dict, missing: list | None = None) -> str:
+    if "openalex" in (missing or []):
+        return "Нет данных: OpenAlex был недоступен"
     works = int(round(math.expm1(f.get("log_total_works", 0) or 0)))
     g = f.get("growth", 0) or 0
     if not works:
@@ -45,8 +48,10 @@ def candidate_row(c, docs_by_id: dict, query: str) -> dict:
         "companies": ", ".join(orgs),
         "why": d.get("why_weak_signal") or c.exclusion_reason or "",
         "stage": pp.get("event", ""),
-        "trend": _trend(c.features or {}),
-        "score": round((c.probability or 0) * 10) if c.probability is not None else "",
+        "trend": _trend(c.features or {}, extra.get("missing")),
+        # Балл места в выдаче — та же формула, что в интерфейсе: min(p; 0,95) × (0,6 + 0,4 × релевантность). Шкала 1–10 убрана:
+        # она округляла p ≥ 0,95 до «10» — та же ложная точность, что и «100%».
+        "score": "" if c.probability is None else round(rank_score(c.probability, c.relevance or 0.0), 2),
         "probability": prob_text(c.probability),
         "passport": f"{pp['level']}: подтверждено {pp['confirmed']} из {pp['checked']}, источников {pp['domains']}" if pp else "",
         "robustness": rb.get("text", ""),
@@ -98,7 +103,7 @@ def to_markdown(data: dict) -> bytes:
     if m["status"] == "rejected":
         lines += ["Запрос отклонён: он не похож на технологическое направление.", ""]
     for r in data["signals"]:
-        lines += [f"## {r['rank']}. {r['name']}", f"*{r['name_en']}* · вероятность {r['probability']} · {r['passport']}", ""]
+        lines += [f"## {r['rank']}. {r['name']}", f"*{r['name_en']}* · оценка классификатора {r['probability']} · балл {r['score']} · {r['passport']}", ""]
         for label, key in (("Почему слабый сигнал", "why"), ("Стадия", "stage"), ("Тренд", "trend"), ("Запас прочности", "robustness"), ("Окно для России", "window")):
             if r[key]:
                 lines.append(f"- **{label}:** {r[key]}")

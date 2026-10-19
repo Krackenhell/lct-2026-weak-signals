@@ -50,7 +50,38 @@ GLOSSARY = {
     "organ-on-a-chip": "орган-на-чипе",
     "tokenized deposits": "токенизированные депозиты",
     "stablecoin": "стейблкоин",
+    # Примеры экспертов финала: графен и микрофлюидика.
+    "intercalation": "интеркаляция",
+    "graphene intercalation": "интеркаляция графена",
+    "chemical vapor deposition": "химическое осаждение из газовой фазы (CVD)",
+    "cvd graphene": "CVD-графен",
+    "liquid phase exfoliation": "жидкофазная эксфолиация",
+    "exfoliation": "эксфолиация (расслоение)",
+    "lab-on-a-chip": "лаборатория на чипе",
+    "lab on a chip": "лаборатория на чипе",
+    "organ on a chip": "орган-на-чипе",
+    "organs-on-chips": "органы-на-чипе",
+    "droplet microfluidics": "капельная микрофлюидика",
+    "digital microfluidics": "цифровая микрофлюидика",
+    "paper-based microfluidics": "бумажная микрофлюидика",
+    "inertial microfluidics": "инерционная микрофлюидика",
+    "point-of-care testing": "диагностика по месту лечения",
+    # Типовые ошибки 18.10 (кальки и инверсии смысла).
+    "physically unclonable functions": "физически неклонируемые функции",
+    "physical unclonable functions": "физически неклонируемые функции",
+    "federated learning at the edge": "федеративное обучение на периферии",
+    "prompt injection detection": "обнаружение промпт-инъекций",
+    "quantum kernel svm": "квантовые ядра для метода опорных векторов",
+    "quantum support vector machines": "квантовый метод опорных векторов",
+    "solid-state batteries": "твердотельные аккумуляторы",
+    "solid-state battery": "твердотельный аккумулятор",
+    "perovskite solar cells": "перовскитные солнечные элементы",
+    "neuromorphic computing": "нейроморфные вычисления",
 }
+
+# Термины без устоявшегося русского перевода: показываем английский заголовок (с русской подписью, если она есть).
+KEEP_EN = {"self-supervised learning", "over-the-air computation", "over-the-air federated learning", "strain stiffening",
+           "in-context learning", "mixture of experts", "retrieval-augmented generation"}
 
 # (шаблон кальки, исправление или None — исправить нельзя, показываем английский термин)
 CALQUES: list[tuple[str, str | None]] = [
@@ -68,6 +99,14 @@ CALQUES: list[tuple[str, str | None]] = [
     (r"\bумное\s+менеджмент\w*", None),
     (r"\bмультиграфен\w*", "многослойный графен"),
     (r"\bчирн\w*", "черновский"),
+    # Стоп-лист калек и инверсий смысла (разбор 18.10): исправить нельзя — показываем английский термин.
+    (r"\w*-?базированн\w*", None),            # «трансформер-базированный» (-based)
+    (r"\bчерез\s+воздух\b", None),             # over-the-air
+    (r"\bпобег\w*\s+из\s+тюрьм\w*", None),     # jailbreak
+    (r"\bнеуникальн\w*", None),                # «физически неуникальные функции» — смысл перевёрнут (unclonable)
+    (r"\bстрейн\w*|\bстайфнинг\w*", None),     # «стрейн-стайффнинг»
+    (r"\bв\s+поддержке\s+вектор\w*", None),    # «ядра в поддержке векторов» (support vector)
+    (r"\bудал[её]нн\w+\s+вычислительн\w+\s+обработк\w*", None),  # «удалённая вычислительная обработка» (over-the-air)
 ]
 
 # Кальки, которые исправляются только при определённом английском слове в оригинале: «силиконовый» верно для silicone,
@@ -109,28 +148,48 @@ COMPOUND_LEFT = {"ии", "литий", "натрий", "калий", "робот
 MIXED = re.compile(r"\b(?=\w*[а-яё])(?=\w*[a-z])\w+\b", re.I)  # «адversarial», «Спiking»: сбой генерации
 
 
-def normalize_name_ru(name_en: str, name_ru: str | None) -> str:
-    """Русское название для показа: глоссарий → исправление калек → английский термин, если перевод неисправим."""
+def check_name_ru(name_en: str, name_ru: str | None, query: str = "") -> tuple[str, str | None]:
+    """Русское название для показа и причина, если перевод отвергнут (тогда показывается английский термин).
+
+    Порядок: глоссарий → склейка дефисами → кальки (исправимые исправляются) → проверки валидатора:
+    смесь алфавитов в слове, английское слово во множественном числе внутри русской фразы («Обнаружение инъекций prompts»),
+    утечка текста запроса в название, слишком длинное название (пересказ вместо термина)."""
     en = (name_en or "").strip()
     key = en.lower()
     if key in GLOSSARY:
-        return GLOSSARY[key]
+        return GLOSSARY[key], None
+    if key in KEEP_EN:
+        return en, "нет устоявшегося русского термина"
     ru = re.sub(r"\s+", " ", (name_ru or "").strip())
     if not ru:
-        return ""
+        return "", None
     if MIXED.search(ru):
-        return en
+        return en, "смесь латиницы и кириллицы в одном слове"
     ru = _unglue(ru)
     for pattern, fix in CALQUES:
         if re.search(pattern, ru, flags=re.I):
             if fix is None:
-                return en
+                return en, "известная калька"
             ru = re.sub(pattern, fix, ru, flags=re.I)
     low_en = key.replace("silicone", "")  # silicone (силикон) — не silicon (кремний)
     for word, pattern, fix in CONDITIONAL:
         if word in low_en:
             ru = re.sub(pattern, fix, ru, flags=re.I)
-    return ru
+    outside = re.sub(r"\([^)]*\)", " ", ru)  # пояснение в скобках — «вычисления в сенсоре (In-Sensor Computing)» — допустимо
+    if CYR.search(outside) and re.search(r"(?<![A-Za-z\-])[a-z]{3,}s\b", outside):
+        return en, "английское слово во множественном числе внутри русской фразы"
+    q = re.sub(r"\s+", " ", (query or "").lower().strip())
+    if len(q) >= 8 and q in ru.lower() and len(ru) > len(q) + 3:
+        return en, "в название попал текст запроса"
+    n_en = len(re.findall(r"[\w\-]+", en)) or 1
+    if len(re.findall(r"[\w\-]+", outside)) > max(7, 3 * n_en):
+        return en, "слишком длинное название — пересказ вместо термина"
+    return ru, None
+
+
+def normalize_name_ru(name_en: str, name_ru: str | None, query: str = "") -> str:
+    """Русское название для показа: глоссарий → исправление калек → английский термин, если перевод неисправим."""
+    return check_name_ru(name_en, name_ru, query)[0]
 
 
 def glossary_hint(limit: int = 18) -> str:

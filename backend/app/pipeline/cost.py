@@ -36,7 +36,8 @@ def estimate(usage: dict[str, dict]) -> dict:
     """usage: провайдер -> {"model", "calls", "tokens"} (собирается при журналировании вызовов)."""
     s = get_settings()
     lines, total = [], 0.0
-    for provider, u in sorted(usage.items()):
+    for key, u in sorted(usage.items()):
+        provider = u.get("provider") or key.split(":")[0]  # ключ — «провайдер:модель», чтобы разные модели считались по своим тарифам
         if provider in ("jev", "kev"):
             rate = s.decision_rub_per_call if provider == "jev" else 0.0
             rub = u["calls"] * rate

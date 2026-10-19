@@ -77,6 +77,23 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
     }
 
 
+def evidence_checks(pp: dict | None) -> dict | None:
+    """Второе число на карточке рядом с оценкой классификатора: «Проверки доказательств: k из 5». Это счёт выполненных
+    проверок, а не вероятность (подход «выполнено правил N из M»). Ссылки, которые не проверялись, — «не измерено»."""
+    if not pp:
+        return None
+    links = pp.get("links")
+    items = [
+        {"label": "не меньше 5 подтверждённых документов", "ok": pp.get("confirmed", 0) >= 5},
+        {"label": "не меньше 3 независимых источников", "ok": pp.get("domains", 0) >= 3},
+        {"label": "есть научная работа или препринт", "ok": pp.get("science", 0) >= 1},
+        {"label": "твёрдое событие: грант, пилот, запуск или раунд", "ok": pp.get("event_level", 0) >= 3},
+        {"label": "ссылки открываются при проверке", "ok": None if not links else links.get("ok", 0) > 0 and not links.get("dead", 0)},
+    ]
+    measured = [i for i in items if i["ok"] is not None]
+    return {"passed": sum(1 for i in measured if i["ok"]), "total": len(items), "measured": len(measured), "items": items}
+
+
 def prob_text(p: float | None) -> str:
     """Вероятность словами без ложной точности: логистическая модель не бывает уверена «на 100%»."""
     if p is None:
@@ -135,10 +152,13 @@ def mentions(docs, terms: list[str]) -> int:
     keys = [t.lower() for t in terms if t and len(t) >= 4]
     if not keys:
         return 0
+    # Русские термины склоняются («твердотельные аккумуляторы» → «твердотельных аккумуляторов»): сравниваем по основам —
+    # первые 5 букв каждого слова длиннее 3 букв, все основы должны встретиться в тексте.
+    stems = [[w[:5] for w in re.findall(r"[а-яё]{4,}", k)] for k in keys if re.search(r"[а-яё]", k)]
     n = 0
     for d in docs:
         text = f"{d.title} {d.snippet}".lower()
-        if any(k in text for k in keys):
+        if any(k in text for k in keys) or any(st and all(s in text for s in st) for st in stems):
             n += 1
     return n
 
@@ -152,7 +172,8 @@ def russia_window(world_recent: int | None, ru_count: int | None) -> dict:
     if world_recent < 5:
         status, label, text = "thin", "Мало данных", "В мире пока мало публикаций — окно оценить нельзя."
     elif ru_count == 0:
-        status, label, text = "open", "Окно открыто", f"В мире {world_recent} научных работ за 2 года, в русскоязычных источниках упоминаний не найдено."
+        # Не «окно открыто»: поиск по русскому названию мог промахнуться, утверждать отсутствие темы в России нельзя.
+        status, label, text = "open", "Упоминаний на русском не найдено", f"В мире {world_recent} научных работ за 2 года, в русскоязычных источниках упоминаний не найдено."
     elif ru_count <= 4:
         status, label, text = "closing", "Окно закрывается", f"В мире {world_recent} работ за 2 года, в России — первые упоминания ({ru_count})."
     else:
@@ -247,9 +268,12 @@ STAGES = [
 ]
 
 
-def card_facts(features: dict | None, answers: dict | None, dyn: list[dict] | None, year: int) -> dict:
-    """Короткие факты для списка и карточки: стадия (УГТ), год появления в литературе, рост работ за 2 года."""
+def card_facts(features: dict | None, answers: dict | None, dyn: list[dict] | None, year: int, missing: list[str] | None = None) -> dict:
+    """Короткие факты для списка и карточки: стадия (УГТ), год появления в литературе, рост работ за 2 года.
+    Если OpenAlex не ответил, возраст темы — среднее обучающей выборки, и «с 2006 г.» было бы выдумкой: не показываем."""
     f, a = features or {}, answers or {}
+    if "openalex" in (missing or []):
+        f = {k: v for k, v in f.items() if k != "age_years"}
     m = (a.get("maturity") or {}).get("value")
     stage = None
     if m is not None:

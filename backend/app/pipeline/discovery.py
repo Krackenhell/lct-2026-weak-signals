@@ -20,7 +20,8 @@ from app.collectors.base import RawDoc
 from app.collectors.http import HttpClient, SourceError
 from app.config import get_settings
 from app.llm.providers import BaseLLM, LLMResult
-from app.llm.tasks import extract_candidates
+from app.llm.tasks import extract_candidates, is_broad
+from app.pipeline import routing
 
 STOP = set(
     "a an the of for and or in on to with by from via as at is are be this that these those we our its their using based towards toward "
@@ -45,8 +46,9 @@ WATCHLIST_DOMAINS = {
     "Индустриальный ИИ": r"индустр|промышлен|производств|завод|industrial|manufactur",
 }
 AI_QUERY = r"\bии\b|искусственн|нейросет|\bai\b|artificial intelligence|машинн"
-# Europe PMC подключается только для наук о жизни: для финтеха или роботов он даёт шум.
-LIFE_SCIENCE = r"медиц|здрав|биотех|биолог|фарм|генн|геном|белк|клиник|диагност|health|medic|biotech|bio|pharma|gene|protein|clinic|drug|patholog"
+# Europe PMC подключается для наук о жизни (и, по маршруту источников, для материалов и энергетики): для финтеха
+# или роботов он даёт шум. Микрофлюидика, органы на чипе, биосенсоры — тоже науки о жизни (раньше Europe PMC для них не включался).
+LIFE_SCIENCE = routing.LIFE_MED
 # Обрывки фраз, которые статистика выдаёт за технологии: заголовки Hacker News, биржевые новости,
 # фрагменты через «and» («detection and anti-money»), фразы, обрывающиеся на прилагательном («adoption of digital»).
 INDUSTRY_COLLECTORS = {"rss", "siliconangle", "yc"}
@@ -99,6 +101,7 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
 
     s = get_settings()
     topic = plan.get("topic_en", subs[0] if subs else "")
+    europepmc_on = routing.route(plan.get("query", ""), plan)["europepmc_corpus"]
     # Каждый документ помечается поисковой фразой, которая его нашла: по этой метке LLM читает корпус
     # поровну по подтемам (см. llm_candidates), а не первые по порядку запросы.
     groups: list[str] = []
@@ -119,7 +122,7 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None) -> list[R
             add(crossref.search(http, sq, from_date, 15), sq)  # все издатели с DOI, в т.ч. неанглоязычные журналы
             if semanticscholar.enabled():
                 add(semanticscholar.search(http, sq, today.year - 2, 15), sq)
-            if re.search(LIFE_SCIENCE, plan.get("query", "") + " " + topic, flags=re.I):
+            if europepmc_on:
                 add(europepmc.search(http, sq, from_date, 15), sq)
     add(gdelt.search(http, topic, "6m", 30))
     ru_terms = plan.get("ru_terms", [])[:3]
@@ -295,7 +298,12 @@ def merge(cands: list[dict]) -> list[dict]:
             target["doc_idx"] = sorted(set(target["doc_idx"]) | set(c.get("doc_idx", [])))
             target["support"] += 1
             target["methods"].add(c.get("method", ""))
-            if not target["name_ru"] and c.get("name_ru"):
+            if c.get("method") == "watchlist":
+                # Название организатора побеждает перевод LLM («Purpose-Bound Money» не станет «Цельносвязанными деньгами»).
+                target["name_ru"] = c.get("name_ru") or target["name_ru"]
+                for k in ("watch_id", "alt_terms", "watch_sources"):
+                    target.setdefault(k, c.get(k))
+            elif not target["name_ru"] and c.get("name_ru"):
                 target["name_ru"] = c["name_ru"]
         else:
             merged.append({"name_ru": "", **c, "_key": key, "support": 1, "methods": {c.get("method", "")}, "doc_idx": list(c.get("doc_idx", []))})
@@ -313,9 +321,11 @@ def watchlist(query: str, plan: dict, enabled: bool | None = None) -> list[dict]
     items = json.loads((seed / "weak_signals_2026.json").read_text(encoding="utf-8"))
     terms = json.loads((seed / "positive_terms.json").read_text(encoding="utf-8"))
     q = query.lower()
-    domains = {d for d, pat in WATCHLIST_DOMAINS.items() if re.search(pat, q)}
-    if not domains and re.search(AI_QUERY, q):
-        domains = {"Защита ИИ", "Инфраструктура ИИ", "Индустриальный ИИ", "Edge"}
+    domains: set[str] = set()
+    if is_broad(query):  # области датасета подмешиваются только к широким запросам («микрофлюидные чипы» ≠ «Инфраструктура ИИ»)
+        domains = {d for d, pat in WATCHLIST_DOMAINS.items() if re.search(pat, q)}
+        if not domains and re.search(AI_QUERY, q):
+            domains = {"Защита ИИ", "Инфраструктура ИИ", "Индустриальный ИИ", "Edge"}
     words = {w for w in re.findall(r"[a-z]{4,}", " ".join(plan.get("subqueries", [])).lower())}
     out = []
     for it in items:
