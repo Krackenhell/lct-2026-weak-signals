@@ -215,7 +215,10 @@ async def _execute(ctx: RunContext, s) -> None:
             kws = [e["keyword"] for e in found]
             # Запасные подтемы словаря (узкий запрос без перевода) больше не нужны: термин найден в литературе.
             subs0 = [] if plan.get("backup") else plan.get("subqueries", [])
-            llm_subs = [x for x in subtopics.drop_buzz(subs0, query) if x.lower() not in kws and x.lower() != core.lower()]
+            # Подтемы, которые после снятия общих слов совпадают с самим термином («novel multilayer graphene applications»,
+            # «multilayer graphene technology»), ничего не добавляют к корпусу — их место отдаём другим.
+            llm_subs = [x for x in subtopics.drop_buzz(subs0, query)
+                        if x.lower() not in kws and subtopics.core_term(x).lower() != core.lower()]
             plan["subqueries"] = (kws + [core] + llm_subs)[:12]
             if not re.search(r"[a-z]", plan.get("topic_en", ""), re.I):
                 plan["topic_en"] = core  # без LLM русская фраза не находит ничего в англоязычных базах

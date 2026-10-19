@@ -77,6 +77,9 @@ def summarize(run_id: int, domain: str | None) -> dict:
             ],
             "passport": {lv: sum(1 for c in signals if ((c.contributions or {}).get("passport") or {}).get("level") == lv) for lv in ("A", "B")},
             "watch": sum(1 for c in cands if c.status == "watch"),
+            # Чистый замер (П3): прогон с долей подставленной статистики OpenAlex > 20 % недействителен для сравнения.
+            "imputed_share": ((run.stats or {}).get("openalex") or {}).get("imputed_share"),
+            "degraded": bool((run.stats or {}).get("degraded")),
             "exclusions": {},
         }
         for c in cands:

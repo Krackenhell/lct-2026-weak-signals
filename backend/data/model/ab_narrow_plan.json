@@ -1,0 +1,174 @@
+{
+ "runs": [
+  {
+   "query": "микрофлюидные чипы",
+   "anchor": "microflu|lab.on.a.chip|organ.on",
+   "old_subqueries": [
+    "novel microfluidic devices for diagnostics",
+    "electrowetting on dielectric microfluidics",
+    "3D printed microfluidic systems",
+    "single cell analysis with lab on a chip",
+    "microfluidic bioreactors for synthetic biology",
+    "micropumps in microfluidic platforms",
+    "AI accelerator",
+    "AI data center",
+    "optical interconnect",
+    "photonic computing",
+    "memory disaggregation CXL",
+    "KV cache"
+   ],
+   "new_subqueries": [
+    "microfluidic chips",
+    "lab on a chip technology",
+    "nanofluidics",
+    "novel microfluidic devices for diagnostics",
+    "3D printed microfluidic systems",
+    "microfluidic bioreactors for synthetic biology",
+    "micropumps in microfluidic platforms",
+    "low cost microfluidic sensors",
+    "microfluidic flow cytometry",
+    "microfluidic reactors for chemical synthesis",
+    "electrowetting on dielectric microfluidics",
+    "digital microfluidics for drug discovery"
+   ],
+   "old": {
+    "docs": 502,
+    "en_docs": 463,
+    "on_topic": 45,
+    "share": 0.097
+   },
+   "new": {
+    "docs": 344,
+    "en_docs": 307,
+    "on_topic": 164,
+    "share": 0.534
+   }
+  },
+  {
+   "query": "органы на чипе",
+   "anchor": "organ.on|organoid|microflu|lab.on.a.chip|microphysiolog",
+   "old_subqueries": [
+    "artificial microvasculature for organ chips",
+    "3d bioprinting for organ chip models",
+    "on chip drug metabolism testing",
+    "real time organ chip monitoring",
+    "integrated organ chip arrays",
+    "organ chip stem cell differentiation",
+    "AI accelerator",
+    "AI data center",
+    "optical interconnect",
+    "photonic computing",
+    "memory disaggregation CXL",
+    "KV cache"
+   ],
+   "new_subqueries": [
+    "organ on a chip",
+    "microphysiological systems",
+    "human on a chip",
+    "artificial microvasculature for organ chips",
+    "3d bioprinting for organ chip models",
+    "on chip drug metabolism testing",
+    "real time organ chip monitoring",
+    "integrated organ chip arrays",
+    "organ chip stem cell differentiation",
+    "lung organ chip inflammation studies",
+    "heart failure organ chip research",
+    "neural organ chip connectivity"
+   ],
+   "old": {
+    "docs": 514,
+    "en_docs": 455,
+    "on_topic": 31,
+    "share": 0.068
+   },
+   "new": {
+    "docs": 379,
+    "en_docs": 323,
+    "on_topic": 134,
+    "share": 0.415
+   }
+  },
+  {
+   "query": "микрофлюидные устройства",
+   "anchor": "microflu|lab.on.a.chip|organ.on",
+   "old_subqueries": [
+    "digital microfluidics applications",
+    "biochip development trends",
+    "on demand drug delivery systems",
+    "single cell analysis platforms",
+    "microfluidic sensors for environmental monitoring",
+    "integrated microfluidic circuits",
+    "edge AI",
+    "on-device LLM",
+    "TinyML",
+    "neuromorphic",
+    "in-sensor computing",
+    "edge inference accelerator"
+   ],
+   "new_subqueries": [
+    "microfluidic devices",
+    "lab on a chip technologies",
+    "nanofluidics",
+    "microfluidic sensors for environmental monitoring",
+    "integrated microfluidic circuits",
+    "low power microfluidic systems",
+    "micropumps for lab on a chip",
+    "smart microfluidic diagnostics",
+    "digital microfluidics applications",
+    "biochip development trends",
+    "on demand drug delivery systems",
+    "single cell analysis platforms"
+   ],
+   "old": {
+    "docs": 564,
+    "en_docs": 518,
+    "on_topic": 38,
+    "share": 0.073
+   },
+   "new": {
+    "docs": 405,
+    "en_docs": 364,
+    "on_topic": 140,
+    "share": 0.385
+   }
+  },
+  {
+   "query": "технологии многослойного графена",
+   "anchor": "graphen",
+   "old_subqueries": [
+    "electronic properties of multilayer graphene",
+    "multilayer graphene for energy storage",
+    "multilayer graphene sensors and devices",
+    "multilayer graphene composites for reinforcement",
+    "multilayer graphene in catalysis",
+    "multilayer graphene for thermal management"
+   ],
+   "new_subqueries": [
+    "multilayer graphene technologies",
+    "applications of multilayer graphene",
+    "innovations in multilayer graphene",
+    "electronic properties of multilayer graphene",
+    "multilayer graphene for energy storage",
+    "multilayer graphene sensors and devices",
+    "multilayer graphene composites for reinforcement",
+    "multilayer graphene in catalysis",
+    "multilayer graphene for thermal management",
+    "multilayer graphene in biomedical applications",
+    "multilayer graphene for water filtration",
+    "multilayer graphene for quantum computing"
+   ],
+   "old": {
+    "docs": 208,
+    "en_docs": 155,
+    "on_topic": 53,
+    "share": 0.342
+   },
+   "new": {
+    "docs": 205,
+    "en_docs": 152,
+    "on_topic": 57,
+    "share": 0.375
+   }
+  }
+ ]
+}

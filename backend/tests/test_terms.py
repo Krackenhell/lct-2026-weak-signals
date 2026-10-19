@@ -38,6 +38,10 @@ def test_normalize_name_ru(en, ru, expected):
     ("evaporation methods for perovskite-silicon tandems", "Перовскит-силиконовые тандемные элементы", "Перовскит-кремниевые тандемные элементы"),
     ("silicone microfluidic chips", "силиконовые микрофлюидные чипы", "силиконовые микрофлюидные чипы"),  # silicone — действительно силикон
     ("fractional quantum anomalous hall effect", "фракционный квантовый аномальный эффект Холла", "дробный квантовый аномальный эффект Холла"),
+    ("high chern insulators", "высокие чирновские инсуляторы", "черновские изоляторы с большим числом Черна"),  # живой прогон 19.10
+    ("chern insulators in moire graphene", "чирновские инсуляторы в муаровом графене", "черновские изоляторы в муаровом графене"),
+    ("3d printed microfluidic chips", "3D-печатные микрожидкостные чипы", "3D-печатные микрофлюидные чипы"),
+    ("microfluidic live-cell imaging", "микрожидкостное живое клеточное изображение", "microfluidic live-cell imaging"),
 ])
 def test_conditional_calques(en, ru, expected):
     assert normalize_name_ru(en, ru) == expected
