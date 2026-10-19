@@ -125,6 +125,8 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
             tasks["biorxiv"] = _safe("biorxiv", _wrap(science_more.biorxiv(phrase, 4)), [], f)
         elif profile in ("materials", "energy"):
             tasks["ads"] = _safe("ads", science_more.ads(http, phrase, 5), ([], 0), f)
+        # Вопросы инженеров на Stack Exchange (сайт по профилю): технология пошла в практику — ступень «сообщество».
+        tasks["stack"] = _safe("stackexchange", science_more.stackexchange(http, phrase, profile, 3), ([], 0), f)
     if get_settings().ml_sources and with_news_search is not False and with_ml is not False:
         # Обсуждаемые ML-статьи и поданные на конференции: независимые от arXiv-поиска подтверждения.
         tasks["hf"] = _safe("hfpapers", ml_papers.hf_papers(http, phrase, 3, min_year=today.year - 3), [], f)
@@ -146,7 +148,7 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
         ev.gh_repos_12m, results["github_top"] = results["github_both"]
     hn_docs, ev.hn_12m = results["hn"]
     ev.docs = [*results["arxiv"], *results.get("openalex_docs", []), *results.get("epmc", []), *(results.get("pubmed") or ([], 0))[0],
-               *(results.get("ads") or ([], 0))[0], *results.get("biorxiv", []), *results.get("crossref", []), *results.get("s2", []),
+               *(results.get("ads") or ([], 0))[0], *results.get("biorxiv", []), *(results.get("stack") or ([], 0))[0], *results.get("crossref", []), *results.get("s2", []),
                *results.get("news", []), *results.get("gnews", []), *results.get("sa", []),
                *results.get("nih", []), *results.get("nsf", []), *results.get("ukri", []), *results.get("yc", []),
                *results.get("hf", []), *results.get("or", []), *results.get("patent_docs", []), *results.get("github_top", []), *hn_docs]

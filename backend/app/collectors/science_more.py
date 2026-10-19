@@ -30,6 +30,22 @@ def _words(phrase: str) -> list[str]:
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
 
+_MON = {m: i for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
+
+
+def _pubmed_date(it: dict) -> str | None:
+    """Дата электронной публикации; дата номера журнала бывает в будущем (выпуск 2027 года вышел онлайн в 2026-м)."""
+    for raw in (it.get("epubdate"), it.get("sortpubdate"), it.get("pubdate")):
+        m = re.match(r"(\d{4})(?:[/\s-]+(\w{1,3}))?(?:[/\s-]+(\d{1,2}))?", raw or "")
+        if not m:
+            continue
+        mon = m.group(2) or "1"
+        month = int(mon) if mon.isdigit() else _MON.get(mon[:3].lower(), 1)
+        d = f"{m.group(1)}-{month:02d}-{int(m.group(3) or 1):02d}"
+        return min(d, date.today().isoformat())
+    return None
+
+
 async def pubmed(http: HttpClient, phrase: str, n: int = 8, years: int = 3) -> tuple[list[RawDoc], int]:
     """Работы PubMed с фразой в названии или аннотации за years лет: (документы, всего найдено)."""
     s = get_settings()
@@ -50,8 +66,7 @@ async def pubmed(http: HttpClient, phrase: str, n: int = 8, years: int = 3) -> t
         title = clean(it.get("title"), 400)
         if not title:
             continue
-        m = re.match(r"(\d{4})(?:\s+(\w{3}))?(?:\s+(\d{1,2}))?", it.get("sortpubdate") or it.get("pubdate") or "")
-        pub = it.get("sortpubdate", "")[:10].replace("/", "-") if it.get("sortpubdate") else (f"{m.group(1)}-01-01" if m else None)
+        pub = _pubmed_date(it)
         docs.append(RawDoc(url=f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/", title=title, snippet=clean(f"{it.get('fulljournalname') or it.get('source') or ''}", 300),
                            published=pub, source_name=f"PubMed ({it.get('source') or 'журнал'})", source_type="science", language="en", collector="pubmed"))
     return docs, total
@@ -168,7 +183,7 @@ async def stackexchange(http: HttpClient, phrase: str, profile: str = "software"
         return [], 0
     site = SE_SITES.get(profile, "stackoverflow")
     since = int((datetime.now(timezone.utc) - timedelta(days=730)).timestamp()) // 86400 * 86400  # округлено до суток — для кэша
-    data = await http.get(SE, params={"q": phrase, "site": site, "pagesize": n, "order": "desc", "sort": "relevance", "fromdate": since,
+    data = await http.get(SE, params={"q": f'"{phrase.replace(chr(34), "")}"', "site": site, "pagesize": n, "order": "desc", "sort": "relevance", "fromdate": since,
                                       "key": s.stackexchange_key})
     docs = []
     for it in data.get("items") or []:

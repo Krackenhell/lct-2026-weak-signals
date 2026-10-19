@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 
 # Версия конвейера: увеличивается вручную при любом изменении, влияющем на выдачу. Готовые результаты другой версии
 # повторно не отдаются (см. api/routes.reuse_blockers) — эксперт не увидит выдачу старого кода.
-PIPELINE_VERSION = "2026-10-20.2"
+PIPELINE_VERSION = "2026-10-20.3"
 
 
 def training_phrases() -> set[str]:

@@ -9,6 +9,7 @@
 
 Карта игроков — кто публикует работы (организации мира и России, OpenAlex), какие компании и стартапы видны в подтверждениях.
 """
+import asyncio
 import re
 
 from app.collectors import brave, market_more, openalex
@@ -23,6 +24,7 @@ STEPS = [
     ("launch", "серийный продукт / запуск"), ("procurement", "закупка в России"),
 ]
 LABEL = dict(STEPS)
+REGISTRY_DEADLINE = 20.0
 
 
 def confirmed_items(items: list[dict], answers: dict, n_asked: int) -> list[dict]:
@@ -103,12 +105,17 @@ async def market_layer(http: HttpClient, dm, name_en: str, name_ru: str, topic: 
             calls.append(market_more.clinical_trials(http, phrase, 4))
         if name_ru and re.search(r"[а-яё]", name_ru, re.I):
             calls.append(market_more.procurement(http, name_ru, 5))
-        for coro in calls:
+        # Параллельно и не дольше REGISTRY_DEADLINE секунд: недоступный реестр (SEC отвечает 403 части сетей, Роспатент и ЕИС
+        # бывают недоступны снаружи) не должен растягивать прогон на минуту.
+        async def bounded(coro):
             try:
-                res = await coro
-                found += res[0] if isinstance(res, tuple) else res
+                res = await asyncio.wait_for(coro, REGISTRY_DEADLINE)
+                return res[0] if isinstance(res, tuple) else res
             except Exception:  # noqa: BLE001 — реестр недоступен: лестница строится по остальным данным
-                pass
+                return []
+
+        for docs in await asyncio.gather(*(bounded(c) for c in calls)):
+            found += docs
     seen, web = set(), []
     for d in found[:14] + against[:3]:
         if d.url not in seen:

@@ -36,6 +36,10 @@ async def lifespan(_: FastAPI):
     startup()
     s = get_settings()
     tasks = []
+    if s.more_sources:  # свежий каталог препринтов bioRxiv/medRxiv — в фоне, первый запрос его не ждёт
+        from app.collectors import science_more
+
+        science_more.ensure_catalog()
     if s.precompute_every_hours > 0:
         from app import precompute
 
