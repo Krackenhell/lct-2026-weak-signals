@@ -272,3 +272,6 @@ export const rankScore = (p: number | null | undefined, rel: number | null | und
 export const fmtScore = (v: number | null | undefined) => (v == null ? "—" : Math.min(v, 0.95).toFixed(2).replace(".", ","));
 export const SCORE_HINT = "Балл места = min(оценка; 0,95) × (0,6 + 0,4 × релевантность). Оценка выше 0,95 не различается, поэтому наверху порядок решает релевантность.";
 export const CLASSIFIER_HINT = "Оценка классификатора: насколько кандидат похож на слабые сигналы из эталона организатора. Это не вероятность того, что технология станет трендом.";
+
+// Английские названия, которые модель вернула «слагом» (halide-electrolytes-for-...), показываем с пробелами.
+export const tidyName = (n: string) => (!n.includes(" ") && (n.match(/-/g) || []).length >= 2 ? n.replace(/-/g, " ").replace(/\ball solid state\b/gi, "all-solid-state") : n);

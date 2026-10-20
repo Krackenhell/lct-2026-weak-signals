@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, CandidateBrief, Changes, ContextMatch, EXPORT_FORMATS, exportUrl, fmtScore, ModelCall, rankScore, RunFull, SCORE_HINT } from "../api";
-import { ChecksBadge, ScoreBadge } from "../components/ui";
+import { api, tidyName, CandidateBrief, Changes, ContextMatch, EXPORT_FORMATS, exportUrl, fmtScore, ModelCall, rankScore, RunFull, SCORE_HINT } from "../api";
+import { CheckDots, ScoreBadge, ScoreMeter } from "../components/ui";
 
 const TOP_K = 15;
 
@@ -72,9 +72,12 @@ export default function RunPage() {
 
   return (
     <>
-      <p className="muted small"><Link to="/">← Новый запрос</Link></p>
-      <h1>«{run.query}»</h1>
-      <div className="meta-row small muted">
+      <p className="back"><Link to="/">← Новый запрос</Link></p>
+      <div className="run-head">
+        <div className="eyebrow"><span className="dot">●</span> {run.status === "done" ? "Результат поиска" : run.status === "rejected" ? "Запрос отклонён" : "Идёт поиск"}</div>
+        <h1><span className="q">«</span>{run.query}<span className="q">»</span></h1>
+      </div>
+      <div className="meta-row small muted mono">
         {run.status === "done" && run.created_at && (
           <span>
             Результат от {new Date(run.created_at).toLocaleString("ru-RU")}
@@ -97,7 +100,7 @@ export default function RunPage() {
       </div>
 
       {run.status === "rejected" && (
-        <div className="panel" style={{ marginTop: 16, borderLeft: "4px solid var(--bad)" }}>
+        <div className="notice bad">
           <h3 style={{ marginTop: 0 }}>Запрос не похож на технологическое направление</h3>
           <p>{run.error}</p>
           <p className="muted small">Примеры запросов: «микрофлюидные технологии», «технологии многослойного графена», «edge AI», «газлифт в скважинах».</p>
@@ -106,11 +109,12 @@ export default function RunPage() {
       )}
 
       {active && (
-        <div className="panel" style={{ marginTop: 16 }}>
-          <b>{run.stage || "Ожидание"}</b>
+        <div className="progress-panel">
+          <div className="eyebrow">Этап · {run.progress}%</div>
+          <div className="progress-stage">{run.stage || "Ожидание"}</div>
           <div className="progress"><div style={{ width: `${run.progress}%` }} /></div>
           {(s.preliminary as { name: string; name_ru: string; p: number; passport: string }[] | undefined)?.length ? (
-            <div className="small" style={{ marginTop: 8 }}>
+            <div className="small prelim">
               <b>Уже подтверждено (предварительно):</b>{" "}
               {(s.preliminary as { name: string; name_ru: string; passport: string }[]).map((p) => `${p.name_ru || p.name} (${p.passport})`).join(" · ")}
               <div className="muted">Окончательный список — после проверки всех кандидатов: дубли и сама тема запроса будут убраны.</div>
@@ -124,16 +128,16 @@ export default function RunPage() {
           </span>
         </div>
       )}
-      {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}
-      {run.status === "done" && run.error && <div className="error" style={{ marginTop: 16 }}>{run.error}</div>}
+      {run.status === "failed" && <div className="error" style={{ marginTop: 18 }}>Ошибка обработки: {run.error}</div>}
+      {run.status === "done" && run.error && <div className="notice bad">{run.error}</div>}
       {run.status === "done" && s.budget && (
-        <div className="error" style={{ marginTop: 16 }}>
+        <div className="notice">
           Проверено {(s.budget as { checked: number; total: number }).checked} из {(s.budget as { checked: number; total: number }).total} кандидатов —
           сработал лимит времени обработки; непроверенные кандидаты в выдачу не попали.
         </div>
       )}
       {run.status === "done" && s.degraded && (
-        <div className="error" style={{ marginTop: 16 }}>
+        <div className="notice">
           Статистика публикаций OpenAlex была недоступна для части кандидатов: признаки публикаций заменены средними, и эти числа в карточках
           не показываются. Выдачу стоит пересчитать позже.
         </div>
@@ -152,7 +156,7 @@ export default function RunPage() {
       )}
 
       {run.status === "done" && changes && (
-        <div className="panel small">
+        <div className="notice" style={{ borderLeftColor: "var(--deep)", background: "var(--deep-soft)" }}>
           С прошлого анализа <Link to={`/runs/${changes.prev_run_id}`}>от {changes.prev_date ? new Date(changes.prev_date).toLocaleDateString("ru-RU") : `#${changes.prev_run_id}`}</Link>:
           сохранилось {changes.kept}, новых {changes.new.length}, выпало {changes.dropped.length}.
           {changes.new.length > 0 && <span> Новые: {changes.new.join(", ")}.</span>}
@@ -162,9 +166,9 @@ export default function RunPage() {
       {run.status === "done" && (
         <>
           <div className="tabs">
-            <button className={`tab ${tab === "signals" ? "active" : ""}`} onClick={() => setTab("signals")}>Слабые сигналы ({run.signals.length})</button>
-            <button className={`tab ${tab === "watch" ? "active" : ""}`} onClick={() => setTab("watch")}>Наблюдать ({watch.length})</button>
-            <button className={`tab ${tab === "excluded" ? "active" : ""}`} onClick={() => setTab("excluded")}>Не вошли в топ ({run.excluded.length})</button>
+            <button className={`tab ${tab === "signals" ? "active" : ""}`} onClick={() => setTab("signals")}>Слабые сигналы<span className="count">{run.signals.length}</span></button>
+            <button className={`tab ${tab === "watch" ? "active" : ""}`} onClick={() => setTab("watch")}>Наблюдать<span className="count">{watch.length}</span></button>
+            <button className={`tab ${tab === "excluded" ? "active" : ""}`} onClick={() => setTab("excluded")}>Не вошли в топ<span className="count">{run.excluded.length}</span></button>
             <button className={`tab ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>Журнал моделей</button>
           </div>
           {tab === "signals" && run.signals.length === 0 && watch.length > 0 && (
@@ -195,8 +199,8 @@ export default function RunPage() {
           {tab === "excluded" && <ExcludedTable items={run.excluded} />}
           {tab === "log" && <LogTable items={log} />}
 
-          <div className="meta-row small" style={{ marginTop: 16 }}>
-            <span className="muted">Скачать отчёт:</span>
+          <div className="meta-row small" style={{ marginTop: 22 }}>
+            <span className="eyebrow">Скачать отчёт</span>
             {EXPORT_FORMATS.map(([f, label]) => (
               <a key={f} className="chip" href={exportUrl(run.id, f)} download>{label}</a>
             ))}
@@ -205,7 +209,7 @@ export default function RunPage() {
           {run.signals.length + watch.length > 0 && <CompanyContext runId={run.id} />}
 
           {run.plan?.subqueries && (
-            <details className="panel small" style={{ marginTop: 12 }}>
+            <details className="disclose small">
               <summary><b>Как искали</b> <span className="muted">— поисковые фразы и растущие поднаправления</span></summary>
               {emerging.length > 0 && (
                 <>
@@ -264,7 +268,7 @@ function CompanyContext({ runId }: { runId: number }) {
   }
 
   return (
-    <details className="panel small" style={{ marginTop: 12 }}>
+    <details className="disclose small">
       <summary><b>Под вашу компанию</b> <span className="muted">— какие сигналы связаны с вашим документом (стратегия, ТЗ, план НИОКР)</span></summary>
       <p className="muted">Файл .docx, .txt, .md, .xlsx или .pdf до 5 МБ. Сравнение — по тексту, без языковой модели; документ не сохраняется.</p>
       <input type="file" accept=".docx,.txt,.md,.xlsx,.pdf,.csv" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
@@ -305,7 +309,7 @@ function facts(c: CandidateBrief) {
   if (c.growth_x && c.growth_x >= 1.2) parts.push(`работ за 2 года больше в ${c.growth_x.toLocaleString("ru-RU")} раза`);
   else if (c.works_2y) parts.push(`${c.works_2y} работ за 2 года`);
   if (c.impulse?.level) parts.push(`импульс роста: ${c.impulse.label}`);
-  return parts.join(" · ");
+  return parts;
 }
 
 function SignalList({ items, dim = false }: { items: CandidateBrief[]; dim?: boolean }) {
@@ -313,24 +317,24 @@ function SignalList({ items, dim = false }: { items: CandidateBrief[]; dim?: boo
   return (
     <div className={`signal-list${dim ? " dim" : ""}`}>
       {items.map((c) => (
-        <Link key={c.id} to={`/insight/${c.id}`} className="panel signal-card">
+        <Link key={c.id} to={`/insight/${c.id}`} className={`signal-card${c.status === "signal" && (c.rank ?? 99) <= 3 ? " top" : ""}`}>
           <div className="signal-rank">{c.rank ?? "·"}</div>
           <div className="signal-body">
             <div className="signal-title">
-              <b>{c.name_ru || c.name}</b>
-              {c.name_ru && c.name_ru !== c.name && <span className="en"> {c.name}</span>}
+              <b>{c.name_ru || tidyName(c.name)}</b>
+              {c.name_ru && c.name_ru !== c.name && <span className="en">{tidyName(c.name)}</span>}
             </div>
-            {c.summary && <div className="small">{c.summary}</div>}
-            <div className="muted small">
-              {facts(c)}
+            {c.summary && <div className="signal-summary">{c.summary}</div>}
+            <div className="signal-facts">
+              {facts(c).map((f) => <span key={f}>{f}</span>)}
               {c.missing?.includes("openalex") && <span className="badge med" style={{ marginLeft: 6 }}>публикации не проверены</span>}
               {c.in_training && <span className="badge neutral" style={{ marginLeft: 6 }} title="Совпадает с примером обучающей выборки: высокая оценка ожидаема и не является независимой проверкой">пример из обучения</span>}
             </div>
           </div>
           <div className="signal-badges">
-            {c.status === "signal" && <span className="badge neutral" title={SCORE_HINT}>балл {fmtScore(c.score?.final ?? rankScore(c.probability, c.relevance))}</span>}
-            <ScoreBadge p={c.probability} />
-            <ChecksBadge c={c.checks} />
+            <ScoreMeter p={c.probability} />
+            <CheckDots c={c.checks} />
+            {c.status === "signal" && <span className="dots" title={SCORE_HINT}>балл места {fmtScore(c.score?.final ?? rankScore(c.probability, c.relevance))}</span>}
           </div>
         </Link>
       ))}
@@ -356,7 +360,7 @@ function ExcludedTable({ items }: { items: CandidateBrief[] }) {
           <tbody>
             {items.map((c) => (
               <tr key={c.id}>
-                <td><Link to={`/insight/${c.id}`}><b>{c.name_ru || c.name}</b></Link>{c.name_ru && c.name_ru !== c.name && <div className="en">{c.name}</div>}</td>
+                <td><Link to={`/insight/${c.id}`}><b>{c.name_ru || tidyName(c.name)}</b></Link>{c.name_ru && c.name_ru !== c.name && <div className="en">{tidyName(c.name)}</div>}</td>
                 <td><span className="badge low">{c.exclusion_label}</span><div className="small" style={{ marginTop: 6 }}>{c.exclusion_reason}</div></td>
                 <td><ScoreBadge p={c.probability} /></td>
               </tr>

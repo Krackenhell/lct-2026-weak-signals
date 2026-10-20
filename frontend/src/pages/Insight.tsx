@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, CandidateFull, CLASSIFIER_HINT, Feedback, fmtScore, pct, prob, SCORE_HINT, VERDICTS } from "../api";
+import { api, tidyName, CandidateFull, CLASSIFIER_HINT, Feedback, fmtScore, pct, prob, SCORE_HINT, VERDICTS } from "../api";
 import { ContributionBars, DynamicsBars, LinkBadge, PassportBadge, RobustnessBadge, TrustBadge, WindowBadge } from "../components/ui";
 
 // Порядок разделов справки: сначала что это и почему сигнал, затем пример, польза, применение и риски.
@@ -55,14 +55,15 @@ export default function Insight() {
 
   return (
     <article className="report">
-      <p className="muted small"><Link to={`/runs/${c.run_id}`}>← К результатам «{c.query}»</Link></p>
+      <p className="back"><Link to={`/runs/${c.run_id}`}>← К результатам «{c.query}»</Link></p>
 
-      <div className="panel">
-        <div className="muted small">
-          {c.status === "signal" ? `Слабый сигнал № ${c.rank}` : c.status === "watch" ? "Наблюдать: подтверждений пока мало" : "Не вошёл в топ"}
+      <header className="dossier-head">
+        <div className={`status-tag ${c.status === "signal" ? "" : c.status === "watch" ? "watch" : "out"}`}>
+          <span className="num">{c.status === "signal" ? `№ ${c.rank}` : c.status === "watch" ? "◐" : "—"}</span>
+          {c.status === "signal" ? "Слабый сигнал · досье" : c.status === "watch" ? "Под наблюдением: подтверждений пока мало" : "Не вошёл в топ"}
         </div>
-        <h1>{c.name_ru || c.name}</h1>
-        {c.name_ru && c.name_ru !== c.name && <div className="muted">{c.name}</div>}
+        <h1>{c.name_ru || tidyName(c.name)}</h1>
+        {c.name_ru && c.name_ru !== c.name && <div className="en-name">{tidyName(c.name)}</div>}
         {c.name_check && <div className="muted small">Русское название не показано: {c.name_check}.</div>}
         {c.in_training && (
           <p className="small"><span className="badge neutral">пример из обучающей выборки</span> Оценка классификатора не является независимой проверкой: модель училась на этом примере.</p>
@@ -86,19 +87,21 @@ export default function Insight() {
           </div>
         </div>
 
-        {c.why_early && <p className="small" style={{ marginTop: 10 }}><b>Почему рано.</b> {c.why_early}</p>}
+        <div className="callouts">
+        {c.why_early && <p className="callout"><b>Почему рано.</b> {c.why_early}</p>}
         {c.topic_rel && c.topic_rel.faster >= 1.2 && (
-          <p className="small"><b>Относительно темы:</b> растёт в {c.topic_rel.faster.toLocaleString("ru-RU")} раза быстрее темы запроса
+          <p className="callout"><b>Относительно темы:</b> растёт в {c.topic_rel.faster.toLocaleString("ru-RU")} раза быстрее темы запроса
             ({Math.round(c.topic_rel.share * 1000) / 10}% её работ).</p>
         )}
         {c.impulse && (
-          <p className="small" title="Рост публикаций за 2 года, приглушённый возрастом темы. Проверен на машине времени; на место в выдаче не влияет.">
+          <p className="callout" title="Рост публикаций за 2 года, приглушённый возрастом темы. Проверен на машине времени; на место в выдаче не влияет.">
             <b>Импульс роста:</b> {c.impulse.label}{c.impulse.level ? ` (работ за 4 года: ${c.impulse.works_4y})` : ""}.
           </p>
         )}
+        </div>
 
         {c.status !== "signal" && c.exclusion_reason && (
-          <div className="error" style={{ marginTop: 12 }}><b>{c.exclusion_label}.</b> {c.exclusion_reason}</div>
+          <div className="notice bad"><b>{c.exclusion_label}.</b> {c.exclusion_reason}</div>
         )}
 
         {sections.map(([k, title]) => (
@@ -108,7 +111,7 @@ export default function Insight() {
           </div>
         ))}
         {generated && (
-          <p className="small muted" style={{ marginTop: 12 }}>
+          <p className="small muted gen-note">
             Справку написал {String(d.generated_by).split(":").pop()} только по найденным источникам (ссылки [n] — номера источников ниже).
             {v?.by ? ` Каждое фактическое утверждение проверила модель ${v.by.split(":")[0] === "jev" ? "Jev" : v.by}: подтверждено ${v.supported} из ${v.checked}.` : v?.note ? ` ${v.note}` : ""}
           </p>
@@ -119,7 +122,7 @@ export default function Insight() {
             <ul>{v.removed.map((r, i) => <li key={i}><span className="muted">{r.why}:</span> {r.text}</li>)}</ul>
           </details>
         )}
-      </div>
+      </header>
 
       {c.market?.ladder && (
         <>
@@ -127,7 +130,8 @@ export default function Insight() {
           <div className="panel">
             <div className="ladder">
               {c.market.ladder.steps.map((s) => (
-                <div key={s.key} className={`step ${s.n ? "on" : ""}`} title={s.example ? `${s.example}${s.first_date ? ` (${s.first_date})` : ""}` : "не найдено"}>
+                <div key={s.key} className={`step ${s.n ? "on" : ""} ${s.key === c.market?.ladder.reached ? "top" : ""}`} title={s.example ? `${s.example}${s.first_date ? ` (${s.first_date})` : ""}` : "не найдено"}>
+                  <div className="node" />
                   <div className="step-label">{s.label}</div>
                   <div className="step-val">{s.n ? (s.first_date ? `с ${s.first_date.slice(0, 4)}` : `${s.n}`) : "—"}</div>
                 </div>
@@ -164,7 +168,7 @@ export default function Insight() {
               {c.players.institutions.length > 0 && <p className="small">{c.players.institutions.map((x) => `${x.name} (${x.works})`).join(" · ")}</p>}
               <p className="small"><b>Россия:</b> {c.players.russia.length ? c.players.russia.map((x) => `${x.name} (${x.works})`).join(" · ") : "работ российских организаций не найдено"}</p>
               {c.players.companies.length > 0 && (
-                <p className="small"><b>Компании:</b> {c.players.companies.map((x) => `${x.name} (${x.kind})`).join(" · ")}</p>
+                <p className="small"><b>Компании и заявители патентов:</b> {c.players.companies.map((x) => `${x.name} (${x.kind})`).join(" · ")}</p>
               )}
               <p className="muted small">Число в скобках — научные работы с этим термином (OpenAlex).</p>
             </div>
@@ -203,7 +207,7 @@ export default function Insight() {
 
       <h2>Динамика публикаций</h2>
       <div className="panel">
-        <DynamicsBars points={c.dynamics} />
+        <div className="dyn-wrap"><DynamicsBars points={c.dynamics} /></div>
         <p className="muted small">Научные работы с точной фразой в названии или аннотации (OpenAlex); * — текущий год, данные неполные.</p>
       </div>
 
@@ -211,7 +215,8 @@ export default function Insight() {
       <div className="panel">
         {sources.map((s, i) => (
           <div className="source" key={s.id}>
-            <div className="title">[{i + 1}] <a href={s.url} target="_blank" rel="noreferrer">{s.title}</a></div>
+            <div className="idx">[{i + 1}]</div>
+            <div className="title"><a href={s.url} target="_blank" rel="noreferrer">{s.title}</a></div>
             <div className="meta-row small">
               <span className="badge neutral">{s.source_type_ru}</span>
               <TrustBadge level={s.trust_level} label={s.trust_level_ru} />

@@ -41,6 +41,33 @@ export function ScoreBadge({ p }: { p: number | null }) {
   return <span className={`badge ${cls}`} title={CLASSIFIER_HINT}>Оценка: {label} ({prob(p)})</span>;
 }
 
+// Оценка классификатора шкалой: отметка 0,75 — порог «высокой» оценки из ТЗ.
+export function ScoreMeter({ p }: { p: number | null }) {
+  if (p == null) return null;
+  const v = Math.min(p, 0.95);
+  const label = p >= 0.75 ? "высокая" : p >= 0.5 ? "средняя" : "низкая";
+  return (
+    <div className={`meter ${p >= 0.75 ? "high" : ""}`} title={CLASSIFIER_HINT}>
+      <div className="meter-top"><span>Оценка · {label}</span><b>{prob(p)}</b></div>
+      <div className="meter-track"><i style={{ width: `${v * 100}%` }} /><span className="tick" style={{ left: "75%" }} /></div>
+    </div>
+  );
+}
+
+const NL = String.fromCharCode(10);
+
+// Проверки доказательств квадратами: закрашенный — пройдена, пунктир — не измерена.
+export function CheckDots({ c }: { c?: Checks | null }) {
+  if (!c) return null;
+  const lines = c.items.map((i) => `${i.ok == null ? "·" : i.ok ? "✓" : "✗"} ${i.label}${i.ok == null ? " (не измерено)" : ""}`).join(NL);
+  return (
+    <div className="dots" title={`Проверки доказательств — счёт выполненных проверок, а не вероятность:${NL}${lines}`}>
+      {c.items.map((i, k) => <i key={k} className={i.ok ? "on" : i.ok == null ? "na" : ""} />)}
+      <span>проверки {c.passed}/{c.total}</span>
+    </div>
+  );
+}
+
 export function ChecksBadge({ c }: { c?: Checks | null }) {
   if (!c) return null;
   const cls = c.passed >= 4 ? "high" : c.passed >= 2 ? "med" : "low";

@@ -14,6 +14,46 @@ const FALLBACK_EXAMPLES = [
 
 const STATUS_RU: Record<string, string> = { queued: "в очереди", running: "выполняется", done: "готово", failed: "ошибка", rejected: "отклонён" };
 
+// Экран радара: кольца — зрелость (центр — массовые технологии, край — ранние), отметки — найденные кандидаты.
+function RadarScreen() {
+  const blips: [number, number, boolean][] = [
+    [292, 118, true], [118, 96, false], [86, 254, true], [262, 300, false], [318, 214, false], [170, 330, false], [226, 64, false],
+  ];
+  return (
+    <svg className="radar" viewBox="0 0 400 400" role="img" aria-label="Радар: отметки — найденные ранние технологии">
+      <defs>
+        <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0" />
+          <stop offset="1" stopColor="currentColor" stopOpacity=".16" />
+        </linearGradient>
+      </defs>
+      <circle className="ring outer" cx="200" cy="200" r="190" />
+      <circle className="ring" cx="200" cy="200" r="140" />
+      <circle className="ring" cx="200" cy="200" r="90" />
+      <circle className="ring" cx="200" cy="200" r="40" />
+      <line className="axis" x1="10" y1="200" x2="390" y2="200" />
+      <line className="axis" x1="200" y1="10" x2="200" y2="390" />
+      <g className="sweep">
+        <path className="sweep-fill" d="M200 200 L200 10 A190 190 0 0 1 364.5 105 Z" />
+        <line x1="200" y1="200" x2="364.5" y2="105" stroke="currentColor" strokeWidth="1.5" />
+      </g>
+      {blips.map(([x, y, hot], i) =>
+        hot ? (
+          <g key={i}>
+            <circle className="blip-ring" cx={x} cy={y} r="7" style={{ animationDelay: `${i * 0.7}s` }} />
+            <circle className="blip" cx={x} cy={y} r="5" />
+          </g>
+        ) : (
+          <circle key={i} className="blip-dim" cx={x} cy={y} r="3" />
+        )
+      )}
+      <text x="206" y="196">МАССОВЫЕ</text>
+      <text x="206" y="106">РАСТУЩИЕ</text>
+      <text x="206" y="56">РАННИЕ</text>
+    </svg>
+  );
+}
+
 export default function Home() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,54 +85,60 @@ export default function Home() {
 
   return (
     <>
-      <section className="panel hero">
-        <h1>Поиск зарождающихся технологий</h1>
-        <p className="muted">
-          Введите направление — широкое («финтех») или узкое («микрофлюидные чипы»). Система найдёт до 15 технологий, которые только
-          начинают расти, и для каждой покажет основания оценки и проверяемые источники.
-        </p>
-        <form
-          className="searchbox"
-          onSubmit={(e) => {
-            e.preventDefault();
-            start(q);
-          }}
-        >
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Например: технологии многослойного графена" autoFocus />
-          <button disabled={busy || q.trim().length < 2}>{busy ? "Запуск…" : "Найти сигналы"}</button>
-        </form>
-        <div className="chips">
-          {examples.map((ex) => (
-            <button key={ex} className="chip" type="button" onClick={() => setQ(ex)}>
-              {ex}
-            </button>
-          ))}
+      <section className="hero">
+        <div>
+          <div className="eyebrow"><span className="dot">●</span> Поиск зарождающихся технологий в открытых источниках</div>
+          <h1>Заметить технологию <em>до того,</em> как она станет трендом</h1>
+          <p className="lead">
+            Введите направление — широкое («финтех») или узкое («микрофлюидные чипы»). Радар соберёт научные работы, патенты, гранты,
+            стартапы и новости, отберёт до 15 технологий, которые только начинают расти, и для каждой покажет доказательства и путь
+            от науки до рынка.
+          </p>
+          <form
+            className="searchbox"
+            onSubmit={(e) => {
+              e.preventDefault();
+              start(q);
+            }}
+          >
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Например: технологии многослойного графена" aria-label="Технологическое направление" autoFocus />
+            <button disabled={busy || q.trim().length < 2}>{busy ? "Запуск…" : "Найти сигналы →"}</button>
+          </form>
+          <div className="eyebrow examples-label">Примеры запросов</div>
+          <div className="chips">
+            {examples.map((ex) => (
+              <button key={ex} className="chip" type="button" onClick={() => setQ(ex)}>
+                {ex}
+              </button>
+            ))}
+          </div>
+          <details className="small muted" style={{ marginTop: 14 }}>
+            <summary>Дополнительно</summary>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8 }}>
+              <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} style={{ marginTop: 4 }} />
+              Перепроверить известные сигналы из обучающей выборки (режим мониторинга). Их оценка не независимая: модель училась на этих
+              примерах. По умолчанию — поиск только в открытых источниках.
+            </label>
+          </details>
+          {err && <div className="error" style={{ marginTop: 12 }}>{err}</div>}
         </div>
-        <details className="small muted" style={{ marginTop: 10 }}>
-          <summary>Дополнительно</summary>
-          <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-            <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} />
-            Перепроверить известные сигналы из обучающей выборки (режим мониторинга). Их оценка не независимая: модель училась на этих
-            примерах. По умолчанию — поиск только в открытых источниках
-          </label>
-        </details>
-        {err && <div className="error" style={{ marginTop: 12 }}>{err}</div>}
+        <RadarScreen />
       </section>
 
       {ready.length > 0 && (
         <>
           <h2>Готовые результаты</h2>
-          <p className="muted small">
-            Посчитаны заранее по темам-примерам и открываются за секунду; дата расчёта указана. Новый запрос считается с нуля за 2–3 минуты,
-            кнопка «Пересчитать» на странице результата — тоже.
+          <p className="muted small" style={{ marginTop: -4, marginBottom: 14 }}>
+            Темы-примеры посчитаны заранее и открываются за секунду, дата расчёта указана. Новая тема считается с нуля за 2–5 минут;
+            кнопка «Пересчитать» на странице результата запускает расчёт заново.
           </p>
-          <div className="showcase">
-            {ready.map((r) => (
-              <Link key={r.run_id} to={`/runs/${r.run_id}`} className="panel showcase-card">
-                <b>{r.query}</b>
-                <div className="small muted">
-                  {r.date ? `расчёт ${new Date(r.date).toLocaleDateString("ru-RU")}` : ""} · сигналов: {r.signals}
-                </div>
+          <div className="index-list">
+            {ready.map((r, i) => (
+              <Link key={r.run_id} to={`/runs/${r.run_id}`} className="index-row">
+                <span className="index-n">{String(i + 1).padStart(2, "0")}</span>
+                <span className="index-q">{r.query}</span>
+                <span className="index-meta">{r.date ? `расчёт ${new Date(r.date).toLocaleDateString("ru-RU")}` : ""}</span>
+                <span className="index-count">{r.signals}<small>сигналов</small></span>
               </Link>
             ))}
           </div>
@@ -112,9 +158,9 @@ export default function Home() {
               {runs.slice(0, 10).map((r) => (
                 <tr key={r.id}>
                   <td><Link to={`/runs/${r.id}`}>{r.query}</Link></td>
-                  <td>{STATUS_RU[r.status] ?? r.status}{r.status === "running" ? ` · ${r.progress}%` : ""}</td>
-                  <td>{(r.stats?.signals as number) ?? "—"}</td>
-                  <td className="muted small">{r.created_at ? new Date(r.created_at).toLocaleString("ru-RU") : ""}</td>
+                  <td className="mono small">{STATUS_RU[r.status] ?? r.status}{r.status === "running" ? ` · ${r.progress}%` : ""}</td>
+                  <td className="mono">{(r.stats?.signals as number) ?? "—"}</td>
+                  <td className="muted small mono">{r.created_at ? new Date(r.created_at).toLocaleString("ru-RU") : ""}</td>
                 </tr>
               ))}
             </tbody>

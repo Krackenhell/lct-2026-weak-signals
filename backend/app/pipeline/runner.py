@@ -32,7 +32,7 @@ from app.pipeline import links as links_mod
 from app.pipeline import passport as pp_mod
 from app.pipeline import emergence, routing, subtopics
 from app.pipeline import market as market_mod
-from app.pipeline.decide import decide, query_anchors, template_dossier, wiki_fact
+from app.pipeline.decide import decide, query_anchors, template_dossier, wiki_fact, years_ru
 from app.pipeline.features import answer_features, numeric_features
 from app.pipeline.questions import (
     EVENT, EVIDENCE_MATCH, IS_TECHNOLOGY, PRODUCT_NAME, QUESTIONS, build_state, claim_questions, count_items,
@@ -583,7 +583,7 @@ async def _execute(ctx: RunContext, s) -> None:
             pubs = ["Статистика публикаций недоступна (OpenAlex не ответил) — признаки заменены средними, чисел о публикациях не приводи."] \
                 if "openalex" in a.get("missing", []) else [
                 f"Научных работ с этим термином за всё время: {total}; из них за последние 3 года: {f.get('recent_share', 0):.0%}.",
-                f"Тема заметна в литературе около {f.get('age_years', 0):.0f} лет." if f.get("age_years") else "Устойчивой истории публикаций нет — тема новая.",
+                f"Тема заметна в литературе {years_ru(f.get('age_years', 0))}." if f.get("age_years") else "Устойчивой истории публикаций нет — тема новая.",
             ]
             facts = [
                 *pubs,

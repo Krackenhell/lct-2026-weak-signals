@@ -39,6 +39,15 @@ _TOPIC_TAIL = {"technology", "technologies", "technique", "techniques", "device"
                "systems", "material", "materials", "method", "methods", "research", "innovation", "innovations", "solution", "solutions"}
 
 
+
+def years_ru(age: float) -> str:
+    """«около 1 года», «около 3 лет», «меньше года» — без «около 1 лет» в досье."""
+    n = round(age or 0)
+    if n < 1:
+        return "меньше года"
+    word = "года" if n % 10 == 1 and n % 100 != 11 else "лет"
+    return f"около {n} {word}"
+
 def is_topic_itself(name: str, topic_terms: list[str]) -> bool:
     """Кандидат ничего не добавляет к теме запроса: его ключевые слова (без общих) — часть слов темы.
     «multilayer graphene» и «graphene» при запросе о многослойном графене — сама тема, а «rhombohedral multilayer graphene» —
@@ -296,7 +305,7 @@ def template_dossier(a: dict, d: dict) -> dict:
         if works:
             parts.append(f"в научной литературе найдено около {works} работ, из них {f.get('recent_share', 0):.0%} — за последние 3 года")
         if f.get("age_years"):
-            parts.append(f"тема заметна в публикациях около {f['age_years']:.0f} лет")
+            parts.append(f"тема заметна в публикациях {years_ru(f['age_years'])}")
     parts.append(wiki_fact(f, a.get("missing", [])).lower())
     if f.get("log_gh_repos_12m") and "github" not in a.get("missing", []):
         parts.append(f"за 12 месяцев создано ~{int(math.expm1(f['log_gh_repos_12m']))} репозиториев GitHub")
