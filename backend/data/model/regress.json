@@ -1,6 +1,416 @@
 {
  "sessions": [
   {
+   "started": "2026-10-20T13:00:00+00:00",
+   "sets": "ручные прогоны 20.10 (до фильтров «сама тема»/«стандарт»)",
+   "results": [
+    {
+     "run_id": 32,
+     "query": "твердотельные аккумуляторы",
+     "status": "done",
+     "options": {},
+     "seconds": 345,
+     "n_signals": 7,
+     "confident_75": 7,
+     "new_candidates_in_top": 7,
+     "top": [
+      {
+       "rank": 1,
+       "name": "halide-electrolytes-for-all-solid-state-batteries",
+       "name_ru": "галогенидные электролиты для полностью твердотельных аккумуляторов",
+       "p": 0.975,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 2,
+       "name": "silicon solid-state batteries",
+       "name_ru": "твёрдые литиевые батареи на основе кремния",
+       "p": 0.975,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 3,
+       "name": "void suppression in solid state batteries",
+       "name_ru": "подавление образования пустот в твердотельных батареях",
+       "p": 0.957,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 4,
+       "name": "adaptive polymer electrolyte",
+       "name_ru": "адаптивный полимерный электролит",
+       "p": 0.989,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 5,
+       "name": "superionic-conductors-for-all-solid-state-batteries",
+       "name_ru": "суперионные проводники для полностью твердотельных аккумуляторов",
+       "p": 0.919,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 6,
+       "name": "solid additive engineering",
+       "name_ru": "инженерия добавок в твердые электролиты",
+       "p": 0.956,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 7,
+       "name": "chloride-based-solid-electrolytes",
+       "name_ru": "хлоридный твёрдый электролит",
+       "p": 0.91,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      }
+     ],
+     "passport": {
+      "A": 0,
+      "B": 7
+     },
+     "watch": 6,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "crowded": 4,
+      "low_probability": 5,
+      "not_technology": 1,
+      "irrelevant": 2,
+      "subfield": 4,
+      "duplicate": 2,
+      "low_evidence": 4
+     },
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.989,
+     "shown_as": "> 95%",
+     "signals_with_score": 7,
+     "signals_with_contributions": 7,
+     "names_ru_shown": 12,
+     "names_ru_rejected": 0,
+     "claims_checked": 38,
+     "claims_supported": 21,
+     "claim_calls": 6,
+     "cost_rub": 3.76,
+     "timing_total": 345,
+     "sources_failed": {
+      "cyberleninka.ru": 5,
+      "gtr.ukri.org": 30,
+      "siliconangle.com": 4,
+      "techcrunch.com": 4,
+      "api.gdeltproject.org": 9,
+      "ops.epo.org": 60
+     },
+     "names_sample": "silicon solid-state batteries | halide-electrolytes-for-all-solid-state-batteries | solid additive engineering | adaptive polymer electrolyte | void-evolution-dynamics | void suppression in solid state batteries | li-f-interlayer-protection | superionic-conductors-for-all-solid-state-batteries | hig",
+     "domain": null
+    },
+    {
+     "run_id": 33,
+     "query": "микрофлюидные чипы",
+     "status": "done",
+     "options": {},
+     "seconds": 275,
+     "n_signals": 11,
+     "confident_75": 6,
+     "new_candidates_in_top": 11,
+     "top": [
+      {
+       "rank": 1,
+       "name": "cleanroom-free microfluidic chips",
+       "name_ru": "микрофлюидные чипы без чистых помещений",
+       "p": 0.985,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 2,
+       "name": "self-powered microfluidics",
+       "name_ru": "самопитаемая микрофлюидика",
+       "p": 0.933,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 3,
+       "name": "3d-printed microfluidic chips",
+       "name_ru": "3D-напечатанные микрофлюидические чипы",
+       "p": 0.898,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 4,
+       "name": "nanofluidics biosensing",
+       "name_ru": "биосенсоры на основе нанофлюидики",
+       "p": 0.975,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 5,
+       "name": "microfluidic live-cell imaging",
+       "name_ru": "микрофлюидная визуализация живых клеток",
+       "p": 0.839,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 6,
+       "name": "nanofluidic memristors",
+       "name_ru": "нанофлюидные мемристоры",
+       "p": 0.995,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 7,
+       "name": "elasto-inertial microfluidics",
+       "name_ru": "эласто-инерционная микрофлюидика",
+       "p": 0.659,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 8,
+       "name": "organ on a chip",
+       "name_ru": "орган-на-чипе",
+       "p": 0.62,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closed"
+      },
+      {
+       "rank": 9,
+       "name": "label-free enrichment",
+       "name_ru": "безметочное обогащение клеток",
+       "p": 0.64,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 10,
+       "name": "Fabry-Pérot interferometry",
+       "name_ru": "интерферометрия Фабри-Перо",
+       "p": 0.606,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 11,
+       "name": "3d resin printing",
+       "name_ru": "3D-печать фотополимерными смолами",
+       "p": 0.517,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      }
+     ],
+     "passport": {
+      "A": 3,
+      "B": 8
+     },
+     "watch": 2,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "low_probability": 9,
+      "topic_itself": 3,
+      "broad": 1,
+      "irrelevant": 8,
+      "not_technology": 1
+     },
+     "silver_found": [
+      "organ-on-chip",
+      "3D-printed microfluidics"
+     ],
+     "silver_total": 8,
+     "mature_leaked": [],
+     "max_p": 0.995,
+     "shown_as": "> 95%",
+     "signals_with_score": 11,
+     "signals_with_contributions": 11,
+     "names_ru_shown": 13,
+     "names_ru_rejected": 0,
+     "claims_checked": 65,
+     "claims_supported": 42,
+     "claim_calls": 11,
+     "cost_rub": 4.35,
+     "timing_total": 275,
+     "sources_failed": {
+      "api.gdeltproject.org": 13,
+      "ops.epo.org": 31,
+      "searchplatform.rospatent.gov.ru": 8
+     },
+     "names_sample": "nanofluidic memristors | 3d-printed microfluidic chips | organ on a chip | elasto-inertial microfluidics | label-free enrichment | cleanroom-free microfluidic chips | nanofluidics biosensing | microfluidic live-cell imaging | electrowetting instability | fabry-pérot interferometry | 3d resin printin",
+     "domain": null
+    },
+    {
+     "run_id": 34,
+     "query": "технология многослойного графена",
+     "status": "done",
+     "options": {},
+     "seconds": 275,
+     "n_signals": 10,
+     "confident_75": 10,
+     "new_candidates_in_top": 10,
+     "top": [
+      {
+       "rank": 1,
+       "name": "rhombohedral graphene multilayers",
+       "name_ru": "многослойный ромбоэдрический графен",
+       "p": 0.972,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 2,
+       "name": "tetralayer graphene superconductivity",
+       "name_ru": "сверхпроводимость четырёхслойного графена",
+       "p": 0.994,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 3,
+       "name": "twisted multilayer graphene",
+       "name_ru": "скрученный многослойный графен",
+       "p": 0.98,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 4,
+       "name": "moire flat bands",
+       "name_ru": "плоские зоны муаровых сверхрешёток",
+       "p": 0.973,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 5,
+       "name": "superconductivity in multilayer graphene",
+       "name_ru": "сверхпроводимость многослойного графена",
+       "p": 0.987,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 6,
+       "name": "moire fractional chern insulators",
+       "name_ru": "муаровые дробные черновские изоляторы",
+       "p": 0.992,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 7,
+       "name": "fractional quantum anomalous hall effect",
+       "name_ru": "дробный квантовый аномальный эффект Холла",
+       "p": 0.984,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 8,
+       "name": "generalized wigner crystals",
+       "name_ru": "обобщённые вигнеровские кристаллы",
+       "p": 0.96,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 9,
+       "name": "chiral superconductivity",
+       "name_ru": "хиральная сверхпроводимость",
+       "p": 0.906,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 10,
+       "name": "multilayer graphene synthesis",
+       "name_ru": "синтез многослойного графена",
+       "p": 0.78,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      }
+     ],
+     "passport": {
+      "A": 2,
+      "B": 8
+     },
+     "watch": 2,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "irrelevant": 17,
+      "duplicate": 1,
+      "topic_itself": 1,
+      "not_technology": 3,
+      "broad": 1
+     },
+     "silver_found": [
+      "rhombohedral multilayer graphene",
+      "twisted multilayer graphene"
+     ],
+     "silver_total": 7,
+     "mature_leaked": [],
+     "max_p": 0.994,
+     "shown_as": "> 95%",
+     "signals_with_score": 10,
+     "signals_with_contributions": 10,
+     "names_ru_shown": 12,
+     "names_ru_rejected": 0,
+     "claims_checked": 57,
+     "claims_supported": 38,
+     "claim_calls": 10,
+     "cost_rub": 4.15,
+     "timing_total": 276,
+     "sources_failed": {
+      "api.gdeltproject.org": 13,
+      "ops.epo.org": 4,
+      "searchplatform.rospatent.gov.ru": 8
+     },
+     "names_sample": "chiral superconductivity | moire fractional chern insulators | superconductivity in multilayer graphene | fractional quantum anomalous hall effect | moire superlattice | multilayer graphene synthesis | rhombohedral graphene multilayers | moire flat bands | twisted multilayer graphene | generalized w",
+     "domain": null
+    }
+   ]
+  },
+  {
    "started": "2026-10-20T14:14:21.002702+00:00",
    "sets": "controls",
    "results": [

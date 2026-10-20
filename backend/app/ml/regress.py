@@ -80,8 +80,9 @@ def extra_metrics(run_id: int, query: str, bench: dict) -> dict:
         names = " | ".join(c.name.lower() for c in shown)
         silver = bench.get("silver", {}).get(query, [])
         mature = bench.get("mature_controls", {}).get(query, [])
-        words = lambda t: [w for w in re.findall(r"[a-z0-9]{3,}", t.lower())]  # noqa: E731
-        hit = lambda t: any(all(w in c.name.lower() for w in words(t)) for c in shown)  # noqa: E731
+        # По основам слов (первые 7 букв, без «-s»): «3D-printed microfluidics» = «3d-printed microfluidic chips».
+        stems = lambda t: {w.rstrip("s")[:7] for w in re.findall(r"[a-z0-9]{3,}", t.lower())}  # noqa: E731
+        hit = lambda t: any(stems(t) <= stems(c.name) for c in shown)  # noqa: E731
         claims = [m for m in s.query(ModelCall).filter_by(run_id=run_id, purpose="проверка утверждений досье")]
         ver = [((c.dossier or {}).get("verification") or {}) for c in signals]
         stats = run.stats or {}
@@ -89,7 +90,7 @@ def extra_metrics(run_id: int, query: str, bench: dict) -> dict:
             "status": run.status,
             "silver_found": [t for t in silver if hit(t)] if silver else None,
             "silver_total": len(silver) or None,
-            "mature_leaked": [t for t in mature if any(all(w in c.name.lower() for w in words(t)) for c in signals)] if mature else None,
+            "mature_leaked": [t for t in mature if any(stems(t) <= stems(c.name) for c in signals)] if mature else None,
             "max_p": round(max([c.probability or 0 for c in signals] or [0]), 3),
             "shown_as": "> 95%" if any((c.probability or 0) >= 0.95 for c in signals) else "≤ 95%",
             "signals_with_score": sum(1 for c in signals if ((c.contributions or {}).get("score") or {}).get("final") is not None),
