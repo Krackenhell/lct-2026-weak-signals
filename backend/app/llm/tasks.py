@@ -384,7 +384,12 @@ async def write_dossier(llm: BaseLLM, query: str, name: str, evidence: list[dict
         return None, res
     # Поля досье — только строки: список или вложенный объект от модели сломал бы проверку утверждений.
     flat = lambda v: v if isinstance(v, str) else " ".join(map(str, v)) if isinstance(v, list) else "" if v is None else str(v)  # noqa: E731
-    return {k: flat(v) for k, v in data.items()}, res
+    from app.llm.terms import fix_text_ru
+
+    return {k: fix_text_ru(flat(v)) for k, v in data.items()}, res
+
+
+from app.llm.terms import fix_text_ru  # noqa: E402 — после определений: terms не зависит от tasks
 
 
 async def summarize_sources(llm: BaseLLM, docs: list[dict]) -> tuple[dict[int, str], LLMResult]:
@@ -401,7 +406,7 @@ async def summarize_sources(llm: BaseLLM, docs: list[dict]) -> tuple[dict[int, s
     if isinstance(data, dict):
         for k, v in data.items():
             try:
-                out[int(k)] = str(v)
+                out[int(k)] = fix_text_ru(str(v))
             except (TypeError, ValueError):
                 continue
     return out, res
