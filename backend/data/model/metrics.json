@@ -411,5 +411,59 @@
    "feature": "fresh_preprints",
    "weight": 0.031
   }
- ]
+ ],
+ "cv5_grouped": {
+  "n": 205,
+  "groups": 170,
+  "rows_in_shared_groups": 55,
+  "plain_cv5": {
+   "precision": 0.824,
+   "recall": 0.977,
+   "f1": 0.894,
+   "accuracy": 0.951,
+   "roc_auc": 0.988,
+   "brier": 0.04
+  },
+  "grouped_cv5": {
+   "precision": 0.824,
+   "recall": 0.977,
+   "f1": 0.894,
+   "accuracy": 0.951,
+   "roc_auc": 0.984,
+   "brier": 0.044
+  },
+  "f1_delta": 0.0,
+  "examples": [
+   [
+    "autonomous procurement agent",
+    "blockchain",
+    "blockchain supply chain"
+   ],
+   [
+    "quadruped inspection robot",
+    "industrial robot"
+   ],
+   [
+    "microcontroller NPU",
+    "graphics processing unit",
+    "tensor processing unit"
+   ],
+   [
+    "orbital edge computing",
+    "analog compute-in-memory edge",
+    "analog in-memory computing",
+    "edge computing"
+   ],
+   [
+    "differentially private synthetic data",
+    "differential privacy"
+   ],
+   [
+    "LLM text watermarking",
+    "chain-of-thought monitoring",
+    "large language model"
+   ]
+  ],
+  "method": "StratifiedGroupKFold(5), группы — поисковые фразы с пересечением значимых слов > 50%"
+ }
 }

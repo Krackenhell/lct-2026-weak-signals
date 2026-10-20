@@ -94,8 +94,10 @@ async def refresh(sub_id: int, now: datetime | None = None) -> SubscriptionEvent
         hook, payload = sub.webhook, {"query": sub.query, "run_id": run_id, "summary": ev.summary, **diff}
     if hook and not diff["first"]:
         try:
-            from app.pipeline.links import _guard
+            from app.pipeline.links import _guard, resolves_internal
 
+            if await resolves_internal(hook):
+                raise ValueError("адрес webhook указывает во внутреннюю сеть")
             # Каждый запрос, включая переадресации, проверяется на внутренний адрес (защита от обращений во внутреннюю сеть).
             async with httpx.AsyncClient(timeout=15, event_hooks={"request": [_guard]}) as client:
                 await client.post(hook, json=payload)

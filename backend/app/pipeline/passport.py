@@ -40,11 +40,25 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
     # Домен издания: у новостей из лент — само издание (поле domain), а не адрес ленты.
     dom = lambda it: it.get("domain") or _domain(it.get("url", "")) or it.get("source", "")  # noqa: E731
     domains = sorted({dom(it) for it in confirmed} - {""})
-    science = sum(1 for it in confirmed if it.get("type") in ("science", "preprint"))
-    # Независимые источники: разные сайты; научные работы — каждая отдельно (разные исследовательские группы,
+    # Семейство происхождения: одна работа на arXiv и в журнале, одна новость в пяти перепечатках — одно подтверждение.
+    # Ключ — нормализованное название документа (DOI у новостей нет, а у препринта и статьи он разный).
+    family = lambda it: re.sub(r"[^0-9a-zа-яё]+", " ", (it.get("title") or "").lower()).strip()[:90] or it.get("url", "")  # noqa: E731
+    sci_fams = {family(it) for it in confirmed if it.get("type") in ("science", "preprint")}
+    science = len(sci_fams)
+    # Независимые источники: разные сайты; научные работы — каждое семейство отдельно (разные исследовательские группы,
     # даже если все лежат на arXiv), но не больше трёх, чтобы один препринт-сервер не давал «A» в одиночку.
-    other = {dom(it) for it in confirmed if it.get("type") not in ("science", "preprint")} - {""}
+    seen_fam, other = set(sci_fams), set()
+    for it in confirmed:
+        if it.get("type") in ("science", "preprint"):
+            continue
+        f = family(it)
+        if f in seen_fam:  # перепечатка уже учтённого документа на другом сайте
+            continue
+        seen_fam.add(f)
+        if dom(it):
+            other.add(dom(it))
     independent = len(other) + min(science, 3)
+    reprints = len(confirmed) - len({family(it) for it in confirmed})
     ev_level, ev_ru = event_label((answers.get("event") or {}).get("value"))
     # Подтверждённая новость о раунде или запуске — твёрдое событие, даже если модель оценила событие ниже.
     news_events = [it.get("event") for it in confirmed if it.get("event")]
@@ -71,6 +85,7 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         "confirmed": n,
         "domains": independent,
         "domain_list": domains[:8],
+        "reprints": reprints,
         "science": science,
         "event_level": ev_level,
         "event": ev_ru,

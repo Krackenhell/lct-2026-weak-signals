@@ -31,6 +31,29 @@ def _internal(url: str) -> bool:
     return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified
 
 
+async def resolves_internal(url: str) -> bool:
+    """Имя хоста указывает во внутреннюю сеть (DNS-подмена: hook.example.com → 10.0.0.5)? Проверяем все адреса из DNS.
+    Не удалось разрешить имя — считаем адрес небезопасным."""
+    import asyncio
+    import socket
+
+    if _internal(url):
+        return True
+    host = urlparse(url).hostname or ""
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except OSError:
+        return True
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return True
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+            return True
+    return False
+
+
 class _Internal(Exception):
     pass
 

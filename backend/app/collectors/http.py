@@ -36,7 +36,7 @@ def ssl_context() -> ssl.SSLContext:
 
 # Реестры, недоступные из сети сервера (Роспатент висит 50 с, SEC отвечает 403 на часть адресов): после сбоя хост
 # пропускается во всех запросах на DOWN_COOLDOWN секунд, чтобы каждый прогон не ждал его заново.
-DOWN_HOSTS = {"searchplatform.rospatent.gov.ru", "efts.sec.gov", "zakupki.gov.ru", "api.lens.org"}
+DOWN_HOSTS = {"searchplatform.rospatent.gov.ru", "efts.sec.gov", "zakupki.gov.ru", "api.lens.org", "cyberleninka.ru"}
 DOWN_COOLDOWN = 1800.0
 _DOWN: dict[str, float] = {}
 
@@ -126,7 +126,7 @@ def _count_openalex() -> None:
 
 # Таймаут запроса по хостам (секунды), если он короче общего HTTP_TIMEOUT: реестры, которые из части сетей не отвечают
 # вовсе (Роспатент держит соединение 50 с), должны отвалиться раньше лимита рыночного слоя и попасть в DOWN_HOSTS.
-HOST_TIMEOUT = {"searchplatform.rospatent.gov.ru": 10.0, "efts.sec.gov": 10.0, "zakupki.gov.ru": 12.0, "api.lens.org": 15.0}
+HOST_TIMEOUT = {"cyberleninka.ru": 12.0, "searchplatform.rospatent.gov.ru": 10.0, "efts.sec.gov": 10.0, "zakupki.gov.ru": 12.0, "api.lens.org": 15.0}
 
 BREAKER_COOLDOWN = 60.0
 # Источники, которые при перегрузке почти никогда не восстанавливаются за секунды: повторять бессмысленно,

@@ -270,3 +270,21 @@ def test_link_check_skips_internal_addresses():
     res = asyncio.run(links.check_all(urls, transport=httpx.MockTransport(handler)))
     assert res["https://arxiv.org/abs/1"] == "ok" and seen == ["https://arxiv.org/abs/1"]
     assert all(res[u] == "restricted" for u in urls[:-1])
+
+
+def test_webhook_dns_rebinding_is_blocked():
+    """Имя, которое разрешается во внутренний адрес, не проходит (раньше проверялась только запись адреса в URL)."""
+    import asyncio
+
+    from app.pipeline.links import resolves_internal
+
+    assert asyncio.run(resolves_internal("https://localhost/hook"))
+    assert asyncio.run(resolves_internal("https://127.0.0.1.nip.invalid/hook"))  # не разрешается — небезопасно
+
+
+def test_grouped_cv_groups_synonyms():
+    from app.ml.grouped_cv import synonym_groups
+
+    rows = [{"phrase": "solid-state battery"}, {"phrase": "all solid state batteries"}, {"phrase": "vector database"}]
+    g = synonym_groups(rows)
+    assert g[0] == g[1] != g[2]

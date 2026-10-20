@@ -63,7 +63,7 @@ def test_no_llm_uses_rules():
 def _items(n, domains=None, types=None):
     domains = domains or [f"site{i}.org" for i in range(n)]
     types = types or ["preprint"] * n
-    return [{"type": types[i], "source": "s", "url": f"https://{domains[i]}/a{i}", "title": "t", "snippet": ""} for i in range(n)]
+    return [{"type": types[i], "source": "s", "url": f"https://{domains[i]}/a{i}", "title": f"work number {i}", "snippet": ""} for i in range(n)]
 
 
 def _ans(confirmed: list[bool], event=0.0):
@@ -253,3 +253,16 @@ def test_metrics_are_honest():
 
 def test_watchlist_off_by_default():
     assert get_settings().use_watchlist is False
+
+
+def test_passport_reprints_and_preprint_twins_are_one_family():
+    """Одна новость на пяти сайтах и одна работа на arXiv и в журнале — по одному подтверждению (замечание из разбора конкурентов)."""
+    items = [{"type": "news", "source": "s", "url": f"https://site{i}.com/x", "title": "Acme raises $10M for solid-state batteries", "snippet": ""}
+             for i in range(5)]
+    p = pp.passport(items, _ans([True] * 5), 5)
+    assert p["domains"] == 1 and p["reprints"] == 4 and p["level"] == "C"
+    twins = [{"type": "preprint", "source": "arXiv", "url": "https://arxiv.org/abs/1", "title": "Halide electrolytes for ASSB", "snippet": ""},
+             {"type": "science", "source": "Nature", "url": "https://doi.org/10.1/x", "title": "Halide Electrolytes for ASSB.", "snippet": ""},
+             {"type": "science", "source": "JACS", "url": "https://doi.org/10.1/y", "title": "Another group, another result", "snippet": ""}]
+    p = pp.passport(twins, _ans([True] * 3), 3)
+    assert p["science"] == 2 and p["domains"] == 2
