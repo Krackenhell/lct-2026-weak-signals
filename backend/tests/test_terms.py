@@ -1,7 +1,7 @@
 """Русские названия технологий: глоссарий, склейка дефисами, кальки (примеры — реальные ответы GigaChat из базы)."""
 import pytest
 
-from app.llm.terms import normalize_name_ru
+from app.llm.terms import check_name_ru, normalize_name_ru
 
 
 @pytest.mark.parametrize("en, ru, expected", [
@@ -49,3 +49,9 @@ def test_normalize_name_ru(en, ru, expected):
 ])
 def test_conditional_calques(en, ru, expected):
     assert normalize_name_ru(en, ru) == expected
+
+
+def test_all_solid_state_is_not_for_all():
+    """all-solid-state — «полностью твердотельный», а не «для всех твердотельных» (прогон 20.10)."""
+    ru, why = check_name_ru("halide electrolytes for all-solid-state batteries", "галогенидные электролиты для всех твёрдотельных аккумуляторов")
+    assert ru == "галогенидные электролиты для полностью твердотельных аккумуляторов" and why is None
