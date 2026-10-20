@@ -42,3 +42,6 @@ backend/data/openalex_usage.json
 backend/data/plan_cache/
 backend/data/brave_usage.json
 backend/data/bench/blind_*
+
+# Публичные сертификаты УЦ Минцифры (не секрет)
+!backend/app/certs/*.pem
