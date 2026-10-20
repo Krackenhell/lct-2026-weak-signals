@@ -169,6 +169,9 @@ async def execute(run_id: int) -> None:
 
 async def _execute(ctx: RunContext, s) -> None:
     run_id = ctx.run_id
+    # Глубина поиска, выбранная пользователем: число кандидатов; бюджет времени и запросов Brave растут пропорционально.
+    n_cand = int((ctx.run.options or {}).get("candidates") or s.max_candidates)
+    depth = max(1.0, n_cand / max(s.max_candidates, 1))
     http = None
     try:
         http = HttpClient()
@@ -261,7 +264,7 @@ async def _execute(ctx: RunContext, s) -> None:
             ctx.stage(f"Сбор документов по подтемам: {done}/{total} запросов", 5 + int(20 * done / max(total, 1)))
 
         # Бюджет веб-поиска Brave на прогон: события по теме в корпусе и рыночный слой сигналов (2000 запросов в месяц).
-        brave_budget = brave.Budget()
+        brave_budget = brave.Budget(limit=round(s.brave_max_calls_per_run * depth))
         llm_only = bool((ctx.run.options or {}).get("seed_candidates"))
         if llm_only:
             # П10: режим сравнения «только LLM». GigaChat одним вызовом называет 15 слабых сигналов, корпус не собирается;
@@ -293,7 +296,7 @@ async def _execute(ctx: RunContext, s) -> None:
         )
         # Отраслевым событиям (раунд, запуск) — до 8 мест: у них мало документов, и по числу ссылок
         # они проигрывают научным темам, хотя именно такие события лежат в основе большинства сигналов датасета.
-        slots = max(s.max_candidates - len(watched), 0)
+        slots = max(n_cand - len(watched), 0)
         # Растущим поднаправлениям из литературы — до 6 мест: их рост уже измерен, а документов в корпусе может быть мало.
         growing = [c for c in fresh if "literature-growth" in c["methods"]][: min(6, slots)]
         taken = {id(c) for c in growing}
@@ -409,7 +412,7 @@ async def _execute(ctx: RunContext, s) -> None:
         # П15: бюджет времени на проверку кандидатов. Зависшие источники не держат запрос дольше RUN_BUDGET_SECONDS:
         # непроверенные кандидаты отбрасываются, а на странице прогона видно «проверено N из M — лимит времени».
         tasks_c = [asyncio.ensure_future(guarded(c)) for c in pool]
-        budget = s.run_budget_seconds or None
+        budget = round(s.run_budget_seconds * depth) if s.run_budget_seconds else None
         done_set, pending = await asyncio.wait(tasks_c, timeout=budget) if tasks_c else (set(), set())
         for t_ in pending:
             t_.cancel()

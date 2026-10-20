@@ -44,6 +44,7 @@ class SearchIn(BaseModel):
     query: str = Field(min_length=2, max_length=300)
     use_watchlist: bool | None = None  # None — по настройке сервера
     fresh: bool = False  # True — пересчитать, даже если свежий результат по этой теме уже есть
+    candidates: int | None = Field(None, ge=15, le=60)  # глубина поиска: сколько кандидатов проверять (None — по настройке сервера)
 
 
 def _run_out(r: Run) -> dict:
@@ -194,7 +195,10 @@ def _reusable_run(db: Session, query: str, use_watchlist: bool) -> Run | None:
 @router.post("/search")
 async def start_search(body: SearchIn, db: Session = Depends(get_session), _: None = Depends(require_token)) -> dict:
     options ={} if body.use_watchlist is None else {"use_watchlist": body.use_watchlist}
-    if not body.fresh:
+    custom_depth = body.candidates is not None and body.candidates != get_settings().max_candidates
+    if custom_depth:
+        options["candidates"] = body.candidates
+    if not body.fresh and not custom_depth:  # готовый результат стандартной глубины не подменяет выбранную
         watch = get_settings().use_watchlist if body.use_watchlist is None else body.use_watchlist
         prev = _reusable_run(db, body.query, watch)
         if prev:

@@ -147,6 +147,10 @@ def test_repeat_query_opens_recent_result_instantly(monkeypatch):
     with TestClient(main_mod.app) as c:
         r = c.post("/api/search", json={"query": "квантовый сенсор"}).json()  # другая словоформа — та же тема
         assert r["id"] == done_id and r["reused"] is True and not started
+        deep = c.post("/api/search", json={"query": "квантовый сенсор", "candidates": 60}).json()  # другая глубина — свой расчёт
+        assert deep["id"] != done_id and deep["options"]["candidates"] == 60 and started == [deep["id"]]
+        assert c.post("/api/search", json={"query": "квантовый сенсор", "candidates": 100}).status_code == 422
+        started.clear()
         r = c.post("/api/search", json={"query": "квантовые сенсоры", "fresh": True}).json()
         assert r["id"] != done_id and "reused" not in r and started == [r["id"]]
         assert c.post("/api/search", json={"query": "микрофлюидика"}).json().get("reused") is None  # старше REUSE_HOURS — пересчёт

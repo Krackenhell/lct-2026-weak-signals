@@ -13,12 +13,17 @@ const FALLBACK_EXAMPLES = [
   "перспективные решения в финтехе",
 ];
 
+// Глубина поиска: число проверяемых кандидатов. Время — по замерам: ~2 мин на сбор и ~7 с на кандидата.
+const DEFAULT_DEPTH = 35;
+const depthMinutes = (n: number) => Math.round(2 + (n * 7) / 60);
+
 const STATUS_RU: Record<string, string> = { queued: "в очереди", running: "выполняется", done: "готово", failed: "ошибка", rejected: "отклонён" };
 
 export default function Home() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [watch, setWatch] = useState(false);
+  const [depth, setDepth] = useState(DEFAULT_DEPTH);
   const [err, setErr] = useState("");
   const [runs, setRuns] = useState<Run[]>([]);
   const [ready, setReady] = useState<Showcase[]>([]);
@@ -36,7 +41,7 @@ export default function Home() {
     setBusy(true);
     setErr("");
     try {
-      const run = await api.search(query.trim(), watch);
+      const run = await api.search(query.trim(), watch, false, depth === DEFAULT_DEPTH ? undefined : depth);
       nav(`/runs/${run.id}`);
     } catch (e) {
       setErr(String(e));
@@ -55,6 +60,11 @@ export default function Home() {
             <label className="search-input-wrap"><span aria-hidden="true">⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Какое направление исследуем?" aria-label="Технологическое направление" maxLength={500} required minLength={2} /></label>
             <button disabled={busy || q.trim().length<2}>{busy ? "Запускаем…" : "Найти сигналы"}<span aria-hidden="true">↗</span></button>
           </form>
+          <label className="depth-control">
+            <span>Глубина поиска</span>
+            <input type="range" min={15} max={60} step={5} value={depth} onChange={(e) => setDepth(Number(e.target.value))} aria-label="Глубина поиска" />
+            <b>{depth} кандидатов · ~{depthMinutes(depth)} мин</b>
+          </label>
           <div className="query-suggestions"><span>Например</span>{examples.slice(0,3).map(ex=><button key={ex} onClick={()=>setQ(ex)}>{ex}<span>↗</span></button>)}</div>
           <details className="search-options"><summary>Настроить поиск</summary><label><input type="checkbox" checked={watch} onChange={e=>setWatch(e.target.checked)} /> Перепроверить известные сигналы из обучающей выборки. Их оценка не независимая: модель училась на этих примерах.</label></details>
           {err && <div className="error" role="alert">{err}</div>}

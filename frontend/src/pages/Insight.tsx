@@ -112,8 +112,8 @@ export default function Insight() {
         ))}
         {generated && (
           <p className="small muted gen-note">
-            Справку написал {String(d.generated_by).split(":").pop()} только по найденным источникам (ссылки [n] — номера источников ниже).
-            {v?.by ? ` Каждое фактическое утверждение проверила модель ${v.by.split(":")[0] === "jev" ? "Jev" : v.by}: подтверждено ${v.supported} из ${v.checked}.` : v?.note ? ` ${v.note}` : ""}
+            {String(d.generated_by).split(":").pop()} по источникам ниже
+            {v?.by ? ` · проверено ${v.by.split(":")[0] === "jev" ? "Jev" : v.by}: ${v.supported}/${v.checked}` : ""}
           </p>
         )}
         {v && v.removed.length > 0 && (
@@ -138,10 +138,6 @@ export default function Insight() {
               ))}
             </div>
             <p className="small">{c.market.ladder.text ?? "Подтверждённых ступеней пока нет."}</p>
-            <p className="muted small">
-              Каждая ступень заполняется документом, который модель Jev подтвердила как описывающий именно эту технологию: из научных баз,
-              грантов, каталога стартапов и открытого веб-поиска (патенты, пилоты, контракты, раунды, российские госзакупки).
-            </p>
           </div>
         </>
       )}
@@ -160,7 +156,6 @@ export default function Insight() {
             ) : (
               <p className="small muted">Сообщений о провале, отказе или массовом внедрении не найдено{c.market?.web_checked ? "" : " (веб-поиск для этой карточки не выполнялся)"}.</p>
             )}
-            <p className="small muted">Признаки модели «против» — красные полосы в разделе «Почему такая оценка».</p>
           </div>
           {c.players && (
             <div className="panel">
@@ -170,7 +165,6 @@ export default function Insight() {
               {c.players.companies.length > 0 && (
                 <p className="small"><b>Компании и заявители патентов:</b> {c.players.companies.map((x) => `${x.name} (${x.kind})`).join(" · ")}</p>
               )}
-              <p className="muted small">Число в скобках — научные работы с этим термином (OpenAlex).</p>
             </div>
           )}
         </div>
@@ -208,7 +202,7 @@ export default function Insight() {
       <h2>Динамика публикаций</h2>
       <div className="panel">
         <div className="dyn-wrap"><DynamicsBars points={c.dynamics} /></div>
-        <p className="muted small">Научные работы с точной фразой в названии или аннотации (OpenAlex); * — текущий год, данные неполные.</p>
+        <p className="muted small">Работ в год (OpenAlex), * — неполный год</p>
       </div>
 
       <h2>Источники ({c.sources.length})</h2>
@@ -261,10 +255,6 @@ export default function Insight() {
                 )}
               </tbody>
             </table>
-            <p className="muted small">
-              A — не меньше 5 подтверждённых документов из 3+ источников и научная работа или пилот; B — не меньше 3 из 2+ источников;
-              C — меньше: кандидат остаётся под наблюдением.
-            </p>
           </div>
         </details>
       )}

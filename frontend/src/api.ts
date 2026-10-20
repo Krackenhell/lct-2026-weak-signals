@@ -245,8 +245,8 @@ export const EXPORT_FORMATS: [string, string][] = [
 export const exportUrl = (runId: number | string, format: string) => `/api/runs/${runId}/export?format=${format}`;
 
 export const api = {
-  search: (query: string, use_watchlist: boolean, fresh = false) =>
-    req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query, use_watchlist, fresh }) }),
+  search: (query: string, use_watchlist: boolean, fresh = false, candidates?: number) =>
+    req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query, use_watchlist, fresh, candidates }) }),
   runs: () => req<Run[]>("/api/runs"),
   run: (id: number | string) => req<RunFull>(`/api/runs/${id}`),
   log: (id: number | string) => req<ModelCall[]>(`/api/runs/${id}/log`),

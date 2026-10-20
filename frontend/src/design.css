@@ -220,3 +220,8 @@ input[type=checkbox] { accent-color:var(--signal); }
 
 /* Квадратик перед h2 из прежней стилевой системы в новом дизайне не нужен (наезжал на надпись над заголовком) */
 h2::before { content: none; display: none; }
+
+/* Глубина поиска: скорость или полнота */
+.depth-control { display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:590px; margin-top:12px; font-size:12px; color:var(--ink-2); }
+.depth-control input[type="range"] { flex:1; min-width:140px; accent-color:var(--signal); cursor:pointer; }
+.depth-control b { font-weight:600; color:var(--ink); white-space:nowrap; }
