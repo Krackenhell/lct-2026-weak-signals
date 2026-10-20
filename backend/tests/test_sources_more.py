@@ -242,3 +242,22 @@ def test_russian_ca_bundle_loaded():
     ctx = http_mod.ssl_context()
     assert any("Russian Trusted Root CA" in str(c.get("subject")) for c in ctx.get_ca_certs())
     assert get_settings().gigachat_verify_ssl is True
+
+
+def test_slug_names_from_llm_are_restored():
+    from app.pipeline.discovery import clean_name
+
+    assert clean_name("halide-electrolytes-for-all-solid-state-batteries") == "halide electrolytes for all-solid-state batteries"
+    assert clean_name("solid-polymer-electrolytes") == "solid polymer electrolytes"
+    assert clean_name("sulphide-based solid-state batteries") == "sulphide-based solid-state batteries"  # обычное название не трогаем
+    assert clean_name("li-ion") == "li-ion"
+
+
+def test_not_found_is_an_answer_not_a_failure():
+    """EPO отвечает 404, когда патентов нет: это ответ источника, а не сбой (раньше 60 из 77 «сбоев» на прогоне)."""
+    c = client(lambda req: httpx.Response(404))
+    try:
+        run(c.get("https://ops.epo.org/3.2/rest-services/published-data/search", cache=False))
+    except Exception:  # noqa: BLE001 — NotFound ожидаем
+        pass
+    assert c.stats["ops.epo.org"] == {"ok": 1, "cached": 0, "failed": 0}

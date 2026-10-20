@@ -124,6 +124,10 @@ def _count_openalex() -> None:
             pass
 
 
+# Таймаут запроса по хостам (секунды), если он короче общего HTTP_TIMEOUT: реестры, которые из части сетей не отвечают
+# вовсе (Роспатент держит соединение 50 с), должны отвалиться раньше лимита рыночного слоя и попасть в DOWN_HOSTS.
+HOST_TIMEOUT = {"searchplatform.rospatent.gov.ru": 10.0, "efts.sec.gov": 10.0, "zakupki.gov.ru": 12.0, "api.lens.org": 15.0}
+
 BREAKER_COOLDOWN = 60.0
 # Источники, которые при перегрузке почти никогда не восстанавливаются за секунды: повторять бессмысленно,
 # каждый повтор — это 5–15 секунд ожидания в запросе аналитика.
@@ -275,10 +279,11 @@ class HttpClient:
                 _count_openalex()
             backoff = 1.5 * (attempt + 1) + self._interval.get(host, 0)
             try:
+                tmo = {"timeout": HOST_TIMEOUT[host]} if host in HOST_TIMEOUT and not self.patient else {}
                 if json_body is None:
-                    resp = await self._client.get(url, params=params, headers=headers)
+                    resp = await self._client.get(url, params=params, headers=headers, **tmo)
                 else:
-                    resp = await self._client.post(url, params=params, headers=headers, json=json_body)
+                    resp = await self._client.post(url, params=params, headers=headers, json=json_body, **tmo)
                 if resp.status_code == 403 and resp.headers.get("x-ratelimit-remaining") == "0":
                     # Лимит GitHub: ждём сброса окна (не более минуты) и пробуем снова.
                     reset = float(resp.headers.get("x-ratelimit-reset", time.time() + 30))
@@ -301,8 +306,9 @@ class HttpClient:
                 if resp.status_code == 403 and host in DOWN_HOSTS:
                     _DOWN[host] = time.monotonic() + DOWN_COOLDOWN  # доступ закрыт для адреса сервера — не повторяем
                 if resp.status_code >= 400:
-                    # Ошибка запроса (например, 404): источник исправен, повторять бессмысленно.
-                    self._bump(host, "failed")
+                    # Ошибка запроса (например, 404): источник исправен, повторять бессмысленно. 404 у EPO и ряда API —
+                    # обычный ответ «ничего не найдено», в статистике это не сбой.
+                    self._bump(host, "ok" if resp.status_code == 404 else "failed")
                     self._fails[host] = 0
                     raise NotFound(f"HTTP {resp.status_code}")
                 if as_json:

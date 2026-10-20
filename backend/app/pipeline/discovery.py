@@ -72,6 +72,10 @@ HEAD = re.compile(r"^(characteri[sz]ation|development|analysis|design|evaluation
 
 def clean_name(name: str) -> str:
     n = HEAD.sub("", re.sub(r"\s+", " ", name.replace("_", " ")).strip())
+    if " " not in n and n.count("-") >= 2:
+        # GigaChat иногда отдаёт название «слагом» (halide-electrolytes-for-all-solid-state-batteries): возвращаем пробелы,
+        # устойчивые составные термины оставляем через дефис.
+        n = re.sub(r"\ball solid state\b", "all-solid-state", n.replace("-", " "), flags=re.I)
     words = n.split()
     while len(words) > 1 and words[-1].lower() in TAIL_WORDS:
         words.pop()
