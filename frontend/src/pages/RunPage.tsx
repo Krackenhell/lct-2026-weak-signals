@@ -123,7 +123,7 @@ export default function RunPage() {
           <span className="muted small">
             {run.status === "queued" && run.queue
               ? `В очереди: перед вами ${run.queue.ahead} ${run.queue.ahead === 1 ? "запрос" : "запроса"}, ожидание около ${Math.max(1, Math.round(run.queue.eta_seconds / 60))} мин`
-              : `${run.progress}% · новый анализ занимает 2–4 минуты`}
+              : `${run.progress}% · новый анализ занимает 4–6 минут, предварительные находки появляются по ходу`}
             {" · страница обновляется сама"}
           </span>
         </div>
