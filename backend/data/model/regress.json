@@ -1675,6 +1675,77 @@
     }
    ],
    "finished": "2026-10-20T15:33:05.419812+00:00"
+  },
+  {
+   "started": "2026-10-20T18:00:51.813944+00:00",
+   "sets": "regression",
+   "results": [
+    {
+     "run_id": 51,
+     "query": "перспективные решения в финтехе",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 197,
+     "n_signals": 1,
+     "confident_75": 1,
+     "new_candidates_in_top": 1,
+     "top": [
+      {
+       "rank": 1,
+       "name": "artificial intelligence agents",
+       "name_ru": "ИИ-агенты",
+       "p": 0.816,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closed"
+      }
+     ],
+     "passport": {
+      "A": 1,
+      "B": 0
+     },
+     "watch": 1,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "standard": 1,
+      "mature": 6,
+      "not_technology": 7,
+      "irrelevant": 15,
+      "low_probability": 2,
+      "product": 2
+     },
+     "dataset_signals_in_domain": 17,
+     "dataset_hits_in_top15": 0,
+     "share_of_top15_from_dataset": 0.0,
+     "recall_of_domain": 0.0,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.816,
+     "shown_as": "≤ 95%",
+     "signals_with_score": 1,
+     "signals_with_contributions": 1,
+     "names_ru_shown": 2,
+     "names_ru_rejected": 0,
+     "claims_checked": 7,
+     "claims_supported": 6,
+     "claim_calls": 1,
+     "cost_rub": 2.16,
+     "timing_total": 197,
+     "sources_failed": {
+      "api.gdeltproject.org": 3,
+      "searchplatform.rospatent.gov.ru": 1
+     },
+     "names_sample": "artificial intelligence agents | client-side validation blockchain",
+     "domain": "Финтех",
+     "openalex_left_before": 2456,
+     "screenshot": null
+    }
+   ]
   }
  ]
 }

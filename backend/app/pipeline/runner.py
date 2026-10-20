@@ -223,7 +223,9 @@ async def _execute(ctx: RunContext, s) -> None:
         ctx.stage("Поиск растущих поднаправлений в научной литературе", 4)
         try:
             core = await asyncio.wait_for(subtopics.resolve_core(http, plan.get("topic_en", ""), query), 45)
-            found = await asyncio.wait_for(subtopics.emerging(http, core), 60) if core else []
+            # Растущие поднаправления — для узких тем («многослойный графен» → «ромбоэдрический графен»). На широкой теме («FinTech»)
+            # это общие разделы области («behavioral finance», «algorithmic trading»), они вытесняют кандидатов (замер 20.10).
+            found = await asyncio.wait_for(subtopics.emerging(http, core), 60) if core and plan.get("broad") is not True else []
         except Exception as exc:  # без этого шага запрос всё равно выполняется по плану LLM
             log.info("run %s: emerging subtopics failed: %s", run_id, exc)
             core, found = "", []

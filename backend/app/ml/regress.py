@@ -27,7 +27,6 @@ from pathlib import Path
 
 import httpx
 
-from app.collectors.http import openalex_key
 from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.ml import eval_live
@@ -47,12 +46,18 @@ BASELINES = {
 
 
 def openalex_credits() -> tuple[int | None, int | None]:
-    """Остаток кредитов ключа OpenAlex и секунды до сброса (по заголовкам ответа)."""
-    try:
-        r = httpx.get("https://api.openalex.org/works", params={"per-page": 1, "select": "id", "api_key": openalex_key()}, timeout=20)
-        return int(r.headers.get("x-ratelimit-remaining", -1)), int(r.headers.get("x-ratelimit-reset", 0))
-    except (httpx.HTTPError, ValueError):
-        return None, None
+    """Остаток кредитов OpenAlex по всем ключам (основной + запасные) и секунды до сброса (по заголовкам ответа)."""
+    from app.collectors.http import openalex_keys
+
+    total, reset = 0, None
+    for key in openalex_keys() or [""]:
+        try:
+            r = httpx.get("https://api.openalex.org/works", params={"per-page": 1, "select": "id", "api_key": key}, timeout=20)
+            total += max(int(r.headers.get("x-ratelimit-remaining", 0)), 0)
+            reset = int(r.headers.get("x-ratelimit-reset", 0)) or reset
+        except (httpx.HTTPError, ValueError):
+            continue
+    return (total if openalex_keys() else None), reset
 
 
 def baseline_hits() -> dict:
