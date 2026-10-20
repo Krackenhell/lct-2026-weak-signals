@@ -1,0 +1,254 @@
+{
+ "sessions": [
+  {
+   "started": "2026-10-20T14:14:21.002702+00:00",
+   "sets": "controls",
+   "results": [
+    {
+     "run_id": 35,
+     "query": "Привет",
+     "status": "rejected",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 1,
+     "n_signals": 0,
+     "confident_75": 0,
+     "new_candidates_in_top": 0,
+     "top": [],
+     "passport": {
+      "A": 0,
+      "B": 0
+     },
+     "watch": 0,
+     "imputed_share": null,
+     "degraded": false,
+     "exclusions": {},
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0,
+     "shown_as": "≤ 95%",
+     "signals_with_score": 0,
+     "signals_with_contributions": 0,
+     "names_ru_shown": 0,
+     "names_ru_rejected": 0,
+     "claims_checked": 0,
+     "claims_supported": 0,
+     "claim_calls": 0,
+     "cost_rub": 0.01,
+     "timing_total": 0,
+     "sources_failed": {},
+     "names_sample": "",
+     "domain": null,
+     "openalex_left_before": 5433,
+     "screenshot": "presentation\\screens\\замер\\01_Привет.png"
+    },
+    {
+     "run_id": 36,
+     "query": "почему мирэа лучший вуз",
+     "status": "rejected",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 0,
+     "n_signals": 0,
+     "confident_75": 0,
+     "new_candidates_in_top": 0,
+     "top": [],
+     "passport": {
+      "A": 0,
+      "B": 0
+     },
+     "watch": 0,
+     "imputed_share": null,
+     "degraded": false,
+     "exclusions": {},
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0,
+     "shown_as": "≤ 95%",
+     "signals_with_score": 0,
+     "signals_with_contributions": 0,
+     "names_ru_shown": 0,
+     "names_ru_rejected": 0,
+     "claims_checked": 0,
+     "claims_supported": 0,
+     "claim_calls": 0,
+     "cost_rub": 0.01,
+     "timing_total": 0,
+     "sources_failed": {},
+     "names_sample": "",
+     "domain": null,
+     "openalex_left_before": 5432,
+     "screenshot": "presentation\\screens\\замер\\02_почему_мирэа_лучший_вуз.png"
+    },
+    {
+     "run_id": 37,
+     "query": "постквантовая криптография",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 279,
+     "n_signals": 12,
+     "confident_75": 10,
+     "new_candidates_in_top": 12,
+     "top": [
+      {
+       "rank": 1,
+       "name": "Hybrid PQC deployment",
+       "name_ru": "гибридное развертывание постквантовой криптографии",
+       "p": 0.992,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 2,
+       "name": "quantum-safe security framework",
+       "name_ru": "квантово-защищённая система безопасности",
+       "p": 0.979,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 3,
+       "name": "Post-quantum digital signature",
+       "name_ru": "Пост-квантовая цифровая подпись",
+       "p": 0.952,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 4,
+       "name": "Quantum Resistant Cryptographic Protocols",
+       "name_ru": "квантоустойчивые криптографические протоколы",
+       "p": 0.932,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 5,
+       "name": "crypto-agile hardware",
+       "name_ru": "гибкое криптографическое аппаратное обеспечение",
+       "p": 0.972,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 6,
+       "name": "Hash-based PQC",
+       "name_ru": null,
+       "p": 0.901,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 7,
+       "name": "post-quantum encryption",
+       "name_ru": "постквантовая криптография",
+       "p": 0.843,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closed"
+      },
+      {
+       "rank": 8,
+       "name": "ml-kem pqc standard",
+       "name_ru": "стандарт ml-kem pqc",
+       "p": 0.799,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 9,
+       "name": "sum-rank metric",
+       "name_ru": "суммарная ранговая метрика",
+       "p": 0.907,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 10,
+       "name": "Barrett modular multiplication",
+       "name_ru": "модульное умножение Барретта",
+       "p": 0.766,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 11,
+       "name": "NTT accelerators",
+       "name_ru": "ускорители NTT",
+       "p": 0.579,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 12,
+       "name": "Hamming Quasi-Cyclic (HQC)",
+       "name_ru": null,
+       "p": 0.523,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      }
+     ],
+     "passport": {
+      "A": 1,
+      "B": 11
+     },
+     "watch": 5,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "not_technology": 4,
+      "mature": 3,
+      "topic_itself": 2,
+      "subfield": 2,
+      "low_probability": 2,
+      "irrelevant": 3,
+      "product": 2
+     },
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.992,
+     "shown_as": "> 95%",
+     "signals_with_score": 12,
+     "signals_with_contributions": 12,
+     "names_ru_shown": 14,
+     "names_ru_rejected": 0,
+     "claims_checked": 69,
+     "claims_supported": 45,
+     "claim_calls": 12,
+     "cost_rub": 4.51,
+     "timing_total": 280,
+     "sources_failed": {
+      "api.gdeltproject.org": 15,
+      "searchplatform.rospatent.gov.ru": 8
+     },
+     "names_sample": "post-quantum encryption | quantum-readable encryption | lightweight post-quantum algorithm | quantum resistant cryptographic protocols | sum-rank metric | hamming quasi-cyclic (hqc) | hash-based pqc | post-quantum digital signature | ml-kem pqc standard | crypto-agile hardware | barrett modular mult",
+     "domain": null,
+     "openalex_left_before": 5431,
+     "screenshot": "presentation\\screens\\замер\\03_постквантовая_криптография.png"
+    }
+   ],
+   "finished": "2026-10-20T14:19:12.108491+00:00"
+  }
+ ]
+}

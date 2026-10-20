@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 
 # Версия конвейера: увеличивается вручную при любом изменении, влияющем на выдачу. Готовые результаты другой версии
 # повторно не отдаются (см. api/routes.reuse_blockers) — эксперт не увидит выдачу старого кода.
-PIPELINE_VERSION = "2026-10-20.4"
+PIPELINE_VERSION = "2026-10-20.5"
 
 
 def training_phrases() -> set[str]:
@@ -451,7 +451,7 @@ async def _execute(ctx: RunContext, s) -> None:
         anchors = query_anchors(plan, query)
         crowding = not (plan.get("generated_by") == "lexicon" and not plan.get("core_term"))
         decide_kw = {"topic_terms": [t for t in (plan.get("core_term"), plan.get("topic_en"), *plan.get("query_en", [])) if t],
-                     "anchors": anchors, "crowding": crowding}
+                     "anchors": anchors, "crowding": crowding, "query": query}
         decisions = decide(assessed, model, s.top_k, **decide_kw)
         if s.snapshot_dir:
             # Раздел 7B: снимок этапов для повтора решения без сети (app/ml/bench.py redecide).

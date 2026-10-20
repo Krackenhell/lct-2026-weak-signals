@@ -147,11 +147,25 @@ def relevance(a: dict) -> float:
     return min(_ans(a, "relevance", 0.6), _ans(a, "relevance_query", 1.0))
 
 
-def _filters(a: dict, topic_terms: list[str] | None = None) -> tuple[str, str] | None:
+def _stems_ru(s: str) -> list[str]:
+    return [w[:6] for w in re.findall(r"[а-яёa-z0-9]{3,}", (s or "").lower().replace("ё", "е").replace("-", ""))]
+
+
+def same_as_query_ru(name_ru: str | None, query: str) -> bool:
+    """Русское название кандидата совпадает с самим запросом («постквантовая криптография» на запрос «постквантовая криптография»)."""
+    a, b = _stems_ru(name_ru or ""), _stems_ru(query)
+    return bool(a) and a == b
+
+
+# Стандарт по названию: ТЗ исключает стандарты, а decision-модель иногда оценивает «ML-KEM PQC standard» ниже порога.
+STANDARD_NAME = re.compile(r"\bstandards?\b|\bстандарт", re.I)
+
+
+def _filters(a: dict, topic_terms: list[str] | None = None, query: str = "") -> tuple[str, str] | None:
     f = a["features"]
     if not a["res"].ok:
         return "no_decision", "Decision-модель не ответила (сбой сети) — признаки не проверены, кандидат не ранжируется."
-    if topic_terms and is_topic_itself(a["c"]["name_en"], topic_terms):
+    if topic_terms and is_topic_itself(a["c"]["name_en"], topic_terms) or same_as_query_ru(a["c"].get("name_ru"), query):
         return "topic_itself", "Совпадает с темой запроса — в выдаче показываются конкретные направления внутри темы."
     rel = relevance(a)
     # Шкала вопроса: 0 — не связано, 0,33 — слабо связано, 0,67 — связано, 1 — ядро темы. В топ попадает только
@@ -175,6 +189,8 @@ def _filters(a: dict, topic_terms: list[str] | None = None) -> tuple[str, str] |
         return "product", f"Это название конкретного продукта, компании или проекта (оценка {pct_capped(_ans(a, 'product_name', 0.0))}), а не класс технологий."
     if _ans(a, "specific_tech") < 0.25:
         return "broad", "Это широкая область или общее понятие, а не конкретная технология — такие направления не являются слабыми сигналами."
+    if STANDARD_NAME.search(a["c"]["name_en"]) or STANDARD_NAME.search(a["c"].get("name_ru") or ""):
+        return "standard", "В названии — стандарт: по ТЗ стандарты и протоколы в широком применении не являются слабыми сигналами."
     if _ans(a, "standard") >= 0.6:
         return "standard", f"Decision-модель оценивает вероятность того, что это действующий стандарт или протокол: {pct_capped(_ans(a, 'standard'))}."
     works = math.expm1(f.get("log_total_works", 0))
@@ -216,7 +232,7 @@ def rank_score(p: float | None, rel: float) -> float | None:
 
 
 def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_terms: list[str] | None = None,
-           anchors: frozenset[str] | set[str] = frozenset(), crowding: bool = True) -> list[dict]:
+           anchors: frozenset[str] | set[str] = frozenset(), crowding: bool = True, query: str = "") -> list[dict]:
     out: list[dict] = []
     for a in assessed:
         contrib = model.explain(a["features"]) if model else []
@@ -231,7 +247,7 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_te
                  "intercept": round(model.intercept / getattr(model, "temperature", 1.0), 3) if model and hasattr(model, "intercept") else None,
                  "outside_training": model.outside(a["features"]) if model else []}
         d = {"relevance": rel, "contributions": contrib, "score": score}
-        flt = _filters(a, topic_terms)
+        flt = _filters(a, topic_terms, query)
         pp = a.get("passport")
         if flt:
             d.update(status="excluded", code=flt[0], reason=flt[1])

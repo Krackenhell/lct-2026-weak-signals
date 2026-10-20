@@ -274,3 +274,13 @@ def test_no_hundred_percent_anywhere_in_texts():
 
     assert share_text(1.0) == "все" and share_text(0.999) == "все" and share_text(0.0) == "ни одной" and share_text(0.81) == "81%"
     assert "100" not in prob_text(0.999) and "100" not in prob_text(1.0)
+
+
+def test_query_itself_in_russian_and_standards_are_excluded():
+    """Прогон «постквантовая криптография» 20.10: сама тема (другим английским словом) и «ML-KEM standard» не попадают в топ."""
+    from app.pipeline.decide import STANDARD_NAME, same_as_query_ru
+
+    assert same_as_query_ru("постквантовая криптография", "постквантовая криптография")
+    assert same_as_query_ru("Пост-квантовая криптография", "постквантовая криптография")
+    assert not same_as_query_ru("гибридное развертывание постквантовой криптографии", "постквантовая криптография")
+    assert STANDARD_NAME.search("ml-kem pqc standard") and not STANDARD_NAME.search("standardized testing chips")
