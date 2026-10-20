@@ -225,8 +225,11 @@ def list_runs(db: Session = Depends(get_session)) -> list[dict]:
 
 
 @router.get("/showcase")
-def showcase(db: Session = Depends(get_session)) -> list[dict]:
-    """Готовые прогоны: последний завершённый запуск по каждой теме — открываются мгновенно (для показа и мониторинга)."""
+def showcase(examples: bool = False, db: Session = Depends(get_session)) -> list[dict]:
+    """Готовые прогоны: последний завершённый запуск по каждой теме — открываются мгновенно (для показа и мониторинга).
+    examples=1 — только темы-примеры (app/examples.py): на главной не показываем случайные запросы посетителей,
+    и они не вытесняют примеры из лимита в 12 тем."""
+    allowed = {e.strip().lower() for e in EXAMPLES} if examples else None
     seen, out = set(), []
     done = db.query(Run).filter(Run.status == "done").order_by(desc(Run.id)).limit(200).all()
     # Прогоны на запасных правилах (без decision-модели) показываем, только если других нет.
@@ -237,7 +240,7 @@ def showcase(db: Session = Depends(get_session)) -> list[dict]:
     ordered = sorted(real or done, key=lambda r: ((r.providers or {}).get("llm") != current, -r.id))
     for r in ordered:
         key = r.query.strip().lower()
-        if key in seen or not (r.stats or {}).get("signals"):
+        if key in seen or not (r.stats or {}).get("signals") or (allowed is not None and key not in allowed):
             continue
         seen.add(key)
         out.append({

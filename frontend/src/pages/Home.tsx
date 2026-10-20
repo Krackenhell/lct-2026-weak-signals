@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, Run, Showcase } from "../api";
+import { api, myRunIds, Run, Showcase } from "../api";
 import { HeroRadar, Sculpture } from "../components/Radar";
+import { SourceRibbon } from "../components/SourceRibbon";
 
 // Запасной список, если API недоступен. Основной — GET /api/examples: те же темы рассчитываются заранее (app/examples.py),
 // поэтому клик по примеру открывает готовый ответ.
@@ -31,10 +32,25 @@ export default function Home() {
   const nav = useNavigate();
 
   useEffect(() => {
-    api.runs().then(setRuns).catch(() => {});
+    // Только свои запуски: номера хранятся в браузере. Общий /api/runs отдаёт последние 50 запусков всех посетителей,
+    // поэтому старые свои запуски, выпавшие из него, догружаются по одному.
+    const mine = myRunIds().slice(0, 10);
+    if (mine.length) {
+      api.runs()
+        .catch(() => [] as Run[])
+        .then(async (all) => {
+          const byId = new Map(all.map((r) => [r.id, r]));
+          const list = await Promise.all(mine.map((id) => byId.get(id) ?? api.run(id).catch(() => null)));
+          setRuns(list.filter((r): r is Run => !!r));
+        });
+    }
     api.showcase().then(setReady).catch(() => {});
     api.examples().then((x) => x.length && setExamples(x)).catch(() => {});
   }, []);
+
+  // На главной — только заранее рассчитанные темы-примеры; случайные запросы посетителей сюда не попадают.
+  const exampleSet = new Set(examples.map((x) => x.trim().toLowerCase()));
+  const shown = ready.filter((r) => exampleSet.has(r.query.trim().toLowerCase()));
 
   async function start(query: string) {
     if (query.trim().length < 2) return;
@@ -72,7 +88,7 @@ export default function Home() {
         </div>
         <HeroRadar />
       </section>
-      <div className="source-ribbon"><span>СВЯЗЫВАЕМ ЗНАНИЯ<br />ИЗ ОТКРЫТЫХ ИСТОЧНИКОВ</span><b>arXiv<span className="coral-text">.</span></b><b>OpenAlex</b><b className="source-serif">Crossref</b><b>GitHub</b><b className="source-serif">Хабр</b><span className="source-more">и другие →</span></div>
+      <SourceRibbon />
       <section className="how-section" aria-labelledby="how-title">
         <div className="section-heading"><div><span className="eyebrow">ОТ ШУМА К СМЫСЛУ</span><h2 id="how-title">Будущее оставляет следы.<br />Мы помогаем их увидеть.</h2></div><Link className="text-link" to="/methodology">Как устроен радар <span>↗</span></Link></div>
         <div className="feature-grid">
@@ -82,7 +98,7 @@ export default function Home() {
         </div>
       </section>
 
-      {ready.length > 0 && (
+      {shown.length > 0 && (
         <>
           <div className="section-heading"><div><span className="eyebrow">УЖЕ В ПОЛЕ ЗРЕНИЯ</span><h2>Исследования, с которых можно начать</h2></div></div>
           <p className="muted small" style={{ marginTop: -4, marginBottom: 14 }}>
@@ -90,7 +106,7 @@ export default function Home() {
             кнопка «Пересчитать» на странице результата запускает расчёт заново.
           </p>
           <div className="index-list">
-            {ready.map((r, i) => (
+            {shown.map((r, i) => (
               <Link key={r.run_id} to={`/runs/${r.run_id}`} className="index-row">
                 <span className="index-n">{String(i + 1).padStart(2, "0")}</span>
                 <span className="index-q">{r.query}</span>
@@ -104,7 +120,7 @@ export default function Home() {
 
       <div className="section-heading history-heading"><div><span className="eyebrow">ВАШИ ИССЛЕДОВАНИЯ</span><h2>История поиска</h2></div></div>
       {runs.length === 0 ? (
-        <div className="history-empty"><span>↗</span><div><b>Первое открытие — впереди</b><p>Введите направление выше. Ваши исследования сохранятся здесь.</p></div></div>
+        <div className="history-empty"><span>↗</span><div><b>Первое открытие — впереди</b><p>Введите направление выше. Ваши исследования сохранятся здесь — только в этом браузере, другим посетителям они не видны.</p></div></div>
       ) : (
         <div className="tablewrap">
           <table>

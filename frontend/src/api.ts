@@ -244,15 +244,38 @@ export const EXPORT_FORMATS: [string, string][] = [
 
 export const exportUrl = (runId: number | string, format: string) => `/api/runs/${runId}/export?format=${format}`;
 
+// История поиска — своя у каждого посетителя: номера его запусков хранятся только в этом браузере.
+const MY_RUNS_KEY = "weak-signals-my-runs";
+
+export function myRunIds(): number[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(MY_RUNS_KEY) || "[]");
+    return Array.isArray(v) ? v.filter(Number.isInteger) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberRun(id: number) {
+  try {
+    localStorage.setItem(MY_RUNS_KEY, JSON.stringify([id, ...myRunIds().filter((x) => x !== id)].slice(0, 100)));
+  } catch {
+    /* приватный режим браузера — история просто не сохранится */
+  }
+}
+
 export const api = {
-  search: (query: string, use_watchlist: boolean, fresh = false, candidates?: number) =>
-    req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query, use_watchlist, fresh, candidates }) }),
+  search: async (query: string, use_watchlist: boolean, fresh = false, candidates?: number) => {
+    const run = await req<Run>("/api/search", { method: "POST", body: JSON.stringify({ query, use_watchlist, fresh, candidates }) });
+    rememberRun(run.id);
+    return run;
+  },
   runs: () => req<Run[]>("/api/runs"),
   run: (id: number | string) => req<RunFull>(`/api/runs/${id}`),
   log: (id: number | string) => req<ModelCall[]>(`/api/runs/${id}/log`),
   candidate: (id: number | string) => req<CandidateFull>(`/api/candidates/${id}`),
   model: () => req<any>("/api/model"),
-  showcase: () => req<Showcase[]>("/api/showcase"),
+  showcase: () => req<Showcase[]>("/api/showcase?examples=1"),
   examples: () => req<string[]>("/api/examples"),
   context: (runId: number | string, filename: string, content_base64: string) =>
     req<{ filename: string; paragraphs: number; matches: ContextMatch[]; checked: number; note: string }>(`/api/runs/${runId}/context`, {

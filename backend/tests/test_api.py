@@ -79,6 +79,8 @@ def test_log_and_showcase(client, sample_run):
     assert item["signals"] == 1 and item["mode"] == "обнаружение" and item["passport"]["A"] == 1
     assert len({s["query"].lower() for s in show}) == len(show)  # одна карточка на тему
     assert all(not s["providers"].get("decision_model", "").startswith("heuristic") for s in show)  # запасные прогоны не показываются
+    # Для главной — только темы-примеры: случайный запрос посетителя туда не попадает.
+    assert all(s["run_id"] != run_id for s in client.get("/api/showcase?examples=1").json())
 
 
 def test_showcase_prefers_current_model_run(client, monkeypatch):
