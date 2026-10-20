@@ -144,6 +144,10 @@ def report_md(results: list[dict]) -> str:
             lines.append(f"| {r['domain']} | " + " | ".join(cells) + f" | **{r.get('dataset_hits_in_top15')}** | {r.get('n_signals')} | "
                          f"{r.get('seconds')} с | {r.get('cost_rub')} | {'нет (сбой OpenAlex)' if r.get('degraded') else 'да'} |")
         lines.append("| **Итого** | " + " | ".join(str(v) for v in tot.values()) + f" | **{now_tot}** | | | | |")
+        arx = [r for r in reg if (r.get("sources_failed") or {}).get("export.arxiv.org")]
+        if arx:
+            lines += ["", f"**Оговорка:** в {len(arx)} из {len(reg)} прогонов arXiv не отвечал (HTTP 429 — лимит на адрес компьютера, где шёл замер, после "
+                      "~15 прогонов за день); научные препринты в них почти не участвовали. На стенде arXiv ходит со своего адреса."]
         lines += ["", "Совпадение — строгое по словам названия; сигнал организатора, найденный под другим именем, не засчитывается. "
                   "Это нижняя оценка полноты, а не доля полезных карточек.", ""]
     other = [r for r in results if not r.get("domain")]
