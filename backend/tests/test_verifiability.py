@@ -266,3 +266,11 @@ def test_passport_reprints_and_preprint_twins_are_one_family():
              {"type": "science", "source": "JACS", "url": "https://doi.org/10.1/y", "title": "Another group, another result", "snippet": ""}]
     p = pp.passport(twins, _ans([True] * 3), 3)
     assert p["science"] == 2 and p["domains"] == 2
+
+
+def test_no_hundred_percent_anywhere_in_texts():
+    """Замечание экспертов финала: «откуда 100%». Ни вероятность, ни доли в текстах не выводятся как «100%»."""
+    from app.pipeline.passport import prob_text, share_text
+
+    assert share_text(1.0) == "все" and share_text(0.999) == "все" and share_text(0.0) == "ни одной" and share_text(0.81) == "81%"
+    assert "100" not in prob_text(0.999) and "100" not in prob_text(1.0)

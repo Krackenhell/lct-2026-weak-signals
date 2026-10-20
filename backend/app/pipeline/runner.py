@@ -585,7 +585,7 @@ async def _execute(ctx: RunContext, s) -> None:
             # При сбое OpenAlex признаки публикаций — средние обучающей выборки: в досье их как факты не передаём.
             pubs = ["Статистика публикаций недоступна (OpenAlex не ответил) — признаки заменены средними, чисел о публикациях не приводи."] \
                 if "openalex" in a.get("missing", []) else [
-                f"Научных работ с этим термином за всё время: {total}; из них за последние 3 года: {f.get('recent_share', 0):.0%}.",
+                f"Научных работ с этим термином за всё время: {total}; из них за последние 3 года: {pp_mod.share_text(f.get('recent_share', 0))}.",
                 f"Тема заметна в литературе {years_ru(f.get('age_years', 0))}." if f.get("age_years") else "Устойчивой истории публикаций нет — тема новая.",
             ]
             facts = [
@@ -596,7 +596,7 @@ async def _execute(ctx: RunContext, s) -> None:
                 f"Паспорт доказательств: decision-модель подтвердила {a['passport']['confirmed']} документов из {a['passport']['domains']} разных источников; самое твёрдое событие — {a['passport']['event']}.",
                 *([f"Новостей о раундах или сделках среди подтверждений: {a['passport']['funding_news']}."] if a["passport"].get("funding_news") else []),
                 *([f"Госгрантов среди подтверждений: {a['passport']['grants']}."] if a["passport"].get("grants") else []),
-                *([f"География работ за 2 года (OpenAlex): лидер — {g['leader']}; доля Китая {g['china']:.0%}, США {g['usa']:.0%}, России {g['russia']:.1%}."]
+                *([f"География работ за 2 года (OpenAlex): лидер — {g['leader']}; доля Китая {pp_mod.share_text(g['china'])}, США {pp_mod.share_text(g['usa'])}, России {g['russia']:.1%}."]
                   if (g := pp_mod.geography(a["ev"].countries)) else []),
                 *([f"Патентных публикаций с {pt['since']} года (EPO OPS): {pt['total']}, из них китайских — {pt['china']}."]
                   if (pt := a["ev"].patents) and pt.get("total") else []),

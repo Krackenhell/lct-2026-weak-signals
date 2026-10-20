@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from app.pipeline.decide import rank_score
-from app.pipeline.passport import prob_text
+from app.pipeline.passport import prob_text, share_text
 
 # Колонки датасета организатора (id, name, domain, companies, why, stage, trend, score, sources) + наша проверяемость.
 COLUMNS = [
@@ -31,7 +31,7 @@ def _trend(f: dict, missing: list | None = None) -> str:
     if not works:
         return "Публикаций по точной фразе почти нет"
     word = "растёт быстро" if g > 0.7 else "растёт" if g > 0.2 else "стабильно" if g > -0.2 else "снижается"
-    return f"{word}: ~{works} работ, {f.get('recent_share', 0):.0%} — за последние 3 года"
+    return f"{word}: ~{works} работ, {share_text(f.get('recent_share', 0))} — за последние 3 года"
 
 
 def candidate_row(c, docs_by_id: dict, query: str) -> dict:

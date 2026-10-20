@@ -300,7 +300,7 @@ export default function Insight() {
           <table>
             <tbody>
               <tr><td className="small">Научных работ (OpenAlex)</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{Math.round(Math.expm1(c.features.log_total_works ?? 0))}</b>}</td></tr>
-              <tr><td className="small">Доля работ за 3 года</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{pct(c.features.recent_share)}</b>}</td></tr>
+              <tr><td className="small">Доля работ за 3 года</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{(c.features.recent_share ?? 0) >= 0.995 ? "все работы" : pct(c.features.recent_share)}</b>}</td></tr>
               <tr><td className="small">Рост публикаций (лог-отношение)</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{(c.features.growth ?? 0).toFixed(2)}</b>}</td></tr>
               <tr><td className="small">Возраст темы, лет</td><td className="small">{miss.has("openalex") ? NA("OpenAlex") : <b>{Math.round(c.features.age_years ?? 0)}</b>}</td></tr>
               <tr><td className="small">Статья в Википедии</td><td className="small">{miss.has("wikipedia") ? NA("Википедия") : <b>{c.features.wiki_exists ? "есть" : "нет"}</b>}</td></tr>

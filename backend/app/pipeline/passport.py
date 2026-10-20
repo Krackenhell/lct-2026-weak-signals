@@ -434,3 +434,13 @@ def apply_verification(dossier: dict, claims: list[tuple[str, str]], answers: di
         "removed": removed,
     }
     return d
+
+
+def share_text(x: float | None) -> str:
+    """Доля словами без «100%» на экране: эксперты финала спрашивали, откуда «100%». 1,0 — «все», 0 — «ни одной»."""
+    x = float(x or 0)
+    if x >= 0.995:
+        return "все"
+    if x <= 0.005:
+        return "ни одной"
+    return f"{x:.0%}"

@@ -8,7 +8,7 @@ import math
 import re
 
 from app.ml.model import SignalModel
-from app.pipeline.passport import pct_capped, prob_text
+from app.pipeline.passport import pct_capped, prob_text, share_text
 from app.pipeline.trust import classify
 
 EXCLUSION_RU = {
@@ -303,7 +303,7 @@ def template_dossier(a: dict, d: dict) -> dict:
         parts.append("статистика публикаций недоступна (OpenAlex не ответил)")
     else:
         if works:
-            parts.append(f"в научной литературе найдено около {works} работ, из них {f.get('recent_share', 0):.0%} — за последние 3 года")
+            parts.append(f"в научной литературе найдено около {works} работ, из них {share_text(f.get('recent_share', 0))} — за последние 3 года")
         if f.get("age_years"):
             parts.append(f"тема заметна в публикациях {years_ru(f['age_years'])}")
     parts.append(wiki_fact(f, a.get("missing", [])).lower())
