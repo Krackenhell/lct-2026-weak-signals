@@ -165,8 +165,19 @@ def report_md(results: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def keep_awake() -> None:
+    """Windows: не засыпать, пока идёт ночной замер (как видеоплеер; системные настройки не меняются)."""
+    try:
+        import ctypes
+
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+    except (AttributeError, OSError):
+        pass
+
+
 async def main_async(args) -> None:
     init_db()
+    keep_awake()
     s = get_settings()
     bench = json.loads((s.model_dir.parent / "bench" / "queries.json").read_text(encoding="utf-8"))
     queries: list[str] = []
@@ -184,7 +195,8 @@ async def main_async(args) -> None:
         queries = [q for q in queries if q in args.only.split(";")]
     if args.wait_reset:
         left, reset = openalex_credits()
-        if left is not None and left < args.min_credits * 2 and reset:
+        need = args.min_credits + args.credits_per_run * sum(1 for q in queries if q not in bench["controls"]["reject"])
+        if left is not None and left < need and reset:
             print(f"Квота OpenAlex: осталось {left}, сброс через {reset // 60} мин — жду", flush=True)
             await asyncio.sleep(reset + 300)
     path = s.model_dir / "regress.json"
@@ -193,7 +205,7 @@ async def main_async(args) -> None:
     store["sessions"].append(session)
     for q in queries:
         left, _ = openalex_credits()
-        if left is not None and 0 <= left < args.min_credits and q not in bench["controls"]["reject"]:
+        if left is not None and 0 <= left < max(args.min_credits, args.credits_per_run) and q not in bench["controls"]["reject"]:
             session["stopped"] = f"квота OpenAlex: осталось {left} кредитов — дальше прогоны были бы недействительными"
             print(session["stopped"], flush=True)
             break
@@ -220,7 +232,8 @@ def main() -> None:
     ap.add_argument("--sets", default="controls,regression")
     ap.add_argument("--only", default="")
     ap.add_argument("--wait-reset", action="store_true")
-    ap.add_argument("--min-credits", type=int, default=1800)
+    ap.add_argument("--min-credits", type=int, default=600)
+    ap.add_argument("--credits-per-run", type=int, default=1300)  # замер 20.10: холодный прогон ≈ 1 240 кредитов OpenAlex
     asyncio.run(main_async(ap.parse_args()))
 
 
