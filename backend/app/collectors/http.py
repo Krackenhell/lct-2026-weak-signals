@@ -54,7 +54,7 @@ USER_AGENT = "weak-signals-lct2026/0.1 (research prototype; +https://github.com/
 
 # Минимальный интервал между запросами к хосту (секунды) — по правилам API источников.
 HOST_INTERVAL = {
-    "export.arxiv.org": 3.1,
+    "export.arxiv.org": 3.5,  # правила arXiv API: не чаще 1 запроса в 3 с, одно соединение
     "api.gdeltproject.org": 5.5,
     "api.github.com": 2.2,
     "api.openalex.org": 0.15,
@@ -87,12 +87,57 @@ HOST_INTERVAL = {
     "api.adsabs.harvard.edu": 0.3,
     "api.biorxiv.org": 0.3,
     "api.stackexchange.com": 0.15,
-    "clinicaltrials.gov": 0.3,
+    "clinicaltrials.gov": 1.3,  # ClinicalTrials.gov API v2: около 50 запросов в минуту с адреса
+    "api.lens.org": 6.1,  # Lens.org, пробный ключ: 10 запросов в минуту (заголовок x-rate-limit-remaining-request-per-minute)
     "efts.sec.gov": 0.15,
     "ops.epo.org": 1.0,  # частый поиск EPO блокирует как «робота» (403 CLIENT.RobotDetected)  # SEC — не больше 10 запросов в секунду
     "searchplatform.rospatent.gov.ru": 0.5,
     "zakupki.gov.ru": 1.5,  # бесплатный тариф Brave — 1 запрос в секунду
 }
+
+
+# Суточные и месячные квоты по документации источников: при исчерпании источник пропускается до конца периода, а не отвечает
+# ошибками посреди прогона. Счётчик сетевых запросов хранится в data/source_usage.json (переживает перезапуск сервера).
+HOST_QUOTA = {
+    "api.lens.org": ("month", 950),            # пробный ключ — 1000 запросов в месяц
+    "api.adsabs.harvard.edu": ("day", 4800),   # NASA ADS — 5000 в сутки
+    "api.stackexchange.com": ("day", 9500),    # Stack Exchange с ключом — 10 000 в сутки
+    "ops.epo.org": ("day", 3000),              # EPO OPS — недельный объём; держим суточный запас
+}
+_USAGE: dict[str, dict[str, int]] = {}
+
+
+def _usage_file() -> Path:
+    return Path(get_settings().cache_dir).parent / "source_usage.json"
+
+
+def _period(kind: str) -> str:
+    return time.strftime("%Y-%m" if kind == "month" else "%Y-%m-%d", time.gmtime())
+
+
+def quota_left(host: str) -> int | None:
+    """Сколько запросов к источнику осталось в текущем периоде (None — квоты нет)."""
+    if host not in HOST_QUOTA:
+        return None
+    if not _USAGE:
+        try:
+            _USAGE.update(json.loads(_usage_file().read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            _USAGE["_"] = {}
+    kind, limit = HOST_QUOTA[host]
+    return limit - (_USAGE.get(host) or {}).get(_period(kind), 0)
+
+
+def _count_quota(host: str) -> None:
+    if host not in HOST_QUOTA:
+        return
+    quota_left(host)
+    per = _period(HOST_QUOTA[host][0])
+    _USAGE[host] = {per: (_USAGE.get(host) or {}).get(per, 0) + 1}
+    try:
+        _usage_file().write_text(json.dumps(_USAGE), encoding="utf-8")
+    except OSError:
+        pass
 
 
 # Время жизни кэша по хостам (часы), если оно больше общего CACHE_TTL_HOURS. Ряды публикаций OpenAlex за прошлые годы
@@ -336,6 +381,10 @@ class HttpClient:
             except (OSError, ValueError):  # повреждённый файл кэша (сбой питания, диск заполнен) — читаем из источника
                 path.unlink(missing_ok=True)
 
+        left = quota_left(host)
+        if left is not None and left <= 0:
+            self._bump(host, "failed")
+            raise SourceError(f"{host}: квота источника на текущий период исчерпана")
         if (host in DOWN_HOSTS or host in RATE_LIMIT_COOLDOWN) and host_down(host) and not self.patient:
             self._bump(host, "failed")
             raise SourceError(f"{host} недоступен из сети сервера (повтор через {DOWN_COOLDOWN / 60:.0f} мин)")
@@ -351,6 +400,7 @@ class HttpClient:
             await self._throttle(host)
             if host == "api.openalex.org":
                 _count_openalex()
+            _count_quota(host)
             backoff = 1.5 * (attempt + 1) + self._interval.get(host, 0)
             try:
                 tmo = {"timeout": HOST_TIMEOUT[host]} if host in HOST_TIMEOUT and not self.patient else {}
@@ -396,6 +446,9 @@ class HttpClient:
                 if as_json:
                     try:
                         data = resp.json()
+                        if isinstance(data, dict) and isinstance(data.get("backoff"), (int, float)) and host == "api.stackexchange.com":
+                            # Stack Exchange просит выждать backoff секунд перед следующим запросом к тому же методу.
+                            self._last[host] = time.monotonic() + float(data["backoff"])
                     except ValueError as exc:  # GDELT отвечает текстом при превышении лимита
                         raise SourceError(f"not JSON: {resp.text[:120]}") from exc
                 else:

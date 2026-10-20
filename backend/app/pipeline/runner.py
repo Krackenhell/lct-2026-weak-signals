@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 
 # Версия конвейера: увеличивается вручную при любом изменении, влияющем на выдачу. Готовые результаты другой версии
 # повторно не отдаются (см. api/routes.reuse_blockers) — эксперт не увидит выдачу старого кода.
-PIPELINE_VERSION = "2026-10-20.5"
+PIPELINE_VERSION = "2026-10-20.6"
 
 
 def training_phrases() -> set[str]:
@@ -210,6 +210,12 @@ async def _execute(ctx: RunContext, s) -> None:
         if res:
             ctx.log_call(res.provider, res.model, "расширение запроса", query, {"query": query}, {"text": res.text[:3000]}, res.latency_ms, res.ok, usage=res.usage)
         plan = {**plan, "query": query}  # исходная формулировка нужна сбору корпуса (выбор тематических баз)
+        # Обёртки «Early Signals in …», «Early stage …» из формулировки запроса — не часть темы (в том числе в планах из кэша).
+        if plan.get("topic_en"):
+            plan["topic_en"] = subtopics.clean_topic(plan["topic_en"])
+        for key in ("query_en", "subqueries"):
+            if isinstance(plan.get(key), list):
+                plan[key] = list(dict.fromkeys(subtopics.clean_topic(x) for x in plan[key] if x))
 
         # 1б. Растущие поднаправления по литературе (собственное решение, без LLM): ключевой термин темы и ключевые
         # слова OpenAlex, доля которых в работах по теме быстро растёт. На узких запросах («многослойный графен»,
@@ -440,7 +446,9 @@ async def _execute(ctx: RunContext, s) -> None:
         # П14: объём самой темы — один кэшируемый вызов OpenAlex на запрос. Не в словарном плане без термина и не при сбое OpenAlex.
         topic_term = plan.get("core_term") or (plan.get("topic_en") if plan.get("generated_by") != "lexicon" else "")
         topic_yearly = None
-        if topic_term and re.search(r"[a-z]", topic_term, re.I) and not llm_only:
+        # Только для узких запросов (как задумано в П14: «графен» внутри «многослойного графена»). На широких темах («индустриальный
+        # ИИ», «безопасность ИИ») правило выкидывало нормальные направления — 11 кандидатов в замере 20.10, в том числе «red teaming».
+        if topic_term and re.search(r"[a-z]", topic_term, re.I) and not llm_only and plan.get("broad") is not True:
             topic_yearly = await evidence_mod._safe("openalex", openalex.yearly_counts(http, topic_term), None, [])
         for a in assessed:
             a["topic_rel"] = pp_mod.topic_relation(a["ev"].yearly, topic_yearly, date.today().year) \

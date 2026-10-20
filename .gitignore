@@ -45,3 +45,4 @@ backend/data/bench/blind_*
 
 # Публичные сертификаты УЦ Минцифры (не секрет)
 !backend/app/certs/*.pem
+backend/data/source_usage.json

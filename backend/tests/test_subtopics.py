@@ -124,3 +124,14 @@ def test_clean_name_drops_paper_tail():
     from app.pipeline.discovery import clean_name
 
     assert clean_name("Yb-doped ZnO investigation") == "Yb-doped ZnO"
+
+
+def test_meta_wrappers_removed_from_topic():
+    """План GigaChat переносил «Early Signals in …» из запроса в тему — поиск по литературе шёл по словам «early signals» (20.10)."""
+    from app.pipeline.subtopics import clean_topic
+
+    assert clean_topic("Early Signals in AI Cybersecurity") == "AI Cybersecurity"
+    assert clean_topic("Early stage Robotics") == "Robotics"
+    assert clean_topic("Early Technological Signals in FinTech") == "FinTech"
+    assert clean_topic("Early detection of cancer") == "Early detection of cancer"  # смысловое «early» остаётся
+    assert clean_topic("multilayer graphene") == "multilayer graphene"

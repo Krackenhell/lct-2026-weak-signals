@@ -35,6 +35,25 @@ MIN_SPECIFICITY = 0.05  # доля работ ключевого слова, в 
 MAX_CHECK = 15  # проверка специфичности — по запросу на слово; больше 15 не проверяем (скорость)
 
 
+# Обёртки, которые план GigaChat переносит из формулировки запроса в саму тему: «Early Signals in AI Cybersecurity»,
+# «Early stage Robotics», «Early Technological Signals in FinTech». С ними поиск по литературе идёт по словам «early signals»
+# (растущее поднаправление «second messengers» для безопасности ИИ), а не по предмету — широкие темы теряли кандидатов (замер 20.10).
+META_WRAP = re.compile(
+    r"^\s*(?:(?:early|weak|emerging|promising|prospective|perspective|future|new)[\s-]+)*"
+    r"(?:(?:stage|technological|technology|tech|tech-?nology)[\s-]+)*"
+    r"(?:signals?|trends?|solutions?|technologies|innovations?|opportunities|directions?)\s+(?:in|of|for|within|across)\s+",
+    re.I,
+)
+META_HEAD = re.compile(r"^\s*(?:(?:early[\s-]+stage|(?:early|weak)[\s-]+signals?|emerging|promising|prospective)\s+)+", re.I)
+
+
+def clean_topic(topic_en: str) -> str:
+    """«Early Signals in AI Cybersecurity» → «AI Cybersecurity»; «Early stage Robotics» → «Robotics»; обычная тема — без изменений."""
+    t = META_WRAP.sub("", topic_en or "")
+    t = META_HEAD.sub("", t).strip()
+    return t or (topic_en or "")
+
+
 def core_term(topic_en: str) -> str:
     """«microfluidics technologies» → «microfluidics»; «emerging multilayer graphene technologies» → «multilayer graphene»."""
     words = re.sub(r"[_\-–—/]+", " ", topic_en or "").split()

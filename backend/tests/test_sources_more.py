@@ -311,3 +311,26 @@ def test_arxiv_rate_limit_skips_host_for_all_runs():
         assert len(calls) == 1 and http_mod.host_down("export.arxiv.org")
     finally:
         http_mod._DOWN.clear()
+
+
+def test_monthly_quota_stops_source_before_errors(monkeypatch):
+    """Lens.org: 1000 запросов в месяц. Исчерпали — источник пропускается, а не сыплет ошибками посреди прогона."""
+    from app.collectors import http as http_mod
+
+    monkeypatch.setitem(http_mod.HOST_QUOTA, "api.lens.org", ("month", 2))
+    http_mod._USAGE.clear()
+    http_mod._USAGE["_"] = {}
+    monkeypatch.setattr(http_mod, "_usage_file", lambda: Path(tempfile.mkdtemp()) / "u.json")
+    calls = []
+
+    def h(req):
+        calls.append(1)
+        return httpx.Response(200, json={"data": [], "total": 0})
+    c = client(h)
+    for _ in range(4):
+        try:
+            run(c.post("https://api.lens.org/patent/search", {"q": 1}, cache=False))
+        except Exception:  # noqa: BLE001
+            pass
+    assert len(calls) == 2 and http_mod.quota_left("api.lens.org") == 0
+    http_mod._USAGE.clear()
