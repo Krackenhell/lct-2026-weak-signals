@@ -18,6 +18,7 @@ import "@fontsource/jetbrains-mono/cyrillic-600.css";
 import "@fontsource/jetbrains-mono/latin-400.css";
 import "@fontsource/jetbrains-mono/latin-600.css";
 import "./styles.css";
+import "./design.css";
 import Home from "./pages/Home";
 import RunPage from "./pages/RunPage";
 import Insight from "./pages/Insight";
@@ -42,9 +43,9 @@ type Theme = "light" | "dark" | "auto";
 function readTheme(): Theme {
   try {
     const t = localStorage.getItem("theme");
-    return t === "light" || t === "dark" ? t : "auto";
+    return t === "light" || t === "dark" || t === "auto" ? t : "light";
   } catch {
-    return "auto";
+    return "light";
   }
 }
 
@@ -72,7 +73,7 @@ function ThemeToggle() {
 
 function ScrollTop() {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
 }
 
@@ -84,12 +85,12 @@ function Layout({ children }: { children: React.ReactNode }) {
         <Link to="/" className="brand" aria-label="Радар слабых сигналов — на главную">
           <span className="logo"><Logo /></span>
           <span className="brand-word">
-            <b>Радар</b>
+            <b>радар<span className="coral-text">.</span></b>
             <span>слабых сигналов</span>
           </span>
         </Link>
         <nav>
-          <NavLink to="/" end>Поиск</NavLink>
+          <NavLink to="/" end>Обзор</NavLink>
           <NavLink to="/subscriptions">Подписки</NavLink>
           <NavLink to="/methodology">Методология</NavLink>
           <ThemeToggle />
@@ -98,7 +99,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       <main className="container">{children}</main>
       <footer className="footer">
         <span>Агенты Москвы · ЛЦТ 2026 · задача Газпромбанк.Тех</span>
-        <span>Решение «сигнал / не сигнал» — собственный классификатор</span>
+        <span>Замечать раньше. Решать увереннее.</span>
       </footer>
     </>
   );

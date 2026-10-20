@@ -28,6 +28,7 @@ from app.ml.model import SignalModel
 from app.models import Candidate, Document, ModelCall, Run
 from app.pipeline import cost as cost_mod
 from app.pipeline import discovery, evidence as evidence_mod
+from app.pipeline.live import LiveFeed
 from app.pipeline import links as links_mod
 from app.pipeline import passport as pp_mod
 from app.pipeline import emergence, routing, subtopics
@@ -250,6 +251,12 @@ async def _execute(ctx: RunContext, s) -> None:
         ctx.session.commit()
 
         # 2. Разведочный корпус
+        live_feed = LiveFeed()
+
+        async def corpus_batch(batch):
+            ctx.run.stats = {**(ctx.run.stats or {}), "live": live_feed.add(batch)}
+            ctx.session.commit()
+
         async def corpus_progress(done, total):
             ctx.stage(f"Сбор документов по подтемам: {done}/{total} запросов", 5 + int(20 * done / max(total, 1)))
 
@@ -264,7 +271,7 @@ async def _execute(ctx: RunContext, s) -> None:
             ctx.log_call(r.provider, r.model, "только LLM: список слабых сигналов", query, {"query": query}, {"text": r.text[:3000]}, r.latency_ms, r.ok, usage=r.usage)
             corpus = []
         else:
-            corpus = await discovery.build_corpus(http, plan, corpus_progress, brave_budget=brave_budget)
+            corpus = await discovery.build_corpus(http, plan, corpus_progress, brave_budget=brave_budget, on_batch=corpus_batch)
         ctx.stage(f"Извлечение технологий из {len(corpus)} документов", 27)
 
         # 3. Кандидаты
@@ -363,6 +370,7 @@ async def _execute(ctx: RunContext, s) -> None:
                 for w in c.get("watch_sources", [])
             ]
             ev.docs = evidence_mod._dedupe(corpus_docs + ev.docs + dataset_docs)
+            await corpus_batch(ev.docs)
             items = evidence_mod.evidence_items(ev)
             state = build_state(c["name_en"], topic, items)
             # Паспорт доказательств: в том же вызове decision-модель проверяет каждый документ отдельно.

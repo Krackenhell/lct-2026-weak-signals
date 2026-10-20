@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, Run, Showcase } from "../api";
+import { HeroRadar, Sculpture } from "../components/Radar";
 
 // Запасной список, если API недоступен. Основной — GET /api/examples: те же темы рассчитываются заранее (app/examples.py),
 // поэтому клик по примеру открывает готовый ответ.
@@ -13,46 +14,6 @@ const FALLBACK_EXAMPLES = [
 ];
 
 const STATUS_RU: Record<string, string> = { queued: "в очереди", running: "выполняется", done: "готово", failed: "ошибка", rejected: "отклонён" };
-
-// Экран радара: кольца — зрелость (центр — массовые технологии, край — ранние), отметки — найденные кандидаты.
-function RadarScreen() {
-  const blips: [number, number, boolean][] = [
-    [292, 118, true], [118, 96, false], [86, 254, true], [262, 300, false], [318, 214, false], [170, 330, false], [226, 64, false],
-  ];
-  return (
-    <svg className="radar" viewBox="0 0 400 400" role="img" aria-label="Радар: отметки — найденные ранние технологии">
-      <defs>
-        <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="currentColor" stopOpacity="0" />
-          <stop offset="1" stopColor="currentColor" stopOpacity=".16" />
-        </linearGradient>
-      </defs>
-      <circle className="ring outer" cx="200" cy="200" r="190" />
-      <circle className="ring" cx="200" cy="200" r="140" />
-      <circle className="ring" cx="200" cy="200" r="90" />
-      <circle className="ring" cx="200" cy="200" r="40" />
-      <line className="axis" x1="10" y1="200" x2="390" y2="200" />
-      <line className="axis" x1="200" y1="10" x2="200" y2="390" />
-      <g className="sweep">
-        <path className="sweep-fill" d="M200 200 L200 10 A190 190 0 0 1 364.5 105 Z" />
-        <line x1="200" y1="200" x2="364.5" y2="105" stroke="currentColor" strokeWidth="1.5" />
-      </g>
-      {blips.map(([x, y, hot], i) =>
-        hot ? (
-          <g key={i}>
-            <circle className="blip-ring" cx={x} cy={y} r="7" style={{ animationDelay: `${i * 0.7}s` }} />
-            <circle className="blip" cx={x} cy={y} r="5" />
-          </g>
-        ) : (
-          <circle key={i} className="blip-dim" cx={x} cy={y} r="3" />
-        )
-      )}
-      <text x="206" y="196">МАССОВЫЕ</text>
-      <text x="206" y="106">РАСТУЩИЕ</text>
-      <text x="206" y="56">РАННИЕ</text>
-    </svg>
-  );
-}
 
 export default function Home() {
   const [q, setQ] = useState("");
@@ -85,49 +46,35 @@ export default function Home() {
 
   return (
     <>
-      <section className="hero">
-        <div>
-          <div className="eyebrow"><span className="dot">●</span> Поиск зарождающихся технологий в открытых источниках</div>
-          <h1>Заметить технологию <em>до того,</em> как она станет трендом</h1>
-          <p className="lead">
-            Введите направление — широкое («финтех») или узкое («микрофлюидные чипы»). Радар соберёт научные работы, патенты, гранты,
-            стартапы и новости, отберёт до 15 технологий, которые только начинают расти, и для каждой покажет доказательства и путь
-            от науки до рынка.
-          </p>
-          <form
-            className="searchbox"
-            onSubmit={(e) => {
-              e.preventDefault();
-              start(q);
-            }}
-          >
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Например: технологии многослойного графена" aria-label="Технологическое направление" autoFocus />
-            <button disabled={busy || q.trim().length < 2}>{busy ? "Запуск…" : "Найти сигналы →"}</button>
+      <section className="discovery-hero">
+        <div className="hero-copy">
+          <div className="hero-kicker"><span className="coral-dot" /> ТЕХНОЛОГИИ ЗАВТРА. СИГНАЛЫ СЕГОДНЯ.</div>
+          <h1>Большие перемены<br />начинаются<br />с <em>тихих сигналов.</em></h1>
+          <p className="hero-description">Находите технологии до того, как о них заговорят все. От первой научной статьи — до проверенного сигнала для вашего бизнеса.</p>
+          <form className="discovery-search" onSubmit={e=>{e.preventDefault(); start(q);}}>
+            <label className="search-input-wrap"><span aria-hidden="true">⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Какое направление исследуем?" aria-label="Технологическое направление" maxLength={500} required minLength={2} /></label>
+            <button disabled={busy || q.trim().length<2}>{busy ? "Запускаем…" : "Найти сигналы"}<span aria-hidden="true">↗</span></button>
           </form>
-          <div className="eyebrow examples-label">Примеры запросов</div>
-          <div className="chips">
-            {examples.map((ex) => (
-              <button key={ex} className="chip" type="button" onClick={() => setQ(ex)}>
-                {ex}
-              </button>
-            ))}
-          </div>
-          <details className="small muted" style={{ marginTop: 14 }}>
-            <summary>Дополнительно</summary>
-            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8 }}>
-              <input type="checkbox" checked={watch} onChange={(e) => setWatch(e.target.checked)} style={{ marginTop: 4 }} />
-              Перепроверить известные сигналы из обучающей выборки (режим мониторинга). Их оценка не независимая: модель училась на этих
-              примерах. По умолчанию — поиск только в открытых источниках.
-            </label>
-          </details>
-          {err && <div className="error" style={{ marginTop: 12 }}>{err}</div>}
+          <div className="query-suggestions"><span>Например</span>{examples.slice(0,3).map(ex=><button key={ex} onClick={()=>setQ(ex)}>{ex}<span>↗</span></button>)}</div>
+          <details className="search-options"><summary>Настроить поиск</summary><label><input type="checkbox" checked={watch} onChange={e=>setWatch(e.target.checked)} /> Перепроверить известные сигналы из обучающей выборки. Их оценка не независимая: модель училась на этих примерах.</label></details>
+          {err && <div className="error" role="alert">{err}</div>}
+          <div className="hero-proof"><span className="proof-symbol">✓</span> Открытые источники <i /> Проверяемые доказательства</div>
         </div>
-        <RadarScreen />
+        <HeroRadar />
+      </section>
+      <div className="source-ribbon"><span>СВЯЗЫВАЕМ ЗНАНИЯ<br />ИЗ ОТКРЫТЫХ ИСТОЧНИКОВ</span><b>arXiv<span className="coral-text">.</span></b><b>OpenAlex</b><b className="source-serif">Crossref</b><b>GitHub</b><b className="source-serif">Хабр</b><span className="source-more">и другие →</span></div>
+      <section className="how-section" aria-labelledby="how-title">
+        <div className="section-heading"><div><span className="eyebrow">ОТ ШУМА К СМЫСЛУ</span><h2 id="how-title">Будущее оставляет следы.<br />Мы помогаем их увидеть.</h2></div><Link className="text-link" to="/methodology">Как устроен радар <span>↗</span></Link></div>
+        <div className="feature-grid">
+          <article className="feature-card"><span className="feature-number">01 / ОБНАРУЖИТЬ</span><Sculpture kind="network" /><h3>Соединяем разрозненное</h3><p>Публикации, разработки и новости складываются в общую картину.</p></article>
+          <article className="feature-card"><span className="feature-number">02 / ЗАМЕТИТЬ РОСТ</span><Sculpture kind="growth" /><h3>Ловим начало движения</h3><p>Выделяем ранние технологии и отделяем их от зрелых решений и хайпа.</p></article>
+          <article className="feature-card"><span className="feature-number">03 / ПРОВЕРИТЬ</span><Sculpture kind="shield" /><h3>Находим опору в фактах</h3><p>У каждого сигнала — объяснение, оценка и ссылки на первоисточники.</p></article>
+        </div>
       </section>
 
       {ready.length > 0 && (
         <>
-          <h2>Готовые результаты</h2>
+          <div className="section-heading"><div><span className="eyebrow">УЖЕ В ПОЛЕ ЗРЕНИЯ</span><h2>Исследования, с которых можно начать</h2></div></div>
           <p className="muted small" style={{ marginTop: -4, marginBottom: 14 }}>
             Темы-примеры посчитаны заранее и открываются за секунду, дата расчёта указана. Новая тема считается с нуля за 4–6 минут, предварительные находки видны по ходу;
             кнопка «Пересчитать» на странице результата запускает расчёт заново.
@@ -145,9 +92,9 @@ export default function Home() {
         </>
       )}
 
-      <h2>Последние запросы</h2>
+      <div className="section-heading history-heading"><div><span className="eyebrow">ВАШИ ИССЛЕДОВАНИЯ</span><h2>История поиска</h2></div></div>
       {runs.length === 0 ? (
-        <p className="muted">Запросов пока нет.</p>
+        <div className="history-empty"><span>↗</span><div><b>Первое открытие — впереди</b><p>Введите направление выше. Ваши исследования сохранятся здесь.</p></div></div>
       ) : (
         <div className="tablewrap">
           <table>

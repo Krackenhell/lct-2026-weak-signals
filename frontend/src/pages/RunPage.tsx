@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, tidyName, CandidateBrief, Changes, ContextMatch, EXPORT_FORMATS, exportUrl, fmtScore, ModelCall, rankScore, RunFull, SCORE_HINT } from "../api";
 import { CheckDots, ScoreBadge, ScoreMeter } from "../components/ui";
 
+import { SearchRadar } from "../components/Radar";
+
 const TOP_K = 15;
 
 type Tab = "signals" | "watch" | "excluded" | "log";
@@ -13,23 +15,32 @@ export default function RunPage() {
   const [tab, setTab] = useState<Tab>("signals");
   const [log, setLog] = useState<ModelCall[] | null>(null);
   const [err, setErr] = useState("");
+  const [connectionIssue, setConnectionIssue] = useState("");
   const [rerun, setRerun] = useState(false);
   const [subscribed, setSubscribed] = useState("");
   const nav = useNavigate();
 
   useEffect(() => {
     let timer: number | undefined;
+    let disposed = false;
+    let failures = 0;
+    setRun(null); setErr(""); setConnectionIssue("");
     const load = async () => {
       try {
         const r = await api.run(id!);
-        setRun(r);
+        if (disposed) return;
+        failures = 0; setConnectionIssue(""); setRun(r);
         if (r.status === "queued" || r.status === "running") timer = window.setTimeout(load, 2000);
       } catch (e) {
-        setErr(String(e));
+        if (disposed) return;
+        if (String(e).includes("404:")) { setErr("Исследование не найдено. Вернитесь к поиску и задайте направление."); return; }
+        failures += 1;
+        setConnectionIssue("Связь прервалась. Повторяем подключение…");
+        timer = window.setTimeout(load, Math.min(1000 * 2 ** failures, 15000));
       }
     };
     load();
-    return () => window.clearTimeout(timer);
+    return () => { disposed = true; window.clearTimeout(timer); };
   }, [id]);
 
   useEffect(() => {
@@ -37,7 +48,7 @@ export default function RunPage() {
   }, [tab, id, run?.status]);
 
   if (err) return <div className="error">{err}</div>;
-  if (!run) return <p className="muted">Загрузка…</p>;
+  if (!run) return <div className="loading-state" role="status">{connectionIssue || "Подключаемся к исследованию…"}<Link to="/">← К поиску</Link></div>;
 
   const s = run.stats || {};
   const active = run.status === "queued" || run.status === "running";
@@ -108,8 +119,9 @@ export default function RunPage() {
         </div>
       )}
 
+      {active && <SearchRadar key={run.id} run={run} connectionIssue={connectionIssue} />}
       {active && (
-        <div className="progress-panel">
+        <div className="progress-panel compact-progress">
           <div className="eyebrow">Этап · {run.progress}%</div>
           <div className="progress-stage">{run.stage || "Ожидание"}</div>
           <div className="progress"><div style={{ width: `${run.progress}%` }} /></div>

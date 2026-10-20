@@ -93,7 +93,7 @@ def _norm(name: str) -> str:
     return " ".join(words)
 
 
-async def build_corpus(http: HttpClient, plan: dict, on_progress=None, brave_budget=None) -> list[RawDoc]:
+async def build_corpus(http: HttpClient, plan: dict, on_progress=None, brave_budget=None, on_batch=None) -> list[RawDoc]:
     today = date.today()
     from_date = (today - timedelta(days=int(365 * 2.5))).isoformat()
     subs = plan.get("subqueries", [])[:12]
@@ -196,13 +196,18 @@ async def build_corpus(http: HttpClient, plan: dict, on_progress=None, brave_bud
     async def wrap(coro):
         nonlocal done
         try:
-            return await coro
+            batch = await coro
         except (SourceError, Exception):
-            return []
-        finally:
-            done += 1
-            if on_progress:
-                await on_progress(done, len(tasks))
+            batch = []
+        # Publish each completed source, without waiting for the slowest collector.
+        # UI callbacks are outside the source-error handler: persistence failures
+        # must not silently turn a successful collection into an empty result.
+        if on_batch and batch:
+            await on_batch(batch)
+        done += 1
+        if on_progress:
+            await on_progress(done, len(tasks))
+        return batch
 
     seen, out = set(), []
     for group, batch in zip(groups, await asyncio.gather(*(wrap(t) for t in tasks)), strict=True):

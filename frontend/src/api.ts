@@ -161,6 +161,14 @@ export type Run = {
   reused?: boolean;
 };
 
+export type LiveDocument = {
+  id: number; title: string; url: string; source_name: string;
+  source_type: string; published: string | null; found_at: string;
+};
+export type LiveFeed = {
+  total: number; source_count: number; sources: string[]; documents: LiveDocument[];
+};
+
 export type RunFull = Run & {
   signals: CandidateBrief[]; watch?: CandidateBrief[]; excluded: CandidateBrief[];
   queue?: { ahead: number; eta_seconds: number; median_run_seconds: number } | null;
