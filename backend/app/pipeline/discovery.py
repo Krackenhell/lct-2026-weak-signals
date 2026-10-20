@@ -72,7 +72,8 @@ HEAD = re.compile(r"^(characteri[sz]ation|development|analysis|design|evaluation
 
 def clean_name(name: str) -> str:
     n = HEAD.sub("", re.sub(r"\s+", " ", name.replace("_", " ")).strip())
-    if " " not in n and n.count("-") >= 2:
+    # «agentic-ai» — тоже слаг (одно слово из двух строчных частей); «li-ion», «CO2-free», «AI-RAN» не трогаем.
+    if " " not in n and (n.count("-") >= 2 or re.fullmatch(r"[a-z]{3,}-[a-z]{2,}", n) and n.split("-")[1] in ("ai", "ml", "llm", "llms")):
         # GigaChat иногда отдаёт название «слагом» (halide-electrolytes-for-all-solid-state-batteries): возвращаем пробелы,
         # устойчивые составные термины оставляем через дефис.
         n = re.sub(r"\ball solid state\b", "all-solid-state", n.replace("-", " "), flags=re.I)

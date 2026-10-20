@@ -274,4 +274,4 @@ export const SCORE_HINT = "Балл места = min(оценка; 0,95) × (0,6
 export const CLASSIFIER_HINT = "Оценка классификатора: насколько кандидат похож на слабые сигналы из эталона организатора. Это не вероятность того, что технология станет трендом.";
 
 // Английские названия, которые модель вернула «слагом» (halide-electrolytes-for-...), показываем с пробелами.
-export const tidyName = (n: string) => (!n.includes(" ") && (n.match(/-/g) || []).length >= 2 ? n.replace(/-/g, " ").replace(/\ball solid state\b/gi, "all-solid-state") : n);
+export const tidyName = (n: string) => (!n.includes(" ") && ((n.match(/-/g) || []).length >= 2 || /^[a-z]{3,}-(ai|ml|llms?)$/.test(n)) ? n.replace(/-/g, " ").replace(/\ball solid state\b/gi, "all-solid-state") : n);
