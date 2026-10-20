@@ -659,6 +659,257 @@
     }
    ],
    "finished": "2026-10-20T14:19:12.108491+00:00"
+  },
+  {
+   "started": "2026-10-20T14:57:18.556259+00:00",
+   "sets": "regression,dev2,controls",
+   "results": [
+    {
+     "run_id": 39,
+     "query": "перспективные решения в финтехе",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 390,
+     "n_signals": 2,
+     "confident_75": 2,
+     "new_candidates_in_top": 2,
+     "top": [
+      {
+       "rank": 1,
+       "name": "Non-custodial digital payments",
+       "name_ru": "Некастодиальные цифровые платежи",
+       "p": 0.974,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 2,
+       "name": "Hyper-personalization AI",
+       "name_ru": "Гиперперсонализированный ИИ",
+       "p": 0.859,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closed"
+      }
+     ],
+     "passport": {
+      "A": 0,
+      "B": 2
+     },
+     "watch": 2,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "irrelevant": 17,
+      "mature": 4,
+      "broad": 1,
+      "low_probability": 1,
+      "product": 2,
+      "organization": 1
+     },
+     "dataset_signals_in_domain": 17,
+     "dataset_hits_in_top15": 0,
+     "share_of_top15_from_dataset": 0.0,
+     "recall_of_domain": 0.0,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.974,
+     "shown_as": "> 95%",
+     "signals_with_score": 2,
+     "signals_with_contributions": 2,
+     "names_ru_shown": 4,
+     "names_ru_rejected": 0,
+     "claims_checked": 12,
+     "claims_supported": 7,
+     "claim_calls": 2,
+     "cost_rub": 2.13,
+     "timing_total": 390,
+     "sources_failed": {
+      "api.gdeltproject.org": 5,
+      "searchplatform.rospatent.gov.ru": 2
+     },
+     "names_sample": "hyper-personalization ai | dynamic exponent market maker | pre-deployment ai system | non-custodial digital payments",
+     "domain": "Финтех",
+     "openalex_left_before": 9991,
+     "screenshot": "presentation\\screens\\замер\\01_перспективные_решения_в_финтехе.png"
+    },
+    {
+     "run_id": 40,
+     "query": "слабые сигналы в кибербезопасности ИИ",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 423,
+     "n_signals": 4,
+     "confident_75": 4,
+     "new_candidates_in_top": 4,
+     "top": [
+      {
+       "rank": 1,
+       "name": "prompt injection detection",
+       "name_ru": "обнаружение промпт-инъекций",
+       "p": 0.99,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 2,
+       "name": "explainable ai anomaly detection",
+       "name_ru": "объяснимый ИИ для обнаружения аномалий",
+       "p": 0.913,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 3,
+       "name": "cyber defense cognitive ai",
+       "name_ru": "когнитивный ИИ для киберзащиты",
+       "p": 0.863,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 4,
+       "name": "transformer binary time series classification",
+       "name_ru": "трансформерная модель бинарной классификации временных рядов",
+       "p": 0.919,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      }
+     ],
+     "passport": {
+      "A": 0,
+      "B": 4
+     },
+     "watch": 2,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "irrelevant": 12,
+      "not_technology": 2,
+      "subfield": 4,
+      "mature": 1,
+      "broad": 1
+     },
+     "dataset_signals_in_domain": 16,
+     "dataset_hits_in_top15": 0,
+     "share_of_top15_from_dataset": 0.0,
+     "recall_of_domain": 0.0,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.99,
+     "shown_as": "> 95%",
+     "signals_with_score": 4,
+     "signals_with_contributions": 4,
+     "names_ru_shown": 6,
+     "names_ru_rejected": 0,
+     "claims_checked": 21,
+     "claims_supported": 14,
+     "claim_calls": 4,
+     "cost_rub": 2.65,
+     "timing_total": 424,
+     "sources_failed": {
+      "api.gdeltproject.org": 7,
+      "searchplatform.rospatent.gov.ru": 4
+     },
+     "names_sample": "prompt hardening | prompt injection detection | cyber defense cognitive ai | explainable ai anomaly detection | transformer binary time series classification | authorization grounded workflow attacks",
+     "domain": "Защита ИИ",
+     "openalex_left_before": 9991,
+     "screenshot": "presentation\\screens\\замер\\02_слабые_сигналы_в_кибербезопасности_ИИ.png"
+    }
+   ]
+  },
+  {
+   "started": "2026-10-20T15:11:49.979949+00:00",
+   "sets": "regression",
+   "results": [
+    {
+     "run_id": 43,
+     "query": "перспективные решения в финтехе",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 214,
+     "n_signals": 2,
+     "confident_75": 0,
+     "new_candidates_in_top": 2,
+     "top": [
+      {
+       "rank": 1,
+       "name": "stablecoin rails",
+       "name_ru": "стейблкойновые рельсы",
+       "p": 0.705,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 2,
+       "name": "hyper-personalization ai",
+       "name_ru": "гиперперсонализация с помощью ИИ",
+       "p": 0.606,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      }
+     ],
+     "passport": {
+      "A": 1,
+      "B": 1
+     },
+     "watch": 4,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "irrelevant": 19,
+      "broad": 1,
+      "low_probability": 4,
+      "mature": 3,
+      "product": 2
+     },
+     "dataset_signals_in_domain": 17,
+     "dataset_hits_in_top15": 0,
+     "share_of_top15_from_dataset": 0.0,
+     "recall_of_domain": 0.0,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.705,
+     "shown_as": "≤ 95%",
+     "signals_with_score": 2,
+     "signals_with_contributions": 2,
+     "names_ru_shown": 5,
+     "names_ru_rejected": 0,
+     "claims_checked": 13,
+     "claims_supported": 9,
+     "claim_calls": 2,
+     "cost_rub": 2.15,
+     "timing_total": 214,
+     "sources_failed": {
+      "export.arxiv.org": 31,
+      "api.gdeltproject.org": 4,
+      "searchplatform.rospatent.gov.ru": 2
+     },
+     "names_sample": "hyper-personalization ai | zero-knowledge disclosure | xdc interledger messaging protocol | smart memory agent | stablecoin rails | digital euro faq",
+     "domain": "Финтех",
+     "openalex_left_before": 6439,
+     "screenshot": "presentation\\screens\\замер\\01_перспективные_решения_в_финтехе.png"
+    }
+   ]
   }
  ]
 }

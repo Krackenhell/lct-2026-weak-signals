@@ -289,3 +289,25 @@ def test_proxy_routing_by_host_with_direct_fallback(monkeypatch):
         get_settings.cache_clear()
         http_mod._PROXY_FAILS.clear()
         http_mod._PROXY_OFF_UNTIL.clear()
+
+
+def test_arxiv_rate_limit_skips_host_for_all_runs():
+    """arXiv ответил 429 — следующие запросы к нему не ждут повторов, а сразу пропускаются (замер 20.10: 4 кандидата за минуты)."""
+    from app.collectors import http as http_mod
+
+    calls = []
+
+    def h(req):
+        calls.append(1)
+        return httpx.Response(429, headers={"retry-after": "5"})
+    http_mod._DOWN.clear()
+    try:
+        c = client(h)
+        for _ in range(3):
+            try:
+                run(c.get("https://export.arxiv.org/api/query", params={"q": "x"}, as_json=False, cache=False))
+            except Exception:  # noqa: BLE001
+                pass
+        assert len(calls) == 1 and http_mod.host_down("export.arxiv.org")
+    finally:
+        http_mod._DOWN.clear()

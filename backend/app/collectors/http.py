@@ -41,6 +41,11 @@ DOWN_COOLDOWN = 1800.0
 _DOWN: dict[str, float] = {}
 
 
+# Источники, которые при лимите частоты (429) лучше сразу пропустить на несколько минут для всех прогонов, чем ждать повторов:
+# arXiv при наплыве запросов отвечает 429 минутами, а научные документы дают и OpenAlex, Crossref, Europe PMC, NASA ADS.
+RATE_LIMIT_COOLDOWN = {"export.arxiv.org": 300.0, "api.gdeltproject.org": 300.0}
+
+
 def host_down(host: str) -> bool:
     return _DOWN.get(host, 0.0) > time.monotonic()
 
@@ -331,7 +336,7 @@ class HttpClient:
             except (OSError, ValueError):  # повреждённый файл кэша (сбой питания, диск заполнен) — читаем из источника
                 path.unlink(missing_ok=True)
 
-        if host in DOWN_HOSTS and host_down(host) and not self.patient:
+        if (host in DOWN_HOSTS or host in RATE_LIMIT_COOLDOWN) and host_down(host) and not self.patient:
             self._bump(host, "failed")
             raise SourceError(f"{host} недоступен из сети сервера (повтор через {DOWN_COOLDOWN / 60:.0f} мин)")
         if self._fails.get(host, 0) >= 3 and not self.patient:
@@ -366,6 +371,10 @@ class HttpClient:
                         raise SourceError("HTTP 429 (ключ исчерпан, переход на запасной ключ)")
                     params = {k: v for k, v in params.items() if k != "api_key"}
                     raise SourceError("HTTP 429 (ключ исчерпан, переход на анонимную квоту)")
+                if resp.status_code == 429 and host in RATE_LIMIT_COOLDOWN and not self.patient:
+                    _DOWN[host] = time.monotonic() + RATE_LIMIT_COOLDOWN[host]
+                    last_exc = SourceError(f"HTTP 429 — {host} пропускается {RATE_LIMIT_COOLDOWN[host] / 60:.0f} мин")
+                    break
                 if resp.status_code == 429 or resp.status_code >= 500:
                     if resp.status_code == 429:
                         # Лимит частоты: ждём, сколько просит источник, но не больше MAX_WAIT — дольше ждать внутри
