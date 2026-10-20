@@ -21,7 +21,7 @@ from app.db import SessionLocal
 from app.decision import get_decision_model
 from app.decision.heuristic import HeuristicDecision
 from app.llm.providers import for_task, get_llm
-from app.collectors import brave, cyberleninka, gdelt, habr, news_search, openalex
+from app.collectors import brave, cyberleninka, epo, gdelt, habr, news_search, openalex
 from app.llm.tasks import check_query, llm_only_candidates, plan_query, summarize_sources, write_dossier
 from app.llm.terms import check_name_ru
 from app.ml.model import SignalModel
@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 
 # Версия конвейера: увеличивается вручную при любом изменении, влияющем на выдачу. Готовые результаты другой версии
 # повторно не отдаются (см. api/routes.reuse_blockers) — эксперт не увидит выдачу старого кода.
-PIPELINE_VERSION = "2026-10-20.3"
+PIPELINE_VERSION = "2026-10-20.4"
 
 
 def training_phrases() -> set[str]:
@@ -321,7 +321,8 @@ async def _execute(ctx: RunContext, s) -> None:
             nonlocal done
             # География — после решения и только для сигналов (экономия 20–30 запросов OpenAlex); Europe PMC и ML-источники — по маршруту.
             opts = {"with_news": s.news_per_candidate, "with_repos": with_gh, "with_gh_count": gh_count, "with_countries": False,
-                    "with_europepmc": route["europepmc_evidence"], "with_ml": route["ml_evidence"], "profile": route["profile"]}
+                    "with_europepmc": route["europepmc_evidence"], "with_ml": route["ml_evidence"], "profile": route["profile"],
+                    "with_patents": False}
             ev = await evidence_mod.gather(http, c["name_en"], date.today(), **opts)
             for alt in c.get("alt_terms", [])[:1]:
                 if len(ev.docs) >= 5:
@@ -471,6 +472,8 @@ async def _execute(ctx: RunContext, s) -> None:
 
         # География работ — только для сигналов, после решения (раньше — для каждого из 30 кандидатов).
         async def countries(a):
+            if epo.enabled():  # патенты EPO и доля Китая — только для сигналов (лимит EPO на поиск)
+                a["ev"].patents = await evidence_mod._safe("epo", epo.patent_counts(http, a["ev"].phrase), None, a["ev"].failed)
             if "openalex" in a["ev"].failed or not s.extra_sources:
                 return
             a["ev"].countries = await evidence_mod._safe("openalex_countries", openalex.country_counts(http, a["ev"].phrase, date.today().year - 2), {}, a["ev"].failed)

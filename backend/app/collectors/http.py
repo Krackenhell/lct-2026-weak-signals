@@ -83,7 +83,8 @@ HOST_INTERVAL = {
     "api.biorxiv.org": 0.3,
     "api.stackexchange.com": 0.15,
     "clinicaltrials.gov": 0.3,
-    "efts.sec.gov": 0.15,  # SEC — не больше 10 запросов в секунду
+    "efts.sec.gov": 0.15,
+    "ops.epo.org": 1.0,  # частый поиск EPO блокирует как «робота» (403 CLIENT.RobotDetected)  # SEC — не больше 10 запросов в секунду
     "searchplatform.rospatent.gov.ru": 0.5,
     "zakupki.gov.ru": 1.5,  # бесплатный тариф Brave — 1 запрос в секунду
 }

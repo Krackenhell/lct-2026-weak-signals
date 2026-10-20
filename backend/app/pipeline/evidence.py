@@ -62,7 +62,7 @@ def search_phrase(name: str) -> str:
 
 async def gather(http: HttpClient, phrase: str, today: date | None = None, with_news: bool = True, with_repos: bool = True, with_extra: bool | None = None,
                  with_gh_count: bool = True, with_news_search: bool | None = None, with_countries: bool = True,
-                 with_europepmc: bool = False, with_ml: bool | None = None, profile: str | None = None) -> Evidence:
+                 with_europepmc: bool = False, with_ml: bool | None = None, profile: str | None = None, with_patents: bool = True) -> Evidence:
     """with_countries=False — география считается позже и только для сигналов (экономия 20–30 запросов OpenAlex на запрос);
     with_europepmc — науки о жизни (маршрут источников); with_ml=False — без HF Papers и OpenReview для запросов не про ИИ."""
     phrase = search_phrase(phrase)
@@ -110,10 +110,12 @@ async def gather(http: HttpClient, phrase: str, today: date | None = None, with_
     if with_europepmc:
         # Науки о жизни: биомедицинские статьи и препринты (микрофлюидика, органы на чипе, биосенсоры).
         tasks["epmc"] = _safe("europepmc", europepmc.search(http, phrase, (today - timedelta(days=3 * 365)).isoformat(), 5), [], f)
-    if epo.enabled() and with_news_search is not False:
-        # Патенты за 3 года и доля Китая (EPO OPS, только при наличии ключа).
+    if epo.enabled() and with_news_search is not False and with_patents:
+        # Патенты за 3 года и доля Китая (EPO OPS, только при наличии ключа). Живой поиск считает их позже и только для
+        # сигналов (with_patents=False): EPO блокирует частый поиск как «робота» (403 RobotDetected, замер 20.10).
+        # Документы EPO в доказательства не идут: у них нет названия изобретения, только номер, а заголовок «публикация по
+        # теме X» содержит саму фразу — decision-модель могла «подтвердить» его. Патенты с названиями даёт Lens.org.
         tasks["patents"] = _safe("epo", epo.patent_counts(http, phrase), None, f)
-        tasks["patent_docs"] = _safe("epo", epo.search(http, phrase, 3), [], f)
     if get_settings().startup_sources and with_news_search is not False:
         # Стартапы YC, которые строят технологию: ранний рыночный сигнал (в числовые признаки не входит).
         tasks["yc"] = _safe("yc", yc.search(http, phrase, 3), [], f)
