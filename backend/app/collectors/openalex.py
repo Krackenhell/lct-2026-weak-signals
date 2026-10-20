@@ -9,8 +9,10 @@ API = "https://api.openalex.org/works"
 def _auth() -> dict:
     s = get_settings()
     p = {}
-    if s.openalex_api_key:
-        p["api_key"] = s.openalex_api_key
+    from app.collectors.http import openalex_key
+
+    if openalex_key():
+        p["api_key"] = openalex_key()
     if s.openalex_email:
         p["mailto"] = s.openalex_email
     return p

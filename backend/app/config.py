@@ -58,6 +58,9 @@ class Settings(BaseSettings):
 
     # Источники
     openalex_api_key: str = ""
+    # Запасные ключи OpenAlex через запятую: когда дневная квота основного кончается (429), запросы идут по следующему ключу,
+    # и только потом — в анонимную квоту. Прогоны не становятся «недействительными» посреди дня.
+    openalex_api_key_backup: str = ""
     openalex_email: str = ""
     # Адрес команды для «вежливых» пулов открытых API (Crossref); пусто — используется OPENALEX_EMAIL
     contact_email: str = ""

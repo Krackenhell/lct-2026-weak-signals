@@ -192,6 +192,29 @@ _PROXY_OFF_UNTIL: dict[str, float] = {}
 PROXY_COOLDOWN = 600.0
 
 
+_OA_KEY_IDX = [0]
+
+
+def openalex_keys() -> list[str]:
+    s = get_settings()
+    return [k for k in [s.openalex_api_key, *(s.openalex_api_key_backup or "").split(",")] if k.strip()]
+
+
+def openalex_key() -> str:
+    """Текущий ключ OpenAlex (основной, после исчерпания — запасной)."""
+    keys = openalex_keys()
+    return keys[min(_OA_KEY_IDX[0], len(keys) - 1)].strip() if keys else ""
+
+
+def _next_openalex_key() -> str | None:
+    keys = openalex_keys()
+    if _OA_KEY_IDX[0] + 1 < len(keys):
+        _OA_KEY_IDX[0] += 1
+        log.warning("OpenAlex: квота ключа %s исчерпана, переход на запасной ключ %s", _OA_KEY_IDX[0], _OA_KEY_IDX[0] + 1)
+        return keys[_OA_KEY_IDX[0]].strip()
+    return None
+
+
 _CTX: list[ssl.SSLContext] = []
 
 
@@ -336,7 +359,11 @@ class HttpClient:
                     await asyncio.sleep(min(max(reset - time.time(), 1), 65))
                     raise SourceError("rate limit, waited for reset")
                 if resp.status_code == 429 and params and "api_key" in params:
-                    # Дневной бюджет ключа исчерпан — продолжаем в анонимной квоте источника.
+                    # Дневной бюджет ключа исчерпан: сначала запасной ключ OpenAlex, потом анонимная квота источника.
+                    nxt = _next_openalex_key() if host == "api.openalex.org" else None
+                    if nxt and nxt != params.get("api_key"):
+                        params = {**params, "api_key": nxt}
+                        raise SourceError("HTTP 429 (ключ исчерпан, переход на запасной ключ)")
                     params = {k: v for k, v in params.items() if k != "api_key"}
                     raise SourceError("HTTP 429 (ключ исчерпан, переход на анонимную квоту)")
                 if resp.status_code == 429 or resp.status_code >= 500:

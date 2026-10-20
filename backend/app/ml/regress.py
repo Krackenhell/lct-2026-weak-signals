@@ -27,6 +27,7 @@ from pathlib import Path
 
 import httpx
 
+from app.collectors.http import openalex_key
 from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.ml import eval_live
@@ -47,9 +48,8 @@ BASELINES = {
 
 def openalex_credits() -> tuple[int | None, int | None]:
     """Остаток кредитов ключа OpenAlex и секунды до сброса (по заголовкам ответа)."""
-    s = get_settings()
     try:
-        r = httpx.get("https://api.openalex.org/works", params={"per-page": 1, "select": "id", "api_key": s.openalex_api_key}, timeout=20)
+        r = httpx.get("https://api.openalex.org/works", params={"per-page": 1, "select": "id", "api_key": openalex_key()}, timeout=20)
         return int(r.headers.get("x-ratelimit-remaining", -1)), int(r.headers.get("x-ratelimit-reset", 0))
     except (httpx.HTTPError, ValueError):
         return None, None
@@ -204,20 +204,26 @@ async def main_async(args) -> None:
     store = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"sessions": []}
     session = {"started": datetime.now(timezone.utc).isoformat(), "sets": args.sets, "results": []}
     store["sessions"].append(session)
-    for q in queries:
-        left, _ = openalex_credits()
-        if left is not None and 0 <= left < max(args.min_credits, args.credits_per_run) and q not in bench["controls"]["reject"]:
-            session["stopped"] = f"квота OpenAlex: осталось {left} кредитов — дальше прогоны были бы недействительными"
-            print(session["stopped"], flush=True)
-            break
+    async def one(q: str, idx: int, left) -> None:
         t = time.time()
         run_id = await eval_live.run_query(q, False)
         res = {**eval_live.summarize(run_id, DOMAIN_OF.get(q)), **extra_metrics(run_id, q, bench),
                "domain": DOMAIN_OF.get(q), "openalex_left_before": left}
-        res["screenshot"] = screenshot(run_id, f"{len(session['results']) + 1:02d}_{re.sub(r'[^0-9A-Za-zА-Яа-яЁё]+', '_', q)[:40]}")
+        res["screenshot"] = await asyncio.to_thread(screenshot, run_id, f"{idx:02d}_{re.sub(r'[^0-9A-Za-zА-Яа-яЁё]+', '_', q)[:40]}")
         session["results"].append(res)
         path.write_text(json.dumps(store, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"{q}: {res['status']}, сигналов {res.get('n_signals')}, попаданий {res.get('dataset_hits_in_top15')}, {time.time() - t:.0f} с", flush=True)
+
+    # Пачками по --parallel запросов (как на стенде: MAX_PARALLEL_RUNS); квота проверяется перед каждой пачкой.
+    for k in range(0, len(queries), args.parallel):
+        batch = queries[k:k + args.parallel]
+        left, _ = openalex_credits()
+        paid = [q for q in batch if q not in bench["controls"]["reject"]]
+        if left is not None and 0 <= left < max(args.min_credits, args.credits_per_run * len(paid)) and paid:
+            session["stopped"] = f"квота OpenAlex: осталось {left} кредитов — дальше прогоны были бы недействительными"
+            print(session["stopped"], flush=True)
+            break
+        await asyncio.gather(*(one(q, k + n + 1, left) for n, q in enumerate(batch)))
     session["finished"] = datetime.now(timezone.utc).isoformat()
     path.write_text(json.dumps(store, ensure_ascii=False, indent=1), encoding="utf-8")
     all_results = [r for ss in store["sessions"] for r in ss["results"]]
@@ -234,6 +240,7 @@ def main() -> None:
     ap.add_argument("--only", default="")
     ap.add_argument("--wait-reset", action="store_true")
     ap.add_argument("--min-credits", type=int, default=600)
+    ap.add_argument("--parallel", type=int, default=2)
     ap.add_argument("--credits-per-run", type=int, default=1300)  # замер 20.10: холодный прогон ≈ 1 240 кредитов OpenAlex
     asyncio.run(main_async(ap.parse_args()))
 
