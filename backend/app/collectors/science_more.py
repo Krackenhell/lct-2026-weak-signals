@@ -94,8 +94,11 @@ async def ads(http: HttpClient, phrase: str, n: int = 8, years: int = 3) -> tupl
             continue
         doi = (d.get("doi") or [None])[0]
         pub = (d.get("pubdate") or "")[:7]
+        published = f"{pub}-01" if re.match(r"\d{4}-\d{2}$", pub) and not pub.endswith("-00") else (f"{pub[:4]}-01-01" if pub else None)
+        if published:  # дата номера журнала бывает в будущем (выпуск декабря вышел онлайн в октябре)
+            published = min(published, date.today().isoformat())
         docs.append(RawDoc(url=f"https://doi.org/{doi}" if doi else f"https://ui.adsabs.harvard.edu/abs/{d.get('bibcode')}/abstract",
-                           title=title, snippet=clean(d.get("abstract"), 600), published=f"{pub}-01" if re.match(r"\d{4}-\d{2}$", pub) and not pub.endswith("-00") else (f"{pub[:4]}-01-01" if pub else None),
+                           title=title, snippet=clean(d.get("abstract"), 600), published=published,
                            source_name=f"NASA ADS ({d.get('pub') or 'журнал'})", source_type="preprint" if d.get("doctype") == "eprint" else "science",
                            language="en", collector="ads"))
     return docs, int(resp.get("numFound") or 0)

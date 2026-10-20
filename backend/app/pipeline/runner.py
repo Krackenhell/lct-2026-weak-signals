@@ -669,6 +669,10 @@ async def _execute(ctx: RunContext, s) -> None:
             if lvl > pp.get("event_level", 0):
                 pp.update(event_level=lvl, hard_event=lvl >= 4, event=market_mod.LABEL[reached])
             cand.document_ids = list(dict.fromkeys((cand.document_ids or []) + web_ids))
+            holders = m.pop("holders", [])
+            if pl is not None and holders:
+                known = {c["name"].lower() for c in pl.get("companies", [])}
+                pl["companies"] = (pl.get("companies", []) + [{"name": h[:80], "kind": "патент", "url": None} for h in holders if h.lower() not in known])[:10]
             cand.contributions = {**(cand.contributions or {}), "market": m, "players": pl, "passport": pp}
         ctx.run.stats = {**ctx.run.stats, "brave_calls": brave_budget.used}
         for cand, w in win_res:

@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import os
+import ssl
 import time
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,31 @@ import httpx
 from app.config import get_settings
 
 log = logging.getLogger(__name__)
+
+CA_BUNDLE = Path(__file__).resolve().parents[1] / "certs" / "russian_trusted_ca.pem"
+
+
+def ssl_context() -> ssl.SSLContext:
+    """Стандартные корневые сертификаты + УЦ Минцифры (Russian Trusted Root/Sub CA): без него Python не открывает
+    zakupki.gov.ru и GigaChat, а отключать проверку сертификатов (verify=False) небезопасно."""
+    import certifi
+
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    if CA_BUNDLE.exists():
+        ctx.load_verify_locations(cafile=str(CA_BUNDLE))
+    return ctx
+
+
+# Реестры, недоступные из сети сервера (Роспатент висит 50 с, SEC отвечает 403 на часть адресов): после сбоя хост
+# пропускается во всех запросах на DOWN_COOLDOWN секунд, чтобы каждый прогон не ждал его заново.
+DOWN_HOSTS = {"searchplatform.rospatent.gov.ru", "efts.sec.gov", "zakupki.gov.ru", "api.lens.org"}
+DOWN_COOLDOWN = 1800.0
+_DOWN: dict[str, float] = {}
+
+
+def host_down(host: str) -> bool:
+    return _DOWN.get(host, 0.0) > time.monotonic()
+
 
 USER_AGENT = "weak-signals-lct2026/0.1 (research prototype; +https://github.com/Krackenhell/lct-2026-weak-signals)"
 
@@ -140,6 +166,15 @@ def prune_cache(cache_dir: Path, ttl_hours: int) -> int:
     return n
 
 
+_CTX: list[ssl.SSLContext] = []
+
+
+def _ctx() -> ssl.SSLContext:
+    if not _CTX:
+        _CTX.append(ssl_context())
+    return _CTX[0]
+
+
 class SourceError(Exception):
     pass
 
@@ -161,7 +196,7 @@ class HttpClient:
         self.patient = patient
         s = get_settings()
         self._client = httpx.AsyncClient(
-            timeout=s.http_timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True
+            timeout=s.http_timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True, verify=_ctx()
         )
         self._locks = _LOCKS
         self._last = _LAST
@@ -223,6 +258,9 @@ class HttpClient:
             except (OSError, ValueError):  # повреждённый файл кэша (сбой питания, диск заполнен) — читаем из источника
                 path.unlink(missing_ok=True)
 
+        if host in DOWN_HOSTS and host_down(host) and not self.patient:
+            self._bump(host, "failed")
+            raise SourceError(f"{host} недоступен из сети сервера (повтор через {DOWN_COOLDOWN / 60:.0f} мин)")
         if self._fails.get(host, 0) >= 3 and not self.patient:
             if time.monotonic() < self._open_until.get(host, 0.0):
                 self._bump(host, "failed")
@@ -260,6 +298,8 @@ class HttpClient:
                             break
                         backoff = ra or (20.0 if self.patient else 5.0) * (attempt + 1)
                     raise SourceError(f"HTTP {resp.status_code}")
+                if resp.status_code == 403 and host in DOWN_HOSTS:
+                    _DOWN[host] = time.monotonic() + DOWN_COOLDOWN  # доступ закрыт для адреса сервера — не повторяем
                 if resp.status_code >= 400:
                     # Ошибка запроса (например, 404): источник исправен, повторять бессмысленно.
                     self._bump(host, "failed")
@@ -280,7 +320,10 @@ class HttpClient:
             except NotFound:
                 raise
             except (httpx.HTTPError, SourceError) as exc:
-                last_exc = exc
+                last_exc = exc if str(exc) else SourceError(type(exc).__name__)  # у таймаутов httpx текст пустой
+                if host in DOWN_HOSTS and isinstance(exc, (httpx.TimeoutException, httpx.RemoteProtocolError, httpx.ConnectError)):
+                    _DOWN[host] = time.monotonic() + DOWN_COOLDOWN
+                    break
                 if attempt < retries - 1:
                     await asyncio.sleep(backoff)
         self._bump(host, "failed")

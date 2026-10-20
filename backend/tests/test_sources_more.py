@@ -168,6 +168,7 @@ def test_unreachable_registry_does_not_stall_market_layer(monkeypatch):
     monkeypatch.setattr(market_more, "sec_filings", none)
     monkeypatch.setattr(market_more, "rospatent", hang)
     monkeypatch.setattr(market_more, "procurement", hang)
+    monkeypatch.setattr(market_more, "lens_patents", hang)
     import time
 
     class Jev:
@@ -177,3 +178,67 @@ def test_unreachable_registry_does_not_stall_market_layer(monkeypatch):
     t0 = time.time()
     m = run(market.market_layer(None, Jev(), "smart valves", "умные клапаны", "gas lift", [], {}, 0, 0, None, profile="energy", registries=True))
     assert time.time() - t0 < 2 and m["ladder"]["reached"] is None
+
+
+def test_lens_patents_titles_and_applicants(monkeypatch):
+    with_keys(monkeypatch, LENS_API_TOKEN="test-not-a-key")
+    try:
+        def h(req: httpx.Request):
+            import json as _j
+            body = _j.loads(req.content)
+            assert req.headers["Authorization"] == "Bearer test-not-a-key" and '"solid state battery"' in str(body["query"])
+            return httpx.Response(200, json={"total": 10757, "data": [
+                {"lens_id": "058-442", "jurisdiction": "US", "doc_number": "20260321767", "kind": "A1", "date_published": "2026-10-15",
+                 "biblio": {"invention_title": [{"text": "METHODS FOR REGENERATION OF SOLID-STATE BATTERIES", "lang": "en"}],
+                            "parties": {"applicants": [{"extracted_name": {"value": "William Marsh Rice University"}}]}}},
+                {"lens_id": "x", "biblio": {}}]})
+        docs, total = run(market_more.lens_patents(client(h), "solid state battery"))
+        d = docs[0]
+        assert total == 10757 and len(docs) == 1 and d.title == "Methods for regeneration of solid-state batteries"
+        assert d.extra["applicants"] == ["William Marsh Rice University"] and d.extra["market"] == "patent" and d.published == "2026-10-15"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_sec_skipped_without_user_agent():
+    s = get_settings()
+    old, s.sec_user_agent = s.sec_user_agent, ""
+    try:
+        def h(req):  # pragma: no cover — запрос не должен уйти
+            raise AssertionError("SEC без User-Agent отвечает 403 — запрос не нужен")
+        docs, meta = run(market_more.sec_filings(client(h), "x"))
+        assert docs == [] and meta["total"] == 0
+    finally:
+        s.sec_user_agent = old
+
+
+def test_unreachable_registry_is_remembered_between_runs():
+    """Роспатент висит 50 с из части сетей: после таймаута хост пропускается и в следующих прогонах, без новых ожиданий."""
+    from app.collectors import http as http_mod
+
+    calls = []
+
+    def h(req):
+        calls.append(1)
+        raise httpx.ReadTimeout("timeout", request=req)
+    http_mod._DOWN.clear()
+    try:
+        c = client(h)
+        for _ in range(2):
+            try:
+                run(c.post(market_more.RP, {"q": "x"}, cache=False))
+            except Exception as exc:  # noqa: BLE001
+                assert str(exc)
+        assert len(calls) == 1 and http_mod.host_down("searchplatform.rospatent.gov.ru")
+    finally:
+        http_mod._DOWN.clear()
+
+
+def test_russian_ca_bundle_loaded():
+    """Сертификат УЦ Минцифры встроен: ЕИС и GigaChat проверяются по нему, а не с отключённой проверкой."""
+    from app.collectors import http as http_mod
+
+    assert http_mod.CA_BUNDLE.exists() and "BEGIN CERTIFICATE" in http_mod.CA_BUNDLE.read_text()
+    ctx = http_mod.ssl_context()
+    assert any("Russian Trusted Root CA" in str(c.get("subject")) for c in ctx.get_ca_certs())
+    assert get_settings().gigachat_verify_ssl is True

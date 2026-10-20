@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     gigachat_auth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
     # Проверка TLS: сертификаты Сбера выпущены НУЦ Минцифры, которого нет в стандартном хранилище. Безопасный путь —
     # указать путь к корневому сертификату (GIGACHAT_CA_BUNDLE); false — без проверки (запасной вариант, виден в коде).
-    gigachat_verify_ssl: bool = False
+    gigachat_verify_ssl: bool = True  # сертификат Минцифры встроен (app/certs/russian_trusted_ca.pem)
     gigachat_ca_bundle: str = ""
     # Параллельных запросов к GigaChat: 1 — бесплатный тариф физлица; для корпоративного тарифа можно 4–8,
     # тогда 15 досье пишутся одновременно, а не по очереди.
@@ -86,7 +86,10 @@ class Settings(BaseSettings):
     nasa_ads_token: str = ""
     stackexchange_key: str = ""
     rospatent_api_key: str = ""
+    # SEC EDGAR требует User-Agent «Организация почта»; адреса на mail.ru SEC отклоняет (403, проверено 20.10). Пусто — SEC не запрашивается.
     sec_user_agent: str = ""
+    # Lens.org (патенты всего мира с названиями и заявителями): токен — только в .env; 1000 запросов в месяц на пробном тарифе.
+    lens_api_token: str = ""
     more_sources: bool = True
     biorxiv_days: int = 7  # свежий каталог bioRxiv/medRxiv: дней (≈100 запросов раз в сутки, в фоне)
     brave_max_calls_per_run: int = 30

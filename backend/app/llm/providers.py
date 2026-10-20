@@ -63,6 +63,18 @@ class BaseLLM:
         return LLMResult("", self.provider, self.model, int((time.perf_counter() - t) * 1000), ok=False, error=last)
 
 
+def _gigachat_verify(s):
+    """Сертификат GigaChat выдан УЦ Минцифры: проверяем его по встроенному сертификату (app/certs), а не отключаем проверку.
+    GIGACHAT_CA_BUNDLE — свой файл; GIGACHAT_VERIFY_SSL=false — только для отладки."""
+    if s.gigachat_ca_bundle:
+        return s.gigachat_ca_bundle
+    if not s.gigachat_verify_ssl:
+        return False
+    from app.collectors.http import ssl_context
+
+    return ssl_context()
+
+
 class GigaChat(BaseLLM):
     provider = "gigachat"
 
@@ -76,7 +88,7 @@ class GigaChat(BaseLLM):
         self._api_url = s.gigachat_base_url.rstrip("/") + "/chat/completions"
         self._scope = s.gigachat_scope
         # Соединение и токен — быстро (10 с), генерация длинного ответа — до 90 с.
-        self._client = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=10), verify=s.gigachat_ca_bundle or s.gigachat_verify_ssl)
+        self._client = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=10), verify=_gigachat_verify(s))
         self._token = ""
         self._token_exp = 0.0
         self._lock = asyncio.Lock()

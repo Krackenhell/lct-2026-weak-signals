@@ -52,6 +52,8 @@ EFTS = "https://efts.sec.gov/LATEST/search-index"
 async def sec_filings(http: HttpClient, phrase: str, n: int = 6, years: int = 2) -> tuple[list[RawDoc], dict]:
     """Документы EDGAR с точной фразой за years лет: форма D (раунд), 8-K / 10-K / S-1 (публичная компания о технологии)."""
     s = get_settings()
+    if not s.sec_user_agent:  # без User-Agent с почтой SEC отвечает 403 — не тратим время прогона
+        return [], {"total": 0, "by_form": {}}
     end = date.today()
     data = await http.get(EFTS, params={"q": f'"{phrase.replace(chr(34), "")}"', "forms": "D,S-1,8-K,10-K", "dateRange": "custom",
                                         "startdt": (end - timedelta(days=365 * years)).isoformat(), "enddt": end.isoformat()},
@@ -74,6 +76,39 @@ async def sec_filings(http: HttpClient, phrase: str, n: int = 6, years: int = 2)
                            published=src.get("file_date"),
                            extra={"event": "funding" if is_d else "launch", "market": "funding" if is_d else "launch", "company": name}))
     return docs, {"total": int(((data.get("hits") or {}).get("total") or {}).get("value") or len(hits)), "by_form": by_form}
+
+
+# ---------------------------------------------------------------- Lens.org (патенты)
+
+LENS = "https://api.lens.org/patent/search"
+
+
+async def lens_patents(http: HttpClient, phrase: str, n: int = 5, years: int = 3) -> tuple[list[RawDoc], int]:
+    """Патенты всего мира (Lens.org) с фразой в названии или реферате за years лет: настоящие названия изобретений и
+    заявители — ступень «патент» лестницы и компании на карте игроков. (документы, всего найдено)"""
+    s = get_settings()
+    if not s.lens_api_token:
+        return [], 0
+    since = date(date.today().year - years, 1, 1).isoformat()
+    body = {"query": {"bool": {"must": [{"query_string": {"query": f'"{phrase.replace(chr(34), "")}"', "fields": ["title", "abstract"]}},
+                                        {"range": {"date_published": {"gte": since}}}]}},
+            "size": n, "sort": [{"date_published": "desc"}],
+            "include": ["lens_id", "biblio.invention_title", "date_published", "biblio.parties.applicants", "jurisdiction", "doc_number", "kind"]}
+    data = await http.post(LENS, body, headers={"Authorization": f"Bearer {s.lens_api_token}"})
+    docs = []
+    for it in data.get("data") or []:
+        titles = (it.get("biblio") or {}).get("invention_title") or []
+        title = next((t.get("text") for t in titles if t.get("lang") == "en"), None) or (titles[0].get("text") if titles else "")
+        if not title or not it.get("lens_id"):
+            continue
+        apps = [((a.get("extracted_name") or {}).get("value") or "").strip() for a in ((it.get("biblio") or {}).get("parties") or {}).get("applicants") or []]
+        apps = [a for a in apps if a][:3]
+        number = f"{it.get('jurisdiction', '')}{it.get('doc_number', '')}{it.get('kind', '')}"
+        docs.append(RawDoc(url=f"https://www.lens.org/lens/patent/{it['lens_id']}", title=clean(title.capitalize() if title.isupper() else title, 400),
+                           snippet=clean(f"Патент {number}; заявитель: {', '.join(apps) or 'не указан'}", 400), published=(it.get("date_published") or "")[:10] or None,
+                           source_name=f"Lens.org ({it.get('jurisdiction') or 'патент'})", source_type="patent", language="en", collector="lens",
+                           extra={"event": "patent", "market": "patent", "holder": ", ".join(apps), "applicants": apps, "country": it.get("jurisdiction")}))
+    return docs, int(data.get("total") or len(docs))
 
 
 # ---------------------------------------------------------------- Роспатент

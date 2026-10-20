@@ -100,7 +100,7 @@ async def market_layer(http: HttpClient, dm, name_en: str, name_ru: str, topic: 
             against = []
     if registries and get_settings().more_sources:
         # Реестры (20.10): клинические исследования, отчётность SEC, патенты Роспатента, закупки ЕИС — тоже подтверждает Jev.
-        calls = [market_more.sec_filings(http, phrase, 4), market_more.rospatent(http, name_ru or phrase, 4)]
+        calls = [market_more.sec_filings(http, phrase, 4), market_more.rospatent(http, name_ru or phrase, 4), market_more.lens_patents(http, phrase, 4)]
         if profile == "life_med":
             calls.append(market_more.clinical_trials(http, phrase, 4))
         if name_ru and re.search(r"[а-яё]", name_ru, re.I):
@@ -146,6 +146,9 @@ async def market_layer(http: HttpClient, dm, name_en: str, name_ru: str, topic: 
                      "why": "массовость или стандарт" if re.search(r"widely|standard|mainstream|mature|массов|стандарт", f"{d.title} {d.snippet}", re.I)
                      else "провал или отказ"} for d in against_ok],
         "web_docs": confirmed_web,
+        # Заявители подтверждённых патентов (Lens, Роспатент) — компании для карты игроков.
+        "holders": list(dict.fromkeys(h for d in confirmed_web if (d.extra or {}).get("event") == "patent"
+                                      for h in ((d.extra or {}).get("applicants") or [x.strip() for x in ((d.extra or {}).get("holder") or "").split(",")]) if h))[:6],
         "web_checked": len(web),
     }
 
