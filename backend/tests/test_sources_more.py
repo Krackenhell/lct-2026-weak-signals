@@ -261,3 +261,31 @@ def test_not_found_is_an_answer_not_a_failure():
     except Exception:  # noqa: BLE001 — NotFound ожидаем
         pass
     assert c.stats["ops.epo.org"] == {"ok": 1, "cached": 0, "failed": 0}
+
+
+def test_proxy_routing_by_host_with_direct_fallback(monkeypatch):
+    """Российские госсайты — через российский прокси, остальное напрямую; упал прокси — запрос уходит напрямую."""
+    from app.collectors import http as http_mod
+
+    monkeypatch.setenv("RU_PROXY_URL", "http://user:pass@127.0.0.1:9")
+    monkeypatch.setenv("RU_PROXY_HOSTS", "zakupki.gov.ru")
+    get_settings.cache_clear()
+    http_mod._PROXY_FAILS.clear()
+    http_mod._PROXY_OFF_UNTIL.clear()
+    try:
+        assert http_mod.proxy_routes() == {"zakupki.gov.ru": "http://user:pass@127.0.0.1:9"}
+        c = HttpClient()
+        c._cache_dir = Path(tempfile.mkdtemp())
+        c._interval = {}
+
+        def proxy_down(req):
+            raise httpx.ProxyError("proxy refused", request=req)
+        c._client = httpx.AsyncClient(transport=httpx.MockTransport(proxy_down))
+        c._direct = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: httpx.Response(200, text="<rss></rss>")))
+        for _ in range(3):
+            assert run(c.get("https://zakupki.gov.ru/epz/order/extendedsearch/rss.html", as_json=False, cache=False)) == "<rss></rss>"
+        assert http_mod._PROXY_OFF_UNTIL.get("zakupki.gov.ru", 0) > 0  # после трёх сбоев прокси хост временно ходит напрямую
+    finally:
+        get_settings.cache_clear()
+        http_mod._PROXY_FAILS.clear()
+        http_mod._PROXY_OFF_UNTIL.clear()

@@ -22,7 +22,8 @@ os.environ["S2_API_KEY"] = ""
 os.environ["API_TOKEN"] = ""
 # Ключи источников из .env разработчика тоже обнуляем: иначе тесты ходят в живые API (EPO, Lens, Brave и др.).
 for _k in ("EPO_OPS_KEY", "EPO_OPS_SECRET", "BRAVE_API_KEY", "NCBI_API_KEY", "NASA_ADS_TOKEN", "STACKEXCHANGE_KEY",
-           "ROSPATENT_API_KEY", "SEC_USER_AGENT", "LENS_API_TOKEN", "OPENAI_API_KEY", "YANDEX_API_KEY"):
+           "ROSPATENT_API_KEY", "SEC_USER_AGENT", "LENS_API_TOKEN", "OPENAI_API_KEY", "YANDEX_API_KEY",
+           "RU_PROXY_URL", "FOREIGN_PROXY_URL"):
     os.environ[_k] = ""
 os.environ["CHECK_LINKS"] = "false"  # живая проверка ссылок ходит в сеть; в тестах она подменяется (test_links.py)
 

@@ -97,6 +97,14 @@ class Settings(BaseSettings):
     # Маршрут источников по профилю запроса (науки о жизни, материалы, энергетика, ИТ): Europe PMC и ML-источники
     routing: bool = True
     http_timeout: float = 25.0
+    # Маршрутизация по странам (как раздельный VPN): стенд стоит за рубежом, а часть российских госсайтов отвечает только
+    # российским адресам (ЕИС госзакупок нестабилен из-за рубежа). Хосты из RU_PROXY_HOSTS идут через прокси с российским
+    # адресом, остальные — напрямую. Если стенд переедет в Россию — наоборот: FOREIGN_PROXY_URL для зарубежных API.
+    # Формат прокси: http://логин:пароль@хост:порт или socks5://… При сбое прокси запрос автоматически повторяется напрямую.
+    ru_proxy_url: str = ""
+    ru_proxy_hosts: str = "zakupki.gov.ru,searchplatform.rospatent.gov.ru,cyberleninka.ru,habr.com,vc.ru,www.cnews.ru"
+    foreign_proxy_url: str = ""
+    foreign_proxy_hosts: str = "efts.sec.gov,api.search.brave.com,api.lens.org,ops.epo.org,api.typesafe.ai,api.openalex.org"
     cache_dir: Path = DATA_DIR / "cache"
     cache_ttl_hours: int = 72
     # Мягкий дневной лимит сетевых запросов к OpenAlex (по UTC): выше него предрасчёт пропускает темы,

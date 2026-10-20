@@ -171,6 +171,27 @@ def prune_cache(cache_dir: Path, ttl_hours: int) -> int:
     return n
 
 
+def proxy_routes() -> dict[str, str]:
+    """Хост → прокси по настройкам RU_PROXY_* и FOREIGN_PROXY_* (пустой прокси — маршрута нет)."""
+    s = get_settings()
+    routes = {}
+    for url, hosts in ((s.foreign_proxy_url, s.foreign_proxy_hosts), (s.ru_proxy_url, s.ru_proxy_hosts)):
+        if url:
+            routes.update({h.strip().lower(): url for h in (hosts or "").split(",") if h.strip()})
+    return routes
+
+
+def _mounts(timeout: float) -> dict:
+    routes = proxy_routes()
+    return {f"all://{host}": httpx.AsyncHTTPTransport(proxy=url, verify=_ctx(), retries=0) for host, url in routes.items()}
+
+
+# Сколько раз прокси не ответил: после 3 подряд хост на PROXY_COOLDOWN секунд ходит напрямую (прокси упал — работаем как без него).
+_PROXY_FAILS: dict[str, int] = {}
+_PROXY_OFF_UNTIL: dict[str, float] = {}
+PROXY_COOLDOWN = 600.0
+
+
 _CTX: list[ssl.SSLContext] = []
 
 
@@ -201,8 +222,10 @@ class HttpClient:
         self.patient = patient
         s = get_settings()
         self._client = httpx.AsyncClient(
-            timeout=s.http_timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True, verify=_ctx()
+            timeout=s.http_timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True, verify=_ctx(), mounts=_mounts(s.http_timeout)
         )
+        # Прямой клиент — запасной путь, если прокси для хоста недоступен.
+        self._direct = httpx.AsyncClient(timeout=s.http_timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True, verify=_ctx())             if proxy_routes() else self._client
         self._locks = _LOCKS
         self._last = _LAST
         self._cache_dir = Path(s.cache_dir)
@@ -218,6 +241,28 @@ class HttpClient:
 
     async def close(self) -> None:
         await self._client.aclose()
+        if self._direct is not self._client:
+            await self._direct.aclose()
+
+    async def _send(self, host: str, method: str, url: str, **kw) -> httpx.Response:
+        """Запрос по маршруту хоста (через прокси, если он задан) с переходом на прямое соединение при сбое прокси."""
+        routed = self._direct is not self._client and host in proxy_routes()
+        proxied = routed and _PROXY_OFF_UNTIL.get(host, 0.0) < time.monotonic()
+        # Хосты без маршрута и так идут напрямую через основной клиент; прямой клиент — только когда прокси хоста выключен.
+        client = self._direct if routed and not proxied else self._client
+        try:
+            resp = await client.request(method, url, **kw)
+        except (httpx.ProxyError, httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            if not proxied:
+                raise
+            _PROXY_FAILS[host] = _PROXY_FAILS.get(host, 0) + 1
+            if _PROXY_FAILS[host] >= 3:
+                _PROXY_OFF_UNTIL[host] = time.monotonic() + PROXY_COOLDOWN
+            log.warning("proxy for %s failed (%s), retrying direct", host, type(exc).__name__)
+            return await self._direct.request(method, url, **kw)
+        if proxied:
+            _PROXY_FAILS[host] = 0
+        return resp
 
     def _bump(self, host: str, key: str) -> None:
         self.stats.setdefault(host, {"ok": 0, "cached": 0, "failed": 0})[key] += 1
@@ -282,9 +327,9 @@ class HttpClient:
             try:
                 tmo = {"timeout": HOST_TIMEOUT[host]} if host in HOST_TIMEOUT and not self.patient else {}
                 if json_body is None:
-                    resp = await self._client.get(url, params=params, headers=headers, **tmo)
+                    resp = await self._send(host, "GET", url, params=params, headers=headers, **tmo)
                 else:
-                    resp = await self._client.post(url, params=params, headers=headers, json=json_body, **tmo)
+                    resp = await self._send(host, "POST", url, params=params, headers=headers, json=json_body, **tmo)
                 if resp.status_code == 403 and resp.headers.get("x-ratelimit-remaining") == "0":
                     # Лимит GitHub: ждём сброса окна (не более минуты) и пробуем снова.
                     reset = float(resp.headers.get("x-ratelimit-reset", time.time() + 30))
