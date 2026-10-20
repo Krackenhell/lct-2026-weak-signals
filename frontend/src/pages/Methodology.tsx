@@ -317,6 +317,13 @@ export default function Methodology() {  const [info, setInfo] = useState<any>(n
                 F1 = <b>{m.cv5.f1}</b>, 95% интервал <b>{m.cv5_ci95?.f1?.join(" – ")}</b>; precision {m.cv5_ci95?.precision?.join(" – ")}; recall {m.cv5_ci95?.recall?.join(" – ")}.
                 Повтор 5×{m.cv5_repeated?.repeats}: F1 {m.cv5_repeated?.f1_mean} ± {m.cv5_repeated?.f1_std}.
               </div>
+              {m.cv5_grouped && (
+                <div style={{ marginTop: 6 }}>
+                  Проверка на утечку через синонимы: близкие формулировки одной технологии ({m.cv5_grouped.rows_in_shared_groups} примеров в общих группах)
+                  всегда в одном фолде — F1 <b>{m.cv5_grouped.grouped_cv5.f1}</b> против {m.cv5_grouped.plain_cv5.f1}, ROC-AUC {m.cv5_grouped.grouped_cv5.roc_auc} против {m.cv5_grouped.plain_cv5.roc_auc}.
+                  Качество не падает — модель не «узнаёт» синонимы из обучения.
+                </div>
+              )}
               <div className="muted" style={{ marginTop: 6 }}>
                 Для сравнения, прежний способ (все {m.reference_all_rows?.n} примеров, включая без доказательств): F1 {m.reference_all_rows?.f1} — завышено.
               </div>
