@@ -89,6 +89,16 @@ GLOSSARY = {
     "solid electrolytes": "твёрдые электролиты",
     "halide electrolytes": "галогенидные электролиты",
     "sulfide electrolytes": "сульфидные электролиты",
+    "moire flat bands": "плоские зоны муаровых сверхрешёток",
+    "moiré flat bands": "плоские зоны муаровых сверхрешёток",
+    "moire fractional chern insulators": "муаровые дробные черновские изоляторы",
+    "generalized wigner crystals": "обобщённые вигнеровские кристаллы",
+    "wigner crystals": "вигнеровские кристаллы",
+    "tetralayer graphene superconductivity": "сверхпроводимость четырёхслойного графена",
+    "rhombohedral graphene multilayers": "многослойный ромбоэдрический графен",
+    "superconductivity in multilayer graphene": "сверхпроводимость многослойного графена",
+    "fractional quantum anomalous hall effect": "дробный квантовый аномальный эффект Холла",
+    "multilayer graphene synthesis": "синтез многослойного графена",
     "3d resin printing": "3D-печать фотополимерными смолами",
     "microfluidic live-cell imaging": "микрофлюидная визуализация живых клеток",
     "live-cell imaging": "визуализация живых клеток",
@@ -142,6 +152,7 @@ CALQUES: list[tuple[str, str | None]] = [
 CONDITIONAL: list[tuple[str, str, str]] = [
     ("silicon", r"\bсиликонов(ый|ая|ое|ые|ого|ой|ых|ым|ую)\b", r"кремниев\1"),
     ("fractional", r"\bфракционн(ый|ая|ое|ые|ого|ой|ых|ым|ую)\b", r"дробн\1"),
+    ("moir", r"\bмозаичн(ый|ая|ое|ые|ого|ой|ых|ым|ую)\b", r"муаров\1"),  # moiré — «муаровый», не «мозаичный»
     # all-solid-state — «полностью твердотельный», а не «для всех твердотельных» (смысловая ошибка, прогон 20.10)
     ("all-solid-state", r"\b(для\s+)?вс(?:ех|е|ей)\s+тв[её]рдотельн(\w*)", r"\1полностью твердотельн\2"),
     ("all solid state", r"\b(для\s+)?вс(?:ех|е|ей)\s+тв[её]рдотельн(\w*)", r"\1полностью твердотельн\2"),
@@ -197,7 +208,7 @@ def check_name_ru(name_en: str, name_ru: str | None, query: str = "") -> tuple[s
         return "", None
     if MIXED.search(ru):
         return en, "смесь латиницы и кириллицы в одном слове"
-    ru = _unglue(ru)
+    ru = fix_text_ru(_unglue(ru))
     for pattern, fix in CALQUES:
         if re.search(pattern, ru, flags=re.I):
             if fix is None:
@@ -220,11 +231,18 @@ def check_name_ru(name_en: str, name_ru: str | None, query: str = "") -> tuple[s
 
 
 # Кальки, которые безопасно исправлять и в свободном тексте справок и резюме (не только в названиях): (шаблон, замена).
-TEXT_FIXES: list[tuple[str, str]] = [
+TEXT_FIXES: list[tuple[str, object]] = [
     (r"\b([Мм])икрожидкостн", r"\1икрофлюидн"),
+    (r"\b([Гг])азового\s+подъ[её]ма\b", r"\1азлифта"),
     (r"\b([Гг])азов\w+\s+подъ[её]м\w*", r"\1азлифт"),
     (r"\b(для\s+)?вс(?:ех|е|ей)\s+тв[её]рдотельн(\w*)", r"\1полностью твердотельн\2"),
     (r"\b3[дД]-", "3D-"),
+    # Физика графена (прогон 20.10): «мультислоевом», «тетраслоевого», «моире», «кристаллы винера»
+    (r"\b([Мм])ультислое(?:в|йн)", lambda m: ("М" if m.group(1) == "М" else "м") + "ногослойн"),
+    (r"\b([Тт])етраслое(?:в|йн)", lambda m: ("Ч" if m.group(1) == "Т" else "ч") + "етырёхслойн"),
+    (r"\b([Мм])оире\b-?", lambda m: ("М" if m.group(1) == "М" else "м") + "уаровые "),
+    (r"\bкристалл(\w*)\s+[Вв]инера\b", r"кристалл\1 Вигнера"),
+    (r"\bчерновский\s+изолятор(ы|ов|ам|ами|ах)\b", r"черновские изолятор\1"),
     (r"\bна\s+края[хм]\b", "на периферии"),
 ]
 

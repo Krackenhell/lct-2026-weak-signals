@@ -62,3 +62,13 @@ def test_text_fixes_in_dossier():
 
     assert fix_text_ru("Микрожидкостные устройства и 3д-печать") == "Микрофлюидные устройства и 3D-печать"
     assert check_name_ru("3d resin printing", "резиновая 3д-печать")[0] == "3D-печать фотополимерными смолами"
+
+
+@pytest.mark.parametrize("en,ru,expected", [
+    ("moire fractional chern insulators y", "мозаичные дробные черновский изоляторы", "муаровые дробные черновские изоляторы"),
+    ("superconductivity in multilayer graphene x", "сверхпроводимость в мультислоевом графене", "сверхпроводимость в многослойном графене"),
+    ("generalized wigner crystal lattices", "обобщённые кристаллы винера", "обобщённые кристаллы Вигнера"),
+])
+def test_graphene_physics_calques(en, ru, expected):
+    """Кальки из прогона «многослойный графен» 20.10."""
+    assert check_name_ru(en, ru)[0] == expected
