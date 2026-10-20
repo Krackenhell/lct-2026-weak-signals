@@ -99,6 +99,11 @@ GLOSSARY = {
     "superconductivity in multilayer graphene": "сверхпроводимость многослойного графена",
     "fractional quantum anomalous hall effect": "дробный квантовый аномальный эффект Холла",
     "multilayer graphene synthesis": "синтез многослойного графена",
+    "quantum anomaly detection": "квантовое обнаружение аномалий",
+    "kernel-level preemption": "вытеснение на уровне ядра",
+    "graph neural defense": "защита на основе графовых нейросетей",
+    "graph neural networks for threat intelligence": "графовые нейросети для анализа киберугроз",
+    "cyber threat prediction": "прогнозирование киберугроз",
     "3d resin printing": "3D-печать фотополимерными смолами",
     "microfluidic live-cell imaging": "микрофлюидная визуализация живых клеток",
     "live-cell imaging": "визуализация живых клеток",
@@ -134,7 +139,9 @@ CALQUES: list[tuple[str, str | None]] = [
     (r"\bгазового\s+подъ[её]ма\b", "газлифта"),  # gas lift — «оптимизация газового подъёма» (20.10)
     (r"\bгазов\w+\s+подъ[её]м\w*", "газлифт"),
     (r"\bтуморо-?образованн\w*", None),  # tumor-educated — калька, показываем английский термин  # insulator — «изолятор» («высокие черновский инсуляторы», 19.10)
-    (r"\bрезинов\w*\s+3[дdD]", None),  # «резиновая 3д-печать» (3d resin printing: resin — смола, не резина)
+    (r"\bрезинов\w*\s+3[дdD]", None),
+    (r"\bдекоплекс\w*", None),  # decoupling — «декоплексация» (прогон 20.10)
+    (r"\bаномальн\w+\s+детекц\w*", None),  # anomaly detection — «аномальная детекция»  # «резиновая 3д-печать» (3d resin printing: resin — смола, не резина)
     (r"\bмикрожидкостн", "микрофлюидн"),  # microfluidic — в русской литературе «микрофлюидный» (живой прогон 19.10)
     (r"\bживо\w*\s+клеточн\w*\s+изображени\w*", None),  # live-cell imaging — «визуализация живых клеток», калька не согласуется
     # Стоп-лист калек и инверсий смысла (разбор 18.10): исправить нельзя — показываем английский термин.

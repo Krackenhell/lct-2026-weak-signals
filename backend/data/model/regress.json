@@ -1746,6 +1746,829 @@
      "screenshot": null
     }
    ]
+  },
+  {
+   "started": "2026-10-20T18:06:34.316148+00:00",
+   "sets": "regression",
+   "results": [
+    {
+     "run_id": 53,
+     "query": "перспективные решения в финтехе",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 162,
+     "n_signals": 3,
+     "confident_75": 3,
+     "new_candidates_in_top": 3,
+     "top": [
+      {
+       "rank": 1,
+       "name": "compliance embedded privacy preserving payments",
+       "name_ru": "соответствие встроенных приватных непопечительских платежей",
+       "p": 0.977,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 2,
+       "name": "tokenized deposits",
+       "name_ru": "токенизированные депозиты",
+       "p": 0.994,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 3,
+       "name": "AI wallet agent",
+       "name_ru": "агент цифрового кошелька с ИИ",
+       "p": 0.846,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      }
+     ],
+     "passport": {
+      "A": 1,
+      "B": 2
+     },
+     "watch": 2,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "irrelevant": 16,
+      "mature": 6,
+      "low_probability": 2,
+      "not_technology": 1,
+      "topic_itself": 1,
+      "product": 2,
+      "organization": 1,
+      "broad": 1
+     },
+     "dataset_signals_in_domain": 17,
+     "dataset_hits_in_top15": 1,
+     "share_of_top15_from_dataset": 0.333,
+     "recall_of_domain": 0.059,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.994,
+     "shown_as": "> 95%",
+     "signals_with_score": 3,
+     "signals_with_contributions": 3,
+     "names_ru_shown": 5,
+     "names_ru_rejected": 0,
+     "claims_checked": 17,
+     "claims_supported": 10,
+     "claim_calls": 3,
+     "cost_rub": 2.24,
+     "timing_total": 163,
+     "sources_failed": {
+      "api.gdeltproject.org": 5,
+      "searchplatform.rospatent.gov.ru": 3
+     },
+     "names_sample": "ai wallet agent | gmail-based phishing detection | tokenized deposits | zero-knowledge disclosure | compliance embedded privacy preserving payments",
+     "domain": "Финтех",
+     "openalex_left_before": 5884,
+     "screenshot": null
+    },
+    {
+     "run_id": 54,
+     "query": "слабые сигналы в кибербезопасности ИИ",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 179,
+     "n_signals": 6,
+     "confident_75": 5,
+     "new_candidates_in_top": 6,
+     "top": [
+      {
+       "rank": 1,
+       "name": "quantum anomaly detection",
+       "name_ru": "квантовая аномальная детекция",
+       "p": 0.975,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 2,
+       "name": "prompt injection detection",
+       "name_ru": "обнаружение промпт-инъекций",
+       "p": 0.989,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 3,
+       "name": "graph neural defense",
+       "name_ru": "графовая нейронная защита",
+       "p": 0.972,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 4,
+       "name": "graph neural networks for threat intelligence",
+       "name_ru": "графовые нейронные сети для интеллектуальной разведки угроз",
+       "p": 0.865,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 5,
+       "name": "cyber threat prediction",
+       "name_ru": "предсказание киберугроз",
+       "p": 0.789,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 6,
+       "name": "agentic ai",
+       "name_ru": "агентный ИИ",
+       "p": 0.648,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closed"
+      }
+     ],
+     "passport": {
+      "A": 2,
+      "B": 4
+     },
+     "watch": 5,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "irrelevant": 10,
+      "mature": 5,
+      "not_technology": 5,
+      "low_probability": 3,
+      "product": 1
+     },
+     "dataset_signals_in_domain": 16,
+     "dataset_hits_in_top15": 0,
+     "share_of_top15_from_dataset": 0.0,
+     "recall_of_domain": 0.0,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.989,
+     "shown_as": "> 95%",
+     "signals_with_score": 6,
+     "signals_with_contributions": 6,
+     "names_ru_shown": 11,
+     "names_ru_rejected": 0,
+     "claims_checked": 26,
+     "claims_supported": 20,
+     "claim_calls": 5,
+     "cost_rub": 3.06,
+     "timing_total": 179,
+     "sources_failed": {
+      "api.gdeltproject.org": 9,
+      "searchplatform.rospatent.gov.ru": 6
+     },
+     "names_sample": "prompt hardening | prompt injection detection | agentic ai | graph neural defense | kernel-level preemption | deep reinforcement learning for adaptive malware deception | graph neural networks for threat intelligence | instruction localization decoupling | category-aware agentic retrieval | quantum ",
+     "domain": "Защита ИИ",
+     "openalex_left_before": 5412,
+     "screenshot": null
+    },
+    {
+     "run_id": 55,
+     "query": "робототехника",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 295,
+     "n_signals": 15,
+     "confident_75": 11,
+     "new_candidates_in_top": 15,
+     "top": [
+      {
+       "rank": 1,
+       "name": "multi-terrain adaptive whole-body control",
+       "name_ru": "адаптивное многоземельное управление всем телом",
+       "p": 0.997,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 2,
+       "name": "steerable whole-body collision avoidance",
+       "name_ru": "направляемое полное тело избежание столкновений",
+       "p": 0.964,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 3,
+       "name": "humanoid vision-language-action",
+       "name_ru": "человекоподобные системы зрения речи действия",
+       "p": 0.997,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 4,
+       "name": "theranostic-microbots",
+       "name_ru": "терапевтические диагностические микробы",
+       "p": 0.982,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 5,
+       "name": "finite-time admittance control",
+       "name_ru": "управление допускаемой подвижностью за конечное время",
+       "p": 0.969,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 6,
+       "name": "expressive robot motion",
+       "name_ru": "выразительное движение робота",
+       "p": 0.946,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 7,
+       "name": "soft gripper design",
+       "name_ru": "проектирование мягкой хватки",
+       "p": 0.975,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      },
+      {
+       "rank": 8,
+       "name": "shape adaptive robotics",
+       "name_ru": "Shape Adaptive Robotics",
+       "p": 0.935,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 9,
+       "name": "quantum soft computing",
+       "name_ru": "квантовые мягкие вычисления",
+       "p": 0.911,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 10,
+       "name": "latent memory",
+       "name_ru": "латентная память",
+       "p": 0.977,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 11,
+       "name": "robot rehabilitation system",
+       "name_ru": "роботизированная система реабилитации",
+       "p": 0.756,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closing"
+      },
+      {
+       "rank": 12,
+       "name": "force feedback robot arms",
+       "name_ru": "манипуляторы с силовым откликом",
+       "p": 0.732,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 13,
+       "name": "humanoid motor skill learning",
+       "name_ru": "обучение человекоподобных роботов моторным навыкам",
+       "p": 0.733,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 14,
+       "name": "whole body control",
+       "name_ru": "целостное управление телом робота",
+       "p": 0.721,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 15,
+       "name": "underwater robot navigation",
+       "name_ru": "навигация подводных роботов",
+       "p": 0.647,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      }
+     ],
+     "passport": {
+      "A": 9,
+      "B": 6
+     },
+     "watch": 3,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "low_probability": 8,
+      "irrelevant": 3,
+      "mature": 3,
+      "topic_itself": 1,
+      "duplicate": 1,
+      "not_technology": 1
+     },
+     "dataset_signals_in_domain": 17,
+     "dataset_hits_in_top15": 2,
+     "share_of_top15_from_dataset": 0.133,
+     "recall_of_domain": 0.118,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.997,
+     "shown_as": "> 95%",
+     "signals_with_score": 15,
+     "signals_with_contributions": 15,
+     "names_ru_shown": 18,
+     "names_ru_rejected": 0,
+     "claims_checked": 79,
+     "claims_supported": 57,
+     "claim_calls": 14,
+     "cost_rub": 4.47,
+     "timing_total": 296,
+     "sources_failed": {
+      "api2.openreview.net": 5,
+      "api.gdeltproject.org": 16,
+      "ops.epo.org": 1,
+      "searchplatform.rospatent.gov.ru": 8
+     },
+     "names_sample": "whole body control | monocular underwater bev | theranostic-microbots | shape adaptive robotics | underwater robot navigation | force feedback robot arms | expressive robot motion | humanoid vision-language-action | hand haptic estimation | latent memory | wheel motion uncertainty | robot rehabilita",
+     "domain": "Роботы",
+     "openalex_left_before": 4930,
+     "screenshot": null
+    },
+    {
+     "run_id": 56,
+     "query": "инфраструктура для ИИ",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 284,
+     "n_signals": 9,
+     "confident_75": 7,
+     "new_candidates_in_top": 9,
+     "top": [
+      {
+       "rank": 1,
+       "name": "photonic memory for neuromorphic computing",
+       "name_ru": "фотонная память для нейроморфных вычислений",
+       "p": 0.995,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 2,
+       "name": "photonic computing",
+       "name_ru": "фотонная вычислительная техника",
+       "p": 0.939,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closing"
+      },
+      {
+       "rank": 3,
+       "name": "posit quantization",
+       "name_ru": "позит-квантизация",
+       "p": 0.995,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 4,
+       "name": "reconfigurable processor-centric accelerators",
+       "name_ru": "переносимые процессоро-центрированные ускорители",
+       "p": 0.903,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 5,
+       "name": "lightweight federated learning",
+       "name_ru": "легковесное федеративное обучение",
+       "p": 0.876,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 6,
+       "name": "quantum-inspired optimization",
+       "name_ru": "квантово-вдохновленные алгоритмы оптимизации",
+       "p": 0.923,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closing"
+      },
+      {
+       "rank": 7,
+       "name": "polarization switching vcsels",
+       "name_ru": "переключение поляризации VCSEL",
+       "p": 0.887,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 8,
+       "name": "energy-efficient deep learning",
+       "name_ru": "энергосберегающие глубокие нейросети",
+       "p": 0.722,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "open"
+      },
+      {
+       "rank": 9,
+       "name": "co-packaged optics",
+       "name_ru": "ко-пакетированная оптика",
+       "p": 0.574,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "open"
+      }
+     ],
+     "passport": {
+      "A": 4,
+      "B": 5
+     },
+     "watch": 2,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "irrelevant": 15,
+      "low_evidence": 2,
+      "low_probability": 4,
+      "mature": 2,
+      "not_technology": 1
+     },
+     "dataset_signals_in_domain": 17,
+     "dataset_hits_in_top15": 1,
+     "share_of_top15_from_dataset": 0.111,
+     "recall_of_domain": 0.059,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.995,
+     "shown_as": "> 95%",
+     "signals_with_score": 9,
+     "signals_with_contributions": 9,
+     "names_ru_shown": 11,
+     "names_ru_rejected": 0,
+     "claims_checked": 55,
+     "claims_supported": 35,
+     "claim_calls": 8,
+     "cost_rub": 3.83,
+     "timing_total": 285,
+     "sources_failed": {
+      "api.gdeltproject.org": 11,
+      "ops.epo.org": 6,
+      "searchplatform.rospatent.gov.ru": 8
+     },
+     "names_sample": "quantum-inspired optimization | photonic computing | energy-efficient deep learning | adaptive optimizer | reconfigurable processor-centric accelerators | posit quantization | identifiability-guided composite load modeling | polarization switching vcsels | lightweight federated learning | co-package",
+     "domain": "Инфраструктура ИИ",
+     "openalex_left_before": 3373,
+     "screenshot": null
+    },
+    {
+     "run_id": 57,
+     "query": "индустриальный ИИ",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 265,
+     "n_signals": 8,
+     "confident_75": 5,
+     "new_candidates_in_top": 8,
+     "top": [
+      {
+       "rank": 1,
+       "name": "industrial foundation models",
+       "name_ru": "промышленные фундаментальные модели",
+       "p": 0.996,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 2,
+       "name": "Edge AI real-time process control",
+       "name_ru": "Периферийный ИИ для реального времени контроля процессов",
+       "p": 0.854,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 3,
+       "name": "model-predictive safety",
+       "name_ru": "предиктивная безопасность моделей",
+       "p": 0.939,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closed"
+      },
+      {
+       "rank": 4,
+       "name": "Intelligent automation framework",
+       "name_ru": "Интеллектуальная автоматизация на базе ИИ",
+       "p": 0.856,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closing"
+      },
+      {
+       "rank": 5,
+       "name": "fail-safe AI",
+       "name_ru": "безопасный искусственный интеллект",
+       "p": 0.814,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 6,
+       "name": "intelligent energy-efficient automation",
+       "name_ru": "интеллектуальная энергосберегающая автоматизация",
+       "p": 0.606,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 7,
+       "name": "embodied ai",
+       "name_ru": "воплощённый ИИ",
+       "p": 0.632,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closed"
+      },
+      {
+       "rank": 8,
+       "name": "in-space manufacturing",
+       "name_ru": "производство в космосе",
+       "p": 0.59,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closed"
+      }
+     ],
+     "passport": {
+      "A": 3,
+      "B": 5
+     },
+     "watch": 4,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "mature": 7,
+      "irrelevant": 9,
+      "broad": 2,
+      "low_probability": 4,
+      "not_technology": 1
+     },
+     "dataset_signals_in_domain": 17,
+     "dataset_hits_in_top15": 1,
+     "share_of_top15_from_dataset": 0.125,
+     "recall_of_domain": 0.059,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.996,
+     "shown_as": "> 95%",
+     "signals_with_score": 8,
+     "signals_with_contributions": 8,
+     "names_ru_shown": 12,
+     "names_ru_rejected": 0,
+     "claims_checked": 49,
+     "claims_supported": 34,
+     "claim_calls": 8,
+     "cost_rub": 3.42,
+     "timing_total": 265,
+     "sources_failed": {
+      "api.gdeltproject.org": 11,
+      "api2.openreview.net": 5,
+      "ops.epo.org": 6,
+      "searchplatform.rospatent.gov.ru": 8
+     },
+     "names_sample": "embodied ai | industrial foundation models | fail-safe ai | hybrid edge-tinyml | intelligent energy-efficient automation | in-space manufacturing | model-predictive safety | autonomous governance factory | edge ai real-time process control | ai for lightweight material design | intelligent automatio",
+     "domain": "Индустриальный ИИ",
+     "openalex_left_before": 2101,
+     "screenshot": null
+    }
+   ],
+   "finished": "2026-10-20T18:26:49.802638+00:00"
+  },
+  {
+   "started": "2026-10-20T18:27:13.869131+00:00",
+   "sets": "regression",
+   "results": [
+    {
+     "run_id": 58,
+     "query": "edge AI и вычисления на устройствах",
+     "status": "done",
+     "options": {
+      "use_watchlist": false,
+      "eval": true
+     },
+     "seconds": 260,
+     "n_signals": 11,
+     "confident_75": 8,
+     "new_candidates_in_top": 11,
+     "top": [
+      {
+       "rank": 1,
+       "name": "On-Device LLM Inference",
+       "name_ru": "инференс LLM на устройстве",
+       "p": 0.95,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closed"
+      },
+      {
+       "rank": 2,
+       "name": "federated tinyml deployment",
+       "name_ru": "федеративное развёртывание TinyML",
+       "p": 0.996,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 3,
+       "name": "space ai infrastructure edge orbital cloud integration",
+       "name_ru": null,
+       "p": 0.94,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 4,
+       "name": "analog rf computing",
+       "name_ru": "аналоговое радиочастотное вычисление",
+       "p": 0.993,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "thin"
+      },
+      {
+       "rank": 5,
+       "name": "analog in-memory computing",
+       "name_ru": "аналоговое вычисление в памяти",
+       "p": 0.952,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "closing"
+      },
+      {
+       "rank": 6,
+       "name": "in-sensor computing",
+       "name_ru": "вычисления в сенсоре",
+       "p": 0.976,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closing"
+      },
+      {
+       "rank": 7,
+       "name": "power and thermal-aware modeling",
+       "name_ru": "моделирование с учётом мощности и тепловых характеристик",
+       "p": 0.882,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 8,
+       "name": "ECG Personalization",
+       "name_ru": "Персонализация ЭКГ",
+       "p": 0.82,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      },
+      {
+       "rank": 9,
+       "name": "speculative decoding",
+       "name_ru": "спекулятивное декодирование",
+       "p": 0.59,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closed"
+      },
+      {
+       "rank": 10,
+       "name": "physical ai",
+       "name_ru": "физический искусственный интеллект",
+       "p": 0.508,
+       "origin": "discovered",
+       "passport": "A",
+       "window": "closed"
+      },
+      {
+       "rank": 11,
+       "name": "artificial intelligence driven data fusion",
+       "name_ru": "данные, объединённые искусственным интеллектом",
+       "p": 0.514,
+       "origin": "discovered",
+       "passport": "B",
+       "window": "thin"
+      }
+     ],
+     "passport": {
+      "A": 5,
+      "B": 6
+     },
+     "watch": 6,
+     "imputed_share": 0.0,
+     "degraded": false,
+     "exclusions": {
+      "mature": 1,
+      "topic_itself": 1,
+      "irrelevant": 10,
+      "low_probability": 4,
+      "duplicate": 1,
+      "product": 1
+     },
+     "dataset_signals_in_domain": 16,
+     "dataset_hits_in_top15": 4,
+     "share_of_top15_from_dataset": 0.364,
+     "recall_of_domain": 0.25,
+     "silver_found": null,
+     "silver_total": null,
+     "mature_leaked": null,
+     "max_p": 0.996,
+     "shown_as": "> 95%",
+     "signals_with_score": 11,
+     "signals_with_contributions": 11,
+     "names_ru_shown": 16,
+     "names_ru_rejected": 0,
+     "claims_checked": 60,
+     "claims_supported": 43,
+     "claim_calls": 10,
+     "cost_rub": 3.99,
+     "timing_total": 260,
+     "sources_failed": {
+      "api.gdeltproject.org": 13,
+      "ops.epo.org": 6,
+      "searchplatform.rospatent.gov.ru": 8
+     },
+     "names_sample": "on-device llm inference | physical ai | in-sensor computing | speculative decoding | analog in-memory computing | hyperbolic tangent function generator | few-shot prototype head adaptation | ecg personalization | analog rf computing | on-device communication agent | federated tinyml deployment | loo",
+     "domain": "Edge",
+     "openalex_left_before": 1049,
+     "screenshot": null
+    }
+   ],
+   "finished": "2026-10-20T18:31:39.029105+00:00"
   }
  ]
 }
