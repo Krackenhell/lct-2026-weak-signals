@@ -38,3 +38,11 @@ backend/data/local.db
 htmlcov/
 backend/data/model/backup_*/
 deploy/supervisor.log
+backend/data/openalex_usage.json
+backend/data/plan_cache/
+backend/data/brave_usage.json
+backend/data/bench/blind_*
+
+# Публичные сертификаты УЦ Минцифры (не секрет)
+!backend/app/certs/*.pem
+backend/data/source_usage.json

@@ -22,6 +22,10 @@ class SignalModel:
     coef: list[float]
     intercept: float
     meta: dict
+    # Калибровка температурой: на обучающей выборке классы разделяются почти идеально, и сырая регрессия выдаёт
+    # «99,99%». Логит делится на T, подобранную по прогнозам кросс-валидации (на примерах, которых модель не видела),
+    # так что 80% означает «из таких кандидатов сигналами оказываются около 80%». Порядок и порог 0,5 не меняются.
+    temperature: float = 1.0
 
     @classmethod
     def load(cls, path: Path | None = None) -> "SignalModel | None":
@@ -29,7 +33,7 @@ class SignalModel:
         if not path.exists():
             return None
         d = json.loads(path.read_text(encoding="utf-8"))
-        return cls(d["features"], d["mean"], d["scale"], d["coef"], d["intercept"], d.get("meta", {}))
+        return cls(d["features"], d["mean"], d["scale"], d["coef"], d["intercept"], d.get("meta", {}), float(d.get("temperature", 1.0)))
 
     def save(self, path: Path | None = None) -> None:
         path = path or get_settings().model_dir / "signal_model.json"
@@ -42,10 +46,17 @@ class SignalModel:
         return [max(-Z_CLIP, min(Z_CLIP, (x.get(f, m) - m) / (s or 1.0))) for f, m, s in zip(self.features, self.mean, self.scale, strict=False)]
 
     def logit(self, x: dict[str, float]) -> float:
-        return self.intercept + sum(c * v for c, v in zip(self.coef, self._z(x), strict=False))
+        """Откалиброванный логит: сумма вкладов признаков, делённая на температуру."""
+        return (self.intercept + sum(c * v for c, v in zip(self.coef, self._z(x), strict=False))) / self.temperature
 
     def predict(self, x: dict[str, float]) -> float:
         return 1.0 / (1.0 + math.exp(-max(min(self.logit(x), 30), -30)))
+
+    def outside(self, x: dict[str, float]) -> list[str]:
+        """Признаки, значение которых дальше Z_CLIP стандартных отклонений от обучающей выборки:
+        на таких кандидатах модель не проверялась, и её процент — экстраполяция."""
+        return [FEATURE_RU.get(f, f) for f, m, s in zip(self.features, self.mean, self.scale, strict=False)
+                if abs((x.get(f, m) - m) / (s or 1.0)) > Z_CLIP]
 
     def explain(self, x: dict[str, float]) -> list[dict]:
         """Вклады признаков в логит, отсортированные по модулю."""
@@ -55,7 +66,7 @@ class SignalModel:
                 "feature": f,
                 "label": FEATURE_RU.get(f, f),
                 "value": round(x.get(f, m), 3),
-                "contribution": round(c * v, 3),
+                "contribution": round(c * v / self.temperature, 3),  # в тех же единицах, что и итоговая вероятность
                 "level": "высокое" if v > 0.25 else "низкое" if v < -0.25 else "среднее",
             }
             for f, m, c, v in zip(self.features, self.mean, self.coef, z, strict=False)

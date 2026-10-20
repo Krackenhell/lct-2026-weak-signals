@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import json
 import logging
+import math
 from datetime import date
 from pathlib import Path
 
@@ -41,6 +42,14 @@ CORE_SOURCES = {"arxiv", "openalex"}
 # Перенос на область с меньшим числом сигналов в проверке не публикуется числом: оценка по 2–4 примерам ничего не значит.
 MIN_LODO_POS = 5
 EVIDENCE_RULE = "OpenAlex находит хотя бы одну работу по термину"
+# Признаки, которые не входят в классификатор (П9, ворота app/ml/gates_h4.py пройдены 19.10.2026):
+# - GitHub и Hacker News: вне IT почти у всех ноль, и ноль давал +1,9 логита — «нет GitHub = сигнал» для графена и химии;
+#   репозитории и обсуждения остаются документами-доказательствами;
+# - independent, early_stage, benefit: вес получался против смысла вопроса (противоречие знаков), а ответы Jev на живом
+#   поиске сдвинуты относительно обучения (independent — на 2,8 sd).
+# Списки FEATURES и ANSWERS не меняются: признаки по-прежнему считаются и видны в карточке.
+MODEL_EXCLUDE = ("log_gh_repos_12m", "log_hn_12m", "independent", "early_stage", "benefit")
+Z_CLIP = 3.0  # отсечка отклонения при оценке — та же, что при предсказании (model._z)
 
 
 def has_evidence(r: dict) -> bool:
@@ -181,12 +190,59 @@ def _fit(X, y, C=0.5):
 
 
 def _oof(X, y, groups=None, C=0.5, seed=42):
+    """Out-of-fold вероятности с той же отсечкой ±3σ, что и в проде: оценка не расходится с живым поиском."""
     oof = np.zeros(len(y))
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
     for tr, te in skf.split(X, y):
         sc, clf = _fit(X[tr], y[tr], C)
-        oof[te] = clf.predict_proba(sc.transform(X[te]))[:, 1]
+        z = np.clip(sc.transform(X[te]), -Z_CLIP, Z_CLIP)
+        oof[te] = _sigmoid(z @ clf.coef_[0] + clf.intercept_[0])
     return oof
+
+
+def _oof_logit(X, y, C=0.5, seed=42):
+    """Логиты кросс-валидации: каждый пример оценён моделью, которая его не видела."""
+    out = np.zeros(len(y))
+    for tr, te in StratifiedKFold(n_splits=5, shuffle=True, random_state=seed).split(X, y):
+        sc, clf = _fit(X[tr], y[tr], C)
+        out[te] = clf.decision_function(sc.transform(X[te]))
+    return out
+
+
+def _sigmoid(z):
+    return 1.0 / (1.0 + np.exp(-np.clip(z, -30, 30)))
+
+
+def _ece(y, p, bins: int = 10) -> float:
+    """Ожидаемая ошибка калибровки: насколько «80%» на деле расходится с долей сигналов среди таких кандидатов."""
+    edges = np.linspace(0, 1, bins + 1)
+    idx = np.clip(np.digitize(p, edges) - 1, 0, bins - 1)
+    return float(sum(abs(p[idx == b].mean() - y[idx == b].mean()) * (idx == b).mean() for b in range(bins) if (idx == b).any()))
+
+
+def fit_temperature(logits, y) -> float:
+    """Температура T ≥ 1, минимизирующая логарифмическую потерю на out-of-fold логитах (поиск по сетке)."""
+    best_t, best = 1.0, float("inf")
+    for t in np.arange(1.0, 15.01, 0.05):
+        p = np.clip(_sigmoid(logits / t), 1e-6, 1 - 1e-6)
+        loss = float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+        if loss < best - 1e-9:
+            best_t, best = float(t), loss
+    return round(best_t, 2)
+
+
+def calibration_report(logits, y, t: float) -> dict:
+    before, after = _sigmoid(logits), _sigmoid(logits / t)
+    bins = []
+    for lo, hi in ((0, 0.25), (0.25, 0.5), (0.5, 0.75), (0.75, 0.9), (0.9, 1.01)):
+        m = (after >= lo) & (after < hi)
+        if m.any():
+            bins.append({"range": f"{int(lo * 100)}–{min(int(hi * 100), 100)}%", "n": int(m.sum()), "mean_p": round(float(after[m].mean()), 3),
+                         "share_signals": round(float(y[m].mean()), 3)})
+    return {"temperature": t, "ece_before": round(_ece(y, before), 3), "ece_after": round(_ece(y, after), 3),
+            "max_p_before": round(float(before.max()), 4), "max_p_after": round(float(after.max()), 4),
+            "brier_before": round(float(brier_score_loss(y, before)), 3), "brier_after": round(float(brier_score_loss(y, after)), 3),
+            "bins": bins}
 
 
 def _metrics(y, p, thr=0.5) -> dict:
@@ -222,7 +278,7 @@ def _repeated(X, y, repeats: int = 10) -> dict:
 
 
 LIMITATIONS = [
-    "Отрицательные примеры собраны командой (включая 26 трудных: малоизвестные зрелые технологии, заглохший хайп, общие "
+    "Отрицательные примеры собраны командой (включая 26 трудных: малоизвестные зрелые технологии, направления с угасшим интересом, общие "
     "направления); пограничных случаев всё равно мало, поэтому метрики — верхняя оценка.",
     f"В обучение и оценку входят только примеры, у которых есть научная история ({EVIDENCE_RULE}): без неё признаки "
     "не несут информации, и модель училась бы правилу «ничего не нашли — значит сигнал». У части сигналов организатора "
@@ -234,11 +290,38 @@ LIMITATIONS = [
 ]
 
 
+def _hard_keys() -> set[str]:
+    """Ключи «трудных» отрицательных примеров (малоизвестные зрелые технологии и т. п., поле hard в negatives.json)."""
+    try:
+        items = json.loads((Path(get_settings().seed_dir) / "negatives.json").read_text(encoding="utf-8"))["items"]
+    except (OSError, ValueError, KeyError):
+        return set()
+    return {f"neg-{i}" for i, n in enumerate(items) if n.get("hard")}
+
+
+def slices(rows: list[dict], y, oof) -> dict:
+    """П16-A: где модель ошибается. Доля ложных сигналов (p ≥ 0,5) по типам отрицательных примеров и по малым темам,
+    плюс доля насыщенных оценок. Общий F1 скрывает, что на хайпе и малоизвестных фразах ошибок в разы больше."""
+    hard = _hard_keys()
+    neg = [i for i, r in enumerate(rows) if r["label"] == 0]
+    groups = {
+        "Хайп": [i for i in neg if rows[i]["code"] == "hype"],
+        "«Трудные» отрицательные": [i for i in neg if rows[i]["key"] in hard],
+        "Меньше 300 работ": [i for i in neg if math.expm1((rows[i].get("numeric") or {}).get("log_total_works", 0)) < 300],
+        "Зрелые": [i for i in neg if rows[i]["code"] == "mature"],
+        "Стандарты и широкие": [i for i in neg if rows[i]["code"] in ("standard", "broad")],
+    }
+    out = {name: {"n": len(idx), "false_signals": round(float(np.mean([oof[i] >= 0.5 for i in idx])), 3) if idx else None} for name, idx in groups.items()}
+    pos = y == 1
+    return {"false_signal_share": out, "positives_p_ge_099": round(float((oof[pos] >= 0.99).mean()), 3),
+            "all_p_ge_095": round(float((oof >= 0.95).mean()), 3)}
+
+
 def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
     incomplete = [r for r in rows if r.get("incomplete")]
     all_rows = [r for r in rows if not r.get("incomplete")]  # источники признаков не ответили — пример не используем вовсе
     rows = [r for r in all_rows if has_evidence(r)]
-    feats_all = _usable(rows, FEATURES)
+    feats_all = [f for f in _usable(rows, FEATURES) if f not in MODEL_EXCLUDE]
     X, y = _matrix(rows, feats_all)
     oof = _oof(X, y)
     report = {"provider": provider, "n": int(len(y)), "n_pos": int(y.sum()), "n_neg": int((1 - y).sum()), "train_date": TRAIN_DATE.isoformat()}
@@ -250,11 +333,13 @@ def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
     report["cv5"] = _metrics(y, oof)
     report["cv5_ci95"] = _bootstrap_ci(y, oof)
     report["cv5_repeated"] = _repeated(X, y)
+    report["slices"] = slices(rows, y, oof)
     # Для сравнения — прежний способ: все 240 примеров, включая примеры без доказательств.
-    Xa, ya = _matrix(all_rows, _usable(all_rows, FEATURES))
+    Xa, ya = _matrix(all_rows, [f for f in _usable(all_rows, FEATURES) if f not in MODEL_EXCLUDE])
     report["reference_all_rows"] = {"n": int(len(ya)), **_metrics(ya, _oof(Xa, ya))}
     report["features_used"] = feats_all
     report["features_dropped"] = [f for f in FEATURES if f not in feats_all]
+    report["model_exclude"] = {"features": list(MODEL_EXCLUDE), "why": "ворота П9 (app/ml/gates_h4.py, data/model/gates_h4.json)"}
     report["limitations"] = LIMITATIONS if "event" not in feats_all else [s for s in LIMITATIONS if "событие" not in s]
     report["confident_75"] = {
         "share_of_positives_above_075": round(float((oof[y == 1] >= 0.75).mean()), 3),
@@ -299,8 +384,14 @@ def evaluate_and_fit(rows: list[dict], provider: str) -> dict:
         key=lambda e: -abs(e["p"] - 0.5),
     )[:40]
 
+    # Калибровка: почему не бывает «100%». Температура подбирается по прогнозам на невиденных примерах.
+    logits = _oof_logit(X, y)
+    temperature = fit_temperature(logits, y)
+    report["calibration"] = calibration_report(logits, y, temperature)
+
     sc, clf = _fit(X, y)
     model = SignalModel(
+        temperature=temperature,
         features=list(feats_all),
         mean=[float(v) for v in sc.mean_],
         scale=[float(v) for v in sc.scale_],

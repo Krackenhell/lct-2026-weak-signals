@@ -3,6 +3,7 @@ import re
 
 from app.collectors.base import RawDoc, clean
 from app.collectors.http import HttpClient
+from app.config import get_settings
 
 API = "https://api.crossref.org/works"
 SKIP_TYPES = {"peer-review", "component", "dataset", "journal-issue", "proceedings", "book-series"}
@@ -17,15 +18,18 @@ def _date(item: dict) -> str | None:
 
 
 async def search(http: HttpClient, query: str, from_date: str, rows: int = 20) -> list[RawDoc]:
-    data = await http.get(
-        API,
-        params={
-            "query.bibliographic": query.replace('"', ""),
-            "rows": rows,
-            "filter": f"from-pub-date:{from_date}",
-            "select": "DOI,title,published,abstract,container-title,type",
-        },
-    )
+    params = {
+        "query.bibliographic": query.replace('"', ""),
+        "rows": rows,
+        "filter": f"from-pub-date:{from_date}",
+        "select": "DOI,title,published,abstract,container-title,type",
+    }
+    # «Вежливый» пул Crossref: с адресом для связи лимиты мягче, чем в публичном пуле (там с 01.12.2025 — 1 запрос в секунду,
+    # и при нескольких кандидатах одновременно ответ 429 молча отключал вторую научную базу).
+    s = get_settings()
+    if s.contact_email or s.openalex_email:
+        params["mailto"] = s.contact_email or s.openalex_email
+    data = await http.get(API, params=params)
     docs = []
     for it in (data.get("message") or {}).get("items", []):
         title = clean(" ".join(it.get("title") or []), 400)

@@ -47,7 +47,7 @@ FEATURE_RU = {
     "standard": "Действующий стандарт (decision-модель)",
     "early_stage": "Ранняя стадия (decision-модель)",
     "independent": "Независимые участники (decision-модель)",
-    "hype": "Маркетинговый шум (decision-модель)",
+    "hype": "Рекламные формулировки без технических данных (decision-модель)",
     "novelty": "Новизна (decision-модель)",
     "benefit": "Конкретное преимущество (decision-модель)",
     "textbook": "Устоявшаяся учебниковая идея (decision-модель)",

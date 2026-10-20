@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, CandidateBrief, Changes, Cost, EXPORT_FORMATS, exportUrl, ModelCall, prob, radarGrid, RINGS, RunFull } from "../api";
-import { OriginBadge, PassportBadge, RadarBadge, RobustnessBadge, ScoreBadge, WindowBadge } from "../components/ui";
+import { api, tidyName, CandidateBrief, Changes, ContextMatch, EXPORT_FORMATS, exportUrl, fmtScore, ModelCall, rankScore, RunFull, SCORE_HINT } from "../api";
+import { CheckDots, ScoreBadge, ScoreMeter } from "../components/ui";
 
-type Tab = "signals" | "radar" | "watch" | "excluded" | "log";
+import { SearchRadar } from "../components/Radar";
+
+const TOP_K = 15;
+
+type Tab = "signals" | "watch" | "excluded" | "log";
 
 export default function RunPage() {
   const { id } = useParams();
@@ -11,22 +15,32 @@ export default function RunPage() {
   const [tab, setTab] = useState<Tab>("signals");
   const [log, setLog] = useState<ModelCall[] | null>(null);
   const [err, setErr] = useState("");
+  const [connectionIssue, setConnectionIssue] = useState("");
   const [rerun, setRerun] = useState(false);
+  const [subscribed, setSubscribed] = useState("");
   const nav = useNavigate();
 
   useEffect(() => {
     let timer: number | undefined;
+    let disposed = false;
+    let failures = 0;
+    setRun(null); setErr(""); setConnectionIssue("");
     const load = async () => {
       try {
         const r = await api.run(id!);
-        setRun(r);
+        if (disposed) return;
+        failures = 0; setConnectionIssue(""); setRun(r);
         if (r.status === "queued" || r.status === "running") timer = window.setTimeout(load, 2000);
       } catch (e) {
-        setErr(String(e));
+        if (disposed) return;
+        if (String(e).includes("404:")) { setErr("Исследование не найдено. Вернитесь к поиску и задайте направление."); return; }
+        failures += 1;
+        setConnectionIssue("Связь прервалась. Повторяем подключение…");
+        timer = window.setTimeout(load, Math.min(1000 * 2 ** failures, 15000));
       }
     };
     load();
-    return () => window.clearTimeout(timer);
+    return () => { disposed = true; window.clearTimeout(timer); };
   }, [id]);
 
   useEffect(() => {
@@ -34,15 +48,26 @@ export default function RunPage() {
   }, [tab, id, run?.status]);
 
   if (err) return <div className="error">{err}</div>;
-  if (!run) return <p className="muted">Загрузка…</p>;
+  if (!run) return <div className="loading-state" role="status">{connectionIssue || "Подключаемся к исследованию…"}<Link to="/">← К поиску</Link></div>;
 
   const s = run.stats || {};
   const active = run.status === "queued" || run.status === "running";
   const watch = run.watch ?? [];
-  const solid = run.signals.filter((c) => c.passport?.level === "A" || c.passport?.level === "B").length;
   const changes = s.changes as Changes | undefined;
-  const cost = s.cost as Cost | undefined;
   const seconds = run.finished_at && run.created_at ? Math.round((Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000) : null;
+  const emerging = run.plan?.emerging ?? [];
+  const confident = s.confident_signals as number | undefined;
+  // Добор до 15 строк — только в интерфейсе и только из «Наблюдать»: статус, экспорт и статистика не меняются.
+  const topUp = run.signals.length > 0 ? watch.slice(0, Math.max(0, TOP_K - run.signals.length)) : [];
+
+  async function subscribe() {
+    try {
+      const sub = await api.subscribe(run!.query, 7);
+      setSubscribed(`Подписка оформлена: пересчёт раз в ${sub.every_days} дн., изменения — на странице «Подписки».`);
+    } catch (e) {
+      setErr(String(e));
+    }
+  }
 
   async function recompute() {
     setRerun(true);
@@ -58,191 +83,274 @@ export default function RunPage() {
 
   return (
     <>
-      <p className="muted small"><Link to="/">← К поиску</Link></p>
-      <h1>«{run.query}»</h1>
-      <div className="meta-row small muted">
-        {run.providers?.decision_model && <span>Decision-модель: <b>{run.providers.decision_model}</b></span>}
-        {run.providers?.llm && <span>· LLM: <b>{run.providers.llm}</b></span>}
-        {run.providers?.classifier && <span>· Классификатор: <b>{run.providers.classifier}</b></span>}
-        <span>· Режим: <b>{run.options?.use_watchlist ? "мониторинг (с базой отслеживания)" : "чистое обнаружение"}</b></span>
+      <p className="back"><Link to="/">← Новый запрос</Link></p>
+      <div className="run-head">
+        <div className="eyebrow"><span className="dot">●</span> {run.status === "done" ? "Результат поиска" : run.status === "rejected" ? "Запрос отклонён" : "Идёт поиск"}</div>
+        <h1><span className="q">«</span>{run.query}<span className="q">»</span></h1>
+      </div>
+      <div className="meta-row small muted mono">
+        {run.status === "done" && run.created_at && (
+          <span>
+            Результат от {new Date(run.created_at).toLocaleString("ru-RU")}
+            {run.options?.precompute ? " · рассчитано заранее" : ""}
+            {seconds != null ? ` · обработка ${Math.floor(seconds / 60)} мин ${seconds % 60} с` : ""}
+          </span>
+        )}
+        {run.providers?.llm && <span>· {modelsLine(run.providers)}</span>}
+        {run.status === "done" && (
+          <button className="chip" type="button" disabled={rerun} onClick={recompute} title="Повторный запрос темы в течение 4 суток открывает готовый результат; эта кнопка считает заново">
+            {rerun ? "Запуск…" : "Пересчитать"}
+          </button>
+        )}
+        {run.status === "done" && (
+          <button className="chip" type="button" onClick={subscribe} title="Пересчёт темы раз в неделю и сводка: что появилось, что выпало, что усилилось">
+            Подписаться на тему
+          </button>
+        )}
+        {subscribed && <span className="small">{subscribed}</span>}
       </div>
 
-      {run.status === "done" && (
-        <div className="meta-row small muted" style={{ marginTop: 6 }}>
-          <span>
-            Результат от <b>{run.created_at ? new Date(run.created_at).toLocaleString("ru-RU") : "—"}</b>
-            {seconds != null ? `, обработка заняла ${Math.floor(seconds / 60)} мин ${seconds % 60} с` : ""}. Повторный запрос темы в течение суток открывает этот результат сразу.
-          </span>
-          <button className="chip" type="button" disabled={rerun} onClick={recompute}>{rerun ? "Запуск…" : "Пересчитать заново"}</button>
-        </div>
-      )}
-
       {run.status === "rejected" && (
-        <div className="panel" style={{ marginTop: 16, borderLeft: "4px solid var(--bad)" }}>
+        <div className="notice bad">
           <h3 style={{ marginTop: 0 }}>Запрос не похож на технологическое направление</h3>
           <p>{run.error}</p>
-          <p className="muted small">
-            Система ищет ранние технологии по направлениям вроде «финтех», «кибербезопасность ИИ», «edge AI», «микрофлюидика».
-            Проверку выполнил: {(s.query_check as { by?: string })?.by ?? "—"}. Сигналы не формируются — чтобы не выдавать уверенный ответ на бессмысленный вопрос.
-          </p>
+          <p className="muted small">Примеры запросов: «микрофлюидные технологии», «технологии многослойного графена», «edge AI», «газлифт в скважинах».</p>
           <Link to="/">Задать другой запрос →</Link>
         </div>
       )}
 
+      {active && <SearchRadar key={run.id} run={run} connectionIssue={connectionIssue} />}
       {active && (
-        <div className="panel" style={{ marginTop: 16 }}>
-          <b>{run.stage || "Ожидание"}</b>
+        <div className="progress-panel compact-progress">
+          <div className="eyebrow">Этап · {run.progress}%</div>
+          <div className="progress-stage">{run.stage || "Ожидание"}</div>
           <div className="progress"><div style={{ width: `${run.progress}%` }} /></div>
-          <span className="muted small">{run.progress}% · новый анализ обычно занимает 5–6 минут; страница обновляется сама</span>
+          {(s.preliminary as { name: string; name_ru: string; p: number; passport: string }[] | undefined)?.length ? (
+            <div className="small prelim">
+              <b>Уже подтверждено (предварительно):</b>{" "}
+              {(s.preliminary as { name: string; name_ru: string; passport: string }[]).map((p) => `${p.name_ru || p.name} (${p.passport})`).join(" · ")}
+              <div className="muted">Окончательный список — после проверки всех кандидатов: дубли и сама тема запроса будут убраны.</div>
+            </div>
+          ) : null}
+          <span className="muted small">
+            {run.status === "queued" && run.queue
+              ? `В очереди: перед вами ${run.queue.ahead} ${run.queue.ahead === 1 ? "запрос" : "запроса"}, ожидание около ${Math.max(1, Math.round(run.queue.eta_seconds / 60))} мин`
+              : `${run.progress}% · новый анализ занимает 4–6 минут, предварительные находки появляются по ходу`}
+            {" · страница обновляется сама"}
+          </span>
         </div>
       )}
-      {run.status === "failed" && <div className="error" style={{ marginTop: 16 }}>Ошибка обработки: {run.error}</div>}
-      {run.status === "done" && run.error && <div className="error" style={{ marginTop: 16 }}>{run.error}</div>}
-
-      {run.status !== "rejected" && <div className="kpis">
-        <div className="kpi"><div className="label">Обработано источников</div><div className="value">{(s.sources_processed as number)?.toLocaleString("ru-RU") ?? "…"}</div></div>
-        <div className="kpi">
-          <div className="label">Кандидатов проверено</div>
-          <div className="value warn">
-            {s.candidates != null ? <a href="#excluded" onClick={() => setTab("excluded")}>{s.candidates as number}</a> : "…"}
-          </div>
+      {run.status === "failed" && <div className="error" style={{ marginTop: 18 }}>Ошибка обработки: {run.error}</div>}
+      {run.status === "done" && run.error && <div className="notice bad">{run.error}</div>}
+      {run.status === "done" && s.budget && (
+        <div className="notice">
+          Проверено {(s.budget as { checked: number; total: number }).checked} из {(s.budget as { checked: number; total: number }).total} кандидатов —
+          сработал лимит времени обработки; непроверенные кандидаты в выдачу не попали.
         </div>
-        <div className="kpi"><div className="label">Слабых сигналов в топе</div><div className="value accent">{run.status === "done" ? run.signals.length : "…"}</div></div>
-        <div className="kpi"><div className="label">Доказательства A/B (подтверждено ≥ 3 док.)</div><div className="value good">{run.status === "done" ? solid : "…"}</div></div>
-        <div className="kpi"><div className="label">Наблюдать: мало данных</div><div className="value">{run.status === "done" ? watch.length : "…"}</div></div>
-        {cost && (
-          <div className="kpi" title={cost.lines.map((l) => `${l.provider} ${l.model}: ${l.calls} вызовов, ${l.tokens.toLocaleString("ru-RU")} токенов, ${l.tariff} → ${l.rub} ₽`).concat(cost.sources).join("\n")}>
-            <div className="label">Стоимость запроса (наведите для расчёта)</div>
-            <div className="value">{cost.total_rub.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</div>
-          </div>
-        )}
-      </div>}
+      )}
+      {run.status === "done" && s.degraded && (
+        <div className="notice">
+          Статистика публикаций OpenAlex была недоступна для части кандидатов: признаки публикаций заменены средними, и эти числа в карточках
+          не показываются. Выдачу стоит пересчитать позже.
+        </div>
+      )}
 
       {run.status === "done" && (
-        <div className="meta-row small" style={{ marginBottom: 12 }}>
-          <span className="muted">Скачать отчёт:</span>
-          {EXPORT_FORMATS.map(([f, label]) => (
-            <a key={f} className="chip" href={exportUrl(run.id, f)} download>{label}</a>
-          ))}
-          <span className="muted">Excel — в колонках датасета организатора, с листами «Наблюдать», «Исключённые», «Источники».</span>
+        <div className="kpis">
+          <div className="kpi"><div className="label">Слабых сигналов</div><div className="value accent">{run.signals.length}</div></div>
+          <div className="kpi" title="Показатель ТЗ. Оценка классификатора — сходство с эталонными слабыми сигналами, а не вероятность успеха технологии.">
+            <div className="label">Оценка классификатора ≥ 0,75</div>
+            <div className="value">{confident != null ? `${confident} из ${run.signals.length}` : "—"}</div>
+          </div>
+          <div className="kpi"><div className="label">Кандидатов проверено</div><div className="value">{(s.candidates as number) ?? "—"}</div></div>
+          <div className="kpi"><div className="label">Документов обработано</div><div className="value">{(s.sources_processed as number)?.toLocaleString("ru-RU") ?? "—"}</div></div>
         </div>
       )}
 
       {run.status === "done" && changes && (
-        <div className="panel small">
-          <b>Мониторинг темы:</b> по сравнению с прогоном <Link to={`/runs/${changes.prev_run_id}`}>#{changes.prev_run_id}</Link>
-          {changes.prev_date ? ` от ${new Date(changes.prev_date).toLocaleDateString("ru-RU")}` : ""} — сохранилось {changes.kept},
-          новых {changes.new.length}, выпало {changes.dropped.length}.
-          {changes.new.length > 0 && <div style={{ marginTop: 6 }}>Новые: {changes.new.join(", ")}</div>}
-          {changes.dropped.length > 0 && <div className="muted" style={{ marginTop: 4 }}>Выпали: {changes.dropped.join(", ")}</div>}
-        </div>
-      )}
-
-      {run.plan?.subqueries && (
-        <div className="panel small">
-          <b>План поиска</b> <span className="muted">({run.plan.generated_by === "lexicon" ? "словарь направлений" : `сгенерирован ${run.plan.generated_by}`})</span>
-          <div className="chips">
-            {run.plan.subqueries.map((q) => <span key={q} className="chip static">{q}</span>)}
-            {(run.plan.ru_terms ?? []).map((q) => <span key={q} className="chip static">{q}</span>)}
-          </div>
+        <div className="notice" style={{ borderLeftColor: "var(--deep)", background: "var(--deep-soft)" }}>
+          С прошлого анализа <Link to={`/runs/${changes.prev_run_id}`}>от {changes.prev_date ? new Date(changes.prev_date).toLocaleDateString("ru-RU") : `#${changes.prev_run_id}`}</Link>:
+          сохранилось {changes.kept}, новых {changes.new.length}, выпало {changes.dropped.length}.
+          {changes.new.length > 0 && <span> Новые: {changes.new.join(", ")}.</span>}
         </div>
       )}
 
       {run.status === "done" && (
         <>
-          <div className="tabs" id="excluded">
-            <button className={`tab ${tab === "signals" ? "active" : ""}`} onClick={() => setTab("signals")}>Топ слабых сигналов ({run.signals.length})</button>
-            <button className={`tab ${tab === "radar" ? "active" : ""}`} onClick={() => setTab("radar")}>Радар банка</button>
-            <button className={`tab ${tab === "watch" ? "active" : ""}`} onClick={() => setTab("watch")}>Наблюдать ({watch.length})</button>
-            <button className={`tab ${tab === "excluded" ? "active" : ""}`} onClick={() => setTab("excluded")}>Исключённые кандидаты ({run.excluded.length})</button>
+          <div className="tabs">
+            <button className={`tab ${tab === "signals" ? "active" : ""}`} onClick={() => setTab("signals")}>Слабые сигналы<span className="count">{run.signals.length}</span></button>
+            <button className={`tab ${tab === "watch" ? "active" : ""}`} onClick={() => setTab("watch")}>Наблюдать<span className="count">{watch.length}</span></button>
+            <button className={`tab ${tab === "excluded" ? "active" : ""}`} onClick={() => setTab("excluded")}>Не вошли в топ<span className="count">{run.excluded.length}</span></button>
             <button className={`tab ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>Журнал моделей</button>
           </div>
-          {tab === "signals" && <SignalsTable items={run.signals} />}
-          {tab === "radar" && <RadarTable items={[...run.signals, ...watch]} />}
+          {tab === "signals" && run.signals.length === 0 && watch.length > 0 && (
+            <>
+              <p className="small">
+                Подтверждённых сигналов нет: по этой теме пока мало независимых источников (нужно не меньше трёх подтверждённых документов).
+                Ниже — ранние кандидаты, которые модель оценивает как перспективные; их стоит перепроверить позже.
+              </p>
+              <SignalList items={watch} />
+            </>
+          )}
+          {tab === "signals" && (run.signals.length > 0 || watch.length === 0) && <SignalList items={run.signals} />}
+          {tab === "signals" && topUp.length > 0 && (
+            <>
+              <p className="muted small divider">Ниже планки — под наблюдением: модель подтвердила меньше трёх документов, в топ не входят.</p>
+              <SignalList items={topUp} dim />
+            </>
+          )}
           {tab === "watch" && (
             <>
               <p className="muted small">
-                Кандидаты с высокой вероятностью по модели, но без достаточных доказательств: decision-модель подтвердила меньше 3 документов
-                из разных источников. Без доказательств вероятность ничего не значит, поэтому в топ они не попадают — их стоит перепроверить позже.
+                Модель оценивает их высоко, но подтверждённых документов пока меньше трёх. Без доказательств оценка не принимается — кандидаты
+                остаются под наблюдением.
               </p>
-              <ExcludedTable items={watch} />
+              <SignalList items={watch} />
             </>
           )}
           {tab === "excluded" && <ExcludedTable items={run.excluded} />}
           {tab === "log" && <LogTable items={log} />}
+
+          <div className="meta-row small" style={{ marginTop: 22 }}>
+            <span className="eyebrow">Скачать отчёт</span>
+            {EXPORT_FORMATS.map(([f, label]) => (
+              <a key={f} className="chip" href={exportUrl(run.id, f)} download>{label}</a>
+            ))}
+          </div>
+
+          {run.signals.length + watch.length > 0 && <CompanyContext runId={run.id} />}
+
+          {run.plan?.subqueries && (
+            <details className="disclose small">
+              <summary><b>Как искали</b> <span className="muted">— поисковые фразы и растущие поднаправления</span></summary>
+              {emerging.length > 0 && (
+                <>
+                  <p style={{ marginBottom: 4 }}>
+                    Растущие поднаправления по научной литературе (OpenAlex, тема «{run.plan.core_term}»: доля ключевого слова в работах
+                    за последние 2 года против 2 лет до этого):
+                  </p>
+                  <div className="chips">
+                    {emerging.map((e) => (
+                      <span key={e.keyword} className="chip static" title={`работ: ${e.recent} против ${e.prior}; тема — ${Math.round(e.specificity * 100)}% работ этого ключевого слова`}>
+                        {e.keyword} · {e.recent} работ
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+              {run.plan.scope_en && <p style={{ marginBottom: 4 }}>Как система поняла запрос: {run.plan.scope_en}.</p>}
+              {run.plan.route && (
+                <p style={{ marginBottom: 4 }}>
+                  Маршрут источников: {run.plan.route.text}.{run.plan.broad === false ? " Узкий запрос: подтемы словаря направлений не подмешивались." : ""}
+                </p>
+              )}
+              <p style={{ marginBottom: 4 }}>
+                Поисковые фразы ({run.plan.generated_by === "lexicon" ? "словарь направлений" : `план: ${run.plan.generated_by}`}{run.plan.plan_cached ? ", план сохранён с прошлого расчёта темы" : ""}):
+              </p>
+              <div className="chips">
+                {run.plan.subqueries.map((q) => <span key={q} className="chip static">{q}</span>)}
+                {(run.plan.ru_terms ?? []).map((q) => <span key={q} className="chip static">{q}</span>)}
+              </div>
+            </details>
+          )}
         </>
       )}
     </>
   );
 }
 
-function name(c: CandidateBrief) {
-  return (
-    <>
-      <div><b>{c.name_ru || c.name}</b></div>
-      {c.name_ru && <div className="en">{c.name}</div>}
-    </>
-  );
-}
+function CompanyContext({ runId }: { runId: number }) {
+  const [res, setRes] = useState<{ filename: string; matches: ContextMatch[]; checked: number; note: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
-function SignalsTable({ items }: { items: CandidateBrief[] }) {
-  if (!items.length) return <p className="muted">Сигналы не найдены: все кандидаты отфильтрованы. См. вкладку «Исключённые».</p>;
-  return (
-    <div className="tablewrap">
-      <table>
-        <thead>
-          <tr><th>#</th><th>Технология / тема</th><th>Скоринг (модель)</th><th>Проверяемость</th><th>Ключевые предикторы</th><th>Источники</th><th>Статус</th></tr>
-        </thead>
-        <tbody>
-          {items.map((c) => (
-            <tr key={c.id}>
-              <td>{c.rank}</td>
-              <td>{name(c)}<div style={{ marginTop: 4 }}><OriginBadge origin={c.origin} /></div></td>
-              <td><ScoreBadge p={c.probability} /><div className="muted small" style={{ marginTop: 4 }}>релевантность {prob(c.relevance)}</div></td>
-              <td className="small">
-                <div className="badges-col"><RadarBadge r={c.radar} /><PassportBadge p={c.passport} /><RobustnessBadge r={c.robustness} /><WindowBadge w={c.window} /></div>
-                {c.passport && <div className="muted" style={{ marginTop: 4 }}>событие: {c.passport.event}</div>}
-              </td>
-              <td className="small">{c.key_predictors.map((p) => <div key={p.feature}>+ {p.label} <span className="muted">({p.value})</span></div>)}</td>
-              <td>{c.n_sources}</td>
-              <td><Link to={`/insight/${c.id}`}>Смотреть инсайт →</Link></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+  async function upload(file: File) {
+    setBusy(true);
+    setErr("");
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      setRes(await api.context(runId, file.name, btoa(bin)));
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
-function RadarTable({ items }: { items: CandidateBrief[] }) {
-  const grid = radarGrid(items);
-  if (!grid.length) return <p className="muted">Радар строится по сигналам и кандидатам «Наблюдать».</p>;
   return (
-    <>
-      <p className="muted small">
-        Что делать банку с каждой технологией. <b>Пилотировать</b> — надёжные доказательства (паспорт A) и уже есть пилот, релиз или инвестиции;
-        <b> Изучать</b> — сигнал с достаточными доказательствами; <b>Наблюдать</b> — мало подтверждений, перепроверить позже. В скобках — горизонт.
-      </p>
-      <div className="tablewrap">
-        <table>
-          <thead><tr><th>Направление банка</th>{RINGS.map((r) => <th key={r}>{r}</th>)}</tr></thead>
-          <tbody>
-            {grid.map(([area, rings]) => (
-              <tr key={area}>
-                <td><b>{area}</b></td>
-                {RINGS.map((r) => (
-                  <td key={r} className="small">
-                    {rings[r].map((c) => (
-                      <div key={c.id}><Link to={`/insight/${c.id}`}>{c.name_ru || c.name}</Link> <span className="muted">({c.radar?.horizon})</span></div>
-                    ))}
-                  </td>
-                ))}
-              </tr>
+    <details className="disclose small">
+      <summary><b>Под вашу компанию</b> <span className="muted">— какие сигналы связаны с вашим документом (стратегия, ТЗ, план НИОКР)</span></summary>
+      <p className="muted">Файл .docx, .txt, .md, .xlsx или .pdf до 5 МБ. Сравнение — по тексту, без языковой модели; документ не сохраняется.</p>
+      <input type="file" accept=".docx,.txt,.md,.xlsx,.pdf,.csv" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+      {busy && <span className="muted"> Сравниваем…</span>}
+      {err && <div className="error">{err}</div>}
+      {res && (
+        res.matches.length === 0 ? (
+          <p>Явных связей документа «{res.filename}» с {res.checked} найденными технологиями нет.</p>
+        ) : (
+          <ul>
+            {res.matches.map((m) => (
+              <li key={m.id} style={{ marginBottom: 8 }}>
+                <Link to={`/insight/${m.id}`}><b>{m.name_ru || m.name}</b></Link> <span className="badge neutral">связь {m.strength}</span>
+                {m.status !== "signal" && <span className="badge low"> под наблюдением</span>}
+                <div className="muted">Абзац {m.paragraph}: «{m.quote}»</div>
+                {m.common.length > 0 && <div className="muted">Общие слова: {m.common.join(", ")}</div>}
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+          </ul>
+        )
+      )}
+    </details>
+  );
+}
+
+function modelsLine(p: Record<string, string>) {
+  const llm = (p.llm || "").split(":").pop();
+  const dm = (p.decision_model || "").split(":")[0];
+  const llmName = p.llm?.startsWith("gigachat") ? `GigaChat (${llm})` : llm;
+  const dmName = dm === "jev" ? "Jev" : dm === "heuristic" ? "правила (Jev недоступна)" : dm;
+  return `тексты: ${llmName} · проверка: ${dmName} · решение: собственная модель`;
+}
+
+function facts(c: CandidateBrief) {
+  const parts: string[] = [];
+  if (c.stage) parts.push(`${c.stage.label} (УГТ ${c.stage.trl})`);
+  if (c.first_year) parts.push(`в литературе с ${c.first_year} г.`);
+  if (c.growth_x && c.growth_x >= 1.2) parts.push(`работ за 2 года больше в ${c.growth_x.toLocaleString("ru-RU")} раза`);
+  else if (c.works_2y) parts.push(`${c.works_2y} работ за 2 года`);
+  if (c.impulse?.level) parts.push(`импульс роста: ${c.impulse.label}`);
+  return parts;
+}
+
+function SignalList({ items, dim = false }: { items: CandidateBrief[]; dim?: boolean }) {
+  if (!items.length) return <p className="muted">Список пуст. Причины по каждому кандидату — во вкладке «Не вошли в топ».</p>;
+  return (
+    <div className={`signal-list${dim ? " dim" : ""}`}>
+      {items.map((c) => (
+        <Link key={c.id} to={`/insight/${c.id}`} className={`signal-card${c.status === "signal" && (c.rank ?? 99) <= 3 ? " top" : ""}`}>
+          <div className="signal-rank">{c.rank ?? "·"}</div>
+          <div className="signal-body">
+            <div className="signal-title">
+              <b>{c.name_ru || tidyName(c.name)}</b>
+              {c.name_ru && c.name_ru !== c.name && <span className="en">{tidyName(c.name)}</span>}
+            </div>
+            {c.summary && <div className="signal-summary">{c.summary}</div>}
+            <div className="signal-facts">
+              {facts(c).map((f) => <span key={f}>{f}</span>)}
+              {c.missing?.includes("openalex") && <span className="badge med" style={{ marginLeft: 6 }}>публикации не проверены</span>}
+              {c.in_training && <span className="badge neutral" style={{ marginLeft: 6 }} title="Совпадает с примером обучающей выборки: высокая оценка ожидаема и не является независимой проверкой">пример из обучения</span>}
+            </div>
+          </div>
+          <div className="signal-badges">
+            <ScoreMeter p={c.probability} />
+            <CheckDots c={c.checks} />
+            {c.status === "signal" && <span className="dots" title={SCORE_HINT}>балл места {fmtScore(c.score?.final ?? rankScore(c.probability, c.relevance))}</span>}
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -254,19 +362,19 @@ function ExcludedTable({ items }: { items: CandidateBrief[] }) {
   }, {});
   return (
     <>
+      <p className="muted small">Каждый проверенный кандидат с причиной, по которой он не вошёл в топ.</p>
       <div className="chips" style={{ marginBottom: 12 }}>
         {Object.entries(groups).map(([k, v]) => <span key={k} className="chip static">{k}: {v}</span>)}
       </div>
       <div className="tablewrap">
         <table>
-          <thead><tr><th>Кандидат</th><th>Причина исключения</th><th>Вероятность сигнала</th><th></th></tr></thead>
+          <thead><tr><th>Кандидат</th><th>Причина</th><th>Оценка модели</th></tr></thead>
           <tbody>
             {items.map((c) => (
               <tr key={c.id}>
-                <td>{name(c)}</td>
+                <td><Link to={`/insight/${c.id}`}><b>{c.name_ru || tidyName(c.name)}</b></Link>{c.name_ru && c.name_ru !== c.name && <div className="en">{tidyName(c.name)}</div>}</td>
                 <td><span className="badge low">{c.exclusion_label}</span><div className="small" style={{ marginTop: 6 }}>{c.exclusion_reason}</div></td>
-                <td><ScoreBadge p={c.probability} />{c.passport && <div style={{ marginTop: 4 }}><PassportBadge p={c.passport} /></div>}</td>
-                <td><Link to={`/insight/${c.id}`}>Подробнее</Link></td>
+                <td><ScoreBadge p={c.probability} /></td>
               </tr>
             ))}
           </tbody>

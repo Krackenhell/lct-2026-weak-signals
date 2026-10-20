@@ -20,6 +20,11 @@ os.environ["OPENALEX_EMAIL"] = ""
 os.environ["GITHUB_TOKEN"] = ""
 os.environ["S2_API_KEY"] = ""
 os.environ["API_TOKEN"] = ""
+# Ключи источников из .env разработчика тоже обнуляем: иначе тесты ходят в живые API (EPO, Lens, Brave и др.).
+for _k in ("OPENALEX_API_KEY_BACKUP", "EPO_OPS_KEY", "EPO_OPS_SECRET", "BRAVE_API_KEY", "NCBI_API_KEY", "NASA_ADS_TOKEN", "STACKEXCHANGE_KEY",
+           "ROSPATENT_API_KEY", "SEC_USER_AGENT", "LENS_API_TOKEN", "OPENAI_API_KEY", "YANDEX_API_KEY",
+           "RU_PROXY_URL", "FOREIGN_PROXY_URL"):
+    os.environ[_k] = ""
 os.environ["CHECK_LINKS"] = "false"  # живая проверка ссылок ходит в сеть; в тестах она подменяется (test_links.py)
 
 import pytest  # noqa: E402
@@ -36,10 +41,11 @@ init_db()
 @pytest.fixture(autouse=True)
 def _fresh_robots():
     """Правила robots.txt кэшируются на процесс; в тестах у каждого своя поддельная сеть."""
-    from app.collectors import robots, yc
+    from app.collectors import news_search, robots, yc
 
     robots._RULES.clear()
     yc._DATA = None  # каталог YC тоже кэшируется на процесс
+    news_search._PARSED.clear()  # и разобранные ленты
     yield
 
 

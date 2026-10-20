@@ -24,8 +24,19 @@ async def count_created(http: HttpClient, query: str, date_from: str, date_to: s
     return int(data.get("total_count", 0))
 
 
+async def created_with_top(http: HttpClient, query: str, date_from: str, date_to: str, n: int = 3) -> tuple[int, list[RawDoc]]:
+    """Один запрос вместо двух: число репозиториев, созданных за период (признак модели — тот же, что у count_created),
+    и самые заметные из них. GitHub разрешает с токеном 30 поисковых запросов в минуту — это узкое место скорости."""
+    data = await http.get(API, params={"q": f"{_q(query)} created:{date_from}..{date_to}", "sort": "stars", "per_page": n}, headers=_headers())
+    return int(data.get("total_count", 0)), _docs(data)
+
+
 async def top_repos(http: HttpClient, query: str, n: int = 5) -> list[RawDoc]:
     data = await http.get(API, params={"q": _q(query), "sort": "stars", "per_page": n}, headers=_headers())
+    return _docs(data)
+
+
+def _docs(data: dict) -> list[RawDoc]:
     docs = []
     for r in data.get("items", []):
         docs.append(

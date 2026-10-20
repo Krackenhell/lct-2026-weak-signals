@@ -8,7 +8,7 @@ import math
 import re
 
 from app.ml.model import SignalModel
-from app.pipeline.passport import prob_text
+from app.pipeline.passport import pct_capped, prob_text, share_text
 from app.pipeline.trust import classify
 
 EXCLUSION_RU = {
@@ -18,7 +18,7 @@ EXCLUSION_RU = {
     "not_technology": "Не инновация (документ, явление, организация)",
     "standard": "Отраслевой стандарт",
     "mature": "Зрелая технология / сформированный рынок",
-    "hype": "Маркетинговый шум",
+    "hype": "Преобладают рекламные материалы",
     "low_evidence": "Недостаточно подтверждений",
     "low_trust": "Только источники с пониженным доверием",
     "low_probability": "Низкая вероятность слабого сигнала",
@@ -29,12 +29,41 @@ EXCLUSION_RU = {
     "duplicate": "Повтор: синоним технологии выше в списке",
     "paper_title": "Название статьи, а не технологии",
     "crowded": "Тема уже представлена в топе",
+    "topic_itself": "Сама тема запроса, а не направление внутри неё",
+    "subfield": "Крупное устоявшееся направление внутри темы",
 }
+SUBFIELD_SHARE, SUBFIELD_MIN_WORKS = 0.25, 1000
 
-# Формулировки научных статей, а не технологий: «Stackelberg Model of AI Security», «Stablecoin under stress».
+# Общие слова в конце названия: «multilayer graphene technologies» — это та же «multilayer graphene».
+_TOPIC_TAIL = {"technology", "technologies", "technique", "techniques", "device", "devices", "application", "applications", "system",
+               "systems", "material", "materials", "method", "methods", "research", "innovation", "innovations", "solution", "solutions"}
+
+
+
+def years_ru(age: float) -> str:
+    """«около 1 года», «около 3 лет», «меньше года» — без «около 1 лет» в досье."""
+    n = round(age or 0)
+    if n < 1:
+        return "меньше года"
+    word = "года" if n % 10 == 1 and n % 100 != 11 else "лет"
+    return f"около {n} {word}"
+
+def is_topic_itself(name: str, topic_terms: list[str]) -> bool:
+    """Кандидат ничего не добавляет к теме запроса: его ключевые слова (без общих) — часть слов темы.
+    «multilayer graphene» и «graphene» при запросе о многослойном графене — сама тема, а «rhombohedral multilayer graphene» —
+    направление внутри неё (есть новое слово)."""
+    def core(s: str) -> set[str]:
+        return {w for w in _key_words(s) if w not in _TOPIC_TAIL and w.rstrip("s") not in _TOPIC_TAIL}
+    cand = core(name)
+    return bool(cand) and any(cand <= core(t) for t in topic_terms if t and core(t))
+
+# Формулировки научных статей, а не технологий: «Stackelberg Model of AI Security», «Stablecoin under stress»,
+# «Towards Scalable Graphene Growth». Артикль внутри устойчивого термина — не заголовок: «lab on a chip platforms»,
+# «organ on a chip», «human in the loop control», «software as a service».
 PAPER_TITLE = re.compile(
     r"\b(model|characteri[sz]ation|manipulation|analysis|study|survey|review|evaluation|investigation|assessment|case|role|impact|"
-    r"perspective|overview|comparison|understanding) of\b|\bunder (stress|attack|uncertainty)\b|\b(towards?|a|an|the)\b \w+ \w+",
+    r"perspective|overview|comparison|understanding) of\b|\bunder (stress|attack|uncertainty)\b|"
+    r"^(towards?|a|an|the)\s|\btowards?\b \w+ \w+|(?<!on )(?<!in )(?<!as )(?<!of )\b(a|an|the)\b \w+ \w+",
     re.I,
 )
 # Слова, по которым темы не считаются «одинаковыми» при проверке разнообразия топа.
@@ -45,21 +74,65 @@ MAX_PER_THEME = 3
 
 # Названия организаций, а не технологий (работает и без decision-модели).
 ORG = re.compile(
-    r"\b(commission|agency|association|consortium|ministry|department|administration|authority|university|institute|foundation|"
+    r"\b(commission|agency|association|consortium|ministry|department|administration|authority|university|institute|foundation(?![\s-]+models?)|"  # «foundation model» — класс моделей, а не фонд
     r"inc|ltd|llc|corp|corporation|gmbh|plc|bank of|federal reserve)\b|министерств|комисси|ассоциаци|агентств|университет|институт|корпораци",
     re.I,
 )
+RELEVANT = 0.5  # минимальная релевантность по ответам decision-модели (см. _filters)
 # Слова-связки для сравнения названий: «in-orbit servicing» и «on-orbit servicing» — одно и то же.
 _LINK_WORDS = {"in", "on", "of", "for", "the", "and", "a", "an", "based", "driven", "enabled"}
 
 
+def _singular(w: str) -> str:
+    if len(w) > 4 and w.endswith("ies"):
+        return w[:-3] + "y"  # batteries → battery (раньше «batterie» ≠ «battery», и тройка твердотельных не склеивалась)
+    return w[:-1] if len(w) > 4 and w.endswith("s") and not w.endswith("ss") else w
+
+
 def _key_words(name: str) -> set[str]:
+    name = re.sub(r"\([^)]*\)", " ", name)  # аббревиатура в скобках: «solid-state batteries (SSB)»
     words = re.findall(r"[a-zа-яё0-9]+", name.lower().replace("-", " "))
-    return {w[:-1] if len(w) > 4 and w.endswith("s") else w for w in words if w not in _LINK_WORDS}
+    return {_singular(w) for w in words if w not in _LINK_WORDS}
+
+
+# Слова, которые не делают технологию другой: «solid-state battery technology» = «solid-state battery systems».
+DEDUP_DROP = {"all", "technology", "technologie", "development", "system", "solution", "platform"}
+
+
+def _stems(name: str) -> set[str]:
+    """Основы слов для сравнения синонимов: «superconductivity» и «superconductors» — одна основа «superc»."""
+    return {w[:6] if len(w) >= 7 else w for w in _key_words(name) if w not in DEDUP_DROP}
+
+
+def query_anchors(plan: dict, query: str) -> frozenset[str]:
+    """Слова самого запроса: их разделяют все кандидаты, поэтому «темой» для правила разнообразия они не считаются.
+
+    Источники: английский термин запроса (query_en / topic_en / ключевой термин литературы — если план не словарный или
+    термин найден в литературе), латинские слова самого запроса и слова, которые есть хотя бы в половине первых 6 подзапросов LLM.
+    Все слова подзапросов не берём: подзапросы — это поднаправления, их разнообразие и нужно сохранить."""
+    words: set[str] = set()
+    terms = list(plan.get("query_en") or [])
+    if plan.get("core_term"):
+        terms.append(plan["core_term"])
+    if plan.get("generated_by") != "lexicon":
+        terms.append(plan.get("topic_en") or "")
+    for t in terms:
+        if re.search(r"[a-z]", t or "", re.I):
+            words |= _key_words(t)
+    words |= _key_words(" ".join(re.findall(r"[a-zA-Z][a-zA-Z0-9\-]+", query or "")))
+    if plan.get("generated_by") != "lexicon":
+        subs = [_key_words(s) for s in (plan.get("subqueries") or [])[:6]]
+        if subs:
+            counts: dict[str, int] = {}
+            for ws in subs:
+                for w in ws:
+                    counts[w] = counts.get(w, 0) + 1
+            words |= {w for w, n in counts.items() if n * 2 >= len(subs)}
+    return frozenset(w for w in words if w not in _GENERIC_WORDS and w not in _TOPIC_TAIL and len(w) > 2)
 
 
 def near_duplicate(a: str, b: str) -> bool:
-    wa, wb = _key_words(a), _key_words(b)
+    wa, wb = _stems(a), _stems(b)
     if not wa or not wb:
         return False
     return len(wa & wb) / len(wa | wb) >= 0.6
@@ -74,42 +147,73 @@ def relevance(a: dict) -> float:
     return min(_ans(a, "relevance", 0.6), _ans(a, "relevance_query", 1.0))
 
 
-def _filters(a: dict) -> tuple[str, str] | None:
+def _stems_ru(s: str) -> list[str]:
+    return [w[:6] for w in re.findall(r"[а-яёa-z0-9]{3,}", (s or "").lower().replace("ё", "е").replace("-", ""))]
+
+
+def same_as_query_ru(name_ru: str | None, query: str) -> bool:
+    """Русское название кандидата совпадает с самим запросом («постквантовая криптография» на запрос «постквантовая криптография»)."""
+    a, b = _stems_ru(name_ru or ""), _stems_ru(query)
+    return bool(a) and a == b
+
+
+# Стандарт по названию: ТЗ исключает стандарты, а decision-модель иногда оценивает «ML-KEM PQC standard» ниже порога.
+STANDARD_NAME = re.compile(r"\bstandards?\b|\bстандарт", re.I)
+
+
+def _filters(a: dict, topic_terms: list[str] | None = None, query: str = "") -> tuple[str, str] | None:
     f = a["features"]
     if not a["res"].ok:
         return "no_decision", "Decision-модель не ответила (сбой сети) — признаки не проверены, кандидат не ранжируется."
+    if topic_terms and is_topic_itself(a["c"]["name_en"], topic_terms) or same_as_query_ru(a["c"].get("name_ru"), query):
+        return "topic_itself", "Совпадает с темой запроса — в выдаче показываются конкретные направления внутри темы."
     rel = relevance(a)
-    if rel < 0.34:
+    # Шкала вопроса: 0 — не связано, 0,33 — слабо связано, 0,67 — связано, 1 — ядро темы. В топ попадает только
+    # то, что ближе к «связано», чем к «слабо связано» (≥ 0,5): иначе при «уехавшем» плане запроса в выдачу
+    # «инфраструктура для ИИ» попадали квантовые алгоритмы с оценкой 0,40–0,45. У офлайн-правил шкала другая
+    # (минимум 0,4 без совпадений слов темы), для них порог прежний.
+    if rel < (0.34 if getattr(a["res"], "provider", "") == "heuristic" else RELEVANT):
         return "irrelevant", f"Слабо связано с запросом (оценка релевантности {rel:.2f} из 1: к теме {_ans(a, 'relevance', 0.6):.2f}, к исходной формулировке {_ans(a, 'relevance_query', 1.0):.2f})."
-    if _ans(a, "evidence_match", 1.0) < 0.4:
-        return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {_ans(a, 'evidence_match', 1.0):.0%}) — вероятно, это случайное сочетание слов."
+    # Общий вопрос «обсуждают ли источники предмет как технологию» строже поэлементной проверки документов: для научных
+    # направлений («rhombohedral graphene», «chiral superconductivity») он давал 0,3 при 10 из 10 подтверждённых документов.
+    # Поэтому отсев только если и паспорт доказательств не набрал уровень A/B.
+    if _ans(a, "evidence_match", 1.0) < 0.4 and (a.get("passport") or {}).get("level") not in ("A", "B"):
+        return "low_evidence", f"Найденные источники не обсуждают эту технологию напрямую (оценка соответствия {pct_capped(_ans(a, 'evidence_match', 1.0))}) — вероятно, это случайное сочетание слов."
     if ORG.search(a["c"]["name_en"]):
         return "organization", "Название организации (комиссия, агентство, университет, компания), а не технологии."
     if PAPER_TITLE.search(a["c"]["name_en"]) or len(a["c"]["name_en"].split()) > 7:
         return "paper_title", "Формулировка похожа на заголовок научной статьи, а не на название класса технологий — такой кандидат нельзя проверить поиском по источникам."
     if _ans(a, "is_technology", 1.0) < 0.3:
-        return "not_technology", f"Это не технологическая инновация, а документ, репозиторий, организация или общее рыночное явление (оценка {_ans(a, 'is_technology', 1.0):.0%})."
+        return "not_technology", f"Это не технологическая инновация, а документ, репозиторий, организация или общее рыночное явление (оценка {pct_capped(_ans(a, 'is_technology', 1.0))})."
     if _ans(a, "product_name", 0.0) >= 0.6:
-        return "product", f"Это название конкретного продукта, компании или проекта (оценка {_ans(a, 'product_name', 0.0):.0%}), а не класс технологий."
+        return "product", f"Это название конкретного продукта, компании или проекта (оценка {pct_capped(_ans(a, 'product_name', 0.0))}), а не класс технологий."
     if _ans(a, "specific_tech") < 0.25:
         return "broad", "Это широкая область или общее понятие, а не конкретная технология — такие направления не являются слабыми сигналами."
+    if STANDARD_NAME.search(a["c"]["name_en"]) or STANDARD_NAME.search(a["c"].get("name_ru") or ""):
+        return "standard", "В названии — стандарт: по ТЗ стандарты и протоколы в широком применении не являются слабыми сигналами."
     if _ans(a, "standard") >= 0.6:
-        return "standard", f"Decision-модель оценивает вероятность того, что это действующий стандарт или протокол, в {_ans(a, 'standard'):.0%}."
+        return "standard", f"Decision-модель оценивает вероятность того, что это действующий стандарт или протокол: {pct_capped(_ans(a, 'standard'))}."
     works = math.expm1(f.get("log_total_works", 0))
     views = math.expm1(f.get("log_wiki_views", 0))
     mature_reasons = []
     if _ans(a, "mass_adoption") >= 0.6:
-        mature_reasons.append(f"признаки массового внедрения ({_ans(a, 'mass_adoption'):.0%})")
+        mature_reasons.append(f"признаки массового внедрения ({pct_capped(_ans(a, 'mass_adoption'))})")
     if _ans(a, "market_leaders") >= 0.65:
-        mature_reasons.append(f"сформированный рынок с лидерами ({_ans(a, 'market_leaders'):.0%})")
+        mature_reasons.append(f"сформированный рынок с лидерами ({pct_capped(_ans(a, 'market_leaders'))})")
     if "wikipedia" not in a.get("missing", []) and f.get("wiki_exists") and views > 5000 and f.get("age_years", 0) >= 8:
         mature_reasons.append(f"устоявшаяся статья в Википедии (~{views:,.0f} просмотров в месяц) и {f['age_years']:.0f} лет в литературе".replace(",", " "))
     if works > 20000:
         mature_reasons.append(f"более {works:,.0f} научных работ".replace(",", " "))
     if mature_reasons:
         return "mature", "Зрелая технология: " + "; ".join(mature_reasons) + "."
+    # П14: порог «20 000 работ» не зависит от размера темы. Внутри темы в 15 тыс. работ поднаправление на 6 тыс. — это половина
+    # поля, а не слабый сигнал. Не применяется в словарном и деградированном режиме (нет надёжного термина темы).
+    rel_t = a.get("topic_rel")
+    if rel_t and rel_t["share"] >= SUBFIELD_SHARE and rel_t["works"] >= SUBFIELD_MIN_WORKS:
+        return "subfield", (f"Крупное устоявшееся направление внутри темы: {rel_t['share']:.0%} работ темы "
+                            f"({rel_t['works']:,} из {rel_t['topic_works']:,}).".replace(",", " "))
     if _ans(a, "hype") >= 0.75 and f.get("share_science", 0) < 0.2:
-        return "hype", f"Доказательства состоят в основном из рекламных материалов (оценка шума {_ans(a, 'hype'):.0%}), научных подтверждений мало."
+        return "hype", f"Доказательства состоят в основном из рекламных материалов (доля рекламных формулировок {pct_capped(_ans(a, 'hype'))}), научных подтверждений мало."
     docs = a["ev"].docs
     if len(docs) < 3:
         return "low_evidence", f"В открытых источниках найдено только {len(docs)} подтверждения — недостаточно для вывода."
@@ -119,20 +223,38 @@ def _filters(a: dict) -> tuple[str, str] | None:
     return None
 
 
-def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[dict]:
+P_CAP = 0.95  # оценка выше 0,95 не различается: 0,991 и 0,982 — одно и то же, порядок решает релевантность
+
+
+def rank_score(p: float | None, rel: float) -> float | None:
+    """Балл места в выдаче: min(p; 0,95) × (0,6 + 0,4 × релевантность). Не бывает больше 0,95 — «1,00» не появится."""
+    return None if p is None else min(p, P_CAP) * (0.6 + 0.4 * rel)
+
+
+def decide(assessed: list[dict], model: SignalModel | None, top_k: int, topic_terms: list[str] | None = None,
+           anchors: frozenset[str] | set[str] = frozenset(), crowding: bool = True, query: str = "") -> list[dict]:
     out: list[dict] = []
     for a in assessed:
         contrib = model.explain(a["features"]) if model else []
         rel = relevance(a)
-        d = {"relevance": rel, "contributions": contrib}
-        flt = _filters(a)
+        p = a["prob"]
+        # Как получается место в выдаче — открыто в карточке: Jev отвечает степенью (0…1) на вопросы,
+        # регрессия складывает ответы и числовые признаки в оценку p, балл = min(p; 0,95) × (0,6 + 0,4 × релевантность).
+        fin = rank_score(p, rel)
+        score = {"probability": None if p is None else round(p, 4), "relevance": round(rel, 3),
+                 "final": None if fin is None else round(fin, 4),
+                 # Точка отсчёта модели (свободный член, делённый на температуру калибровки): вместе с вкладами даёт логит.
+                 "intercept": round(model.intercept / getattr(model, "temperature", 1.0), 3) if model and hasattr(model, "intercept") else None,
+                 "outside_training": model.outside(a["features"]) if model else []}
+        d = {"relevance": rel, "contributions": contrib, "score": score}
+        flt = _filters(a, topic_terms, query)
         pp = a.get("passport")
         if flt:
             d.update(status="excluded", code=flt[0], reason=flt[1])
         elif a["prob"] is not None and a["prob"] < 0.5:
             neg = [c for c in contrib if c["contribution"] < 0][:3]
             why = "; ".join(f"{c['label'].lower()} — {c.get('level', '')} значение ({c['value']})" for c in neg)
-            d.update(status="excluded", code="low_probability", reason=f"Модель оценивает вероятность слабого сигнала в {a['prob']:.0%}. Основные факторы против: {why}.")
+            d.update(status="excluded", code="low_probability", reason=f"Модель оценивает вероятность слабого сигнала в {pct_capped(a['prob'])}. Основные факторы против: {why}.")
         elif pp and pp["level"] == "C":
             # Турникет: без подтверждённых документов высокая вероятность ничего не значит — признаки
             # считались по пустым или чужим текстам. Кандидат не попадает в топ, а уходит в «Наблюдать».
@@ -147,24 +269,30 @@ def decide(assessed: list[dict], model: SignalModel | None, top_k: int) -> list[
 
     ranked = sorted(
         [i for i, d in enumerate(out) if d["status"] == "signal"],
-        key=lambda i: -((assessed[i]["prob"] or 0.5) * (0.6 + 0.4 * out[i]["relevance"])),
+        key=lambda i: (-rank_score(assessed[i]["prob"] if assessed[i]["prob"] is not None else 0.5, out[i]["relevance"]),
+                       -(assessed[i]["prob"] or 0)),  # при равном балле — по оценке модели
     )
     # Синонимы не занимают два места в топе: остаётся вариант с более высоким баллом.
     # Разнообразие: одна узкая тема (например, «quantum») — не больше MAX_PER_THEME мест, иначе топ по
     # «инфраструктуре для ИИ» превращается в список вариантов квантового машинного обучения.
     kept: list[int] = []
     themes: dict[str, int] = {}
+    # Слова самой темы запроса («graphene» в запросе о многослойном графене) есть у всех кандидатов — темой их не считаем:
+    # места распределяются между поднаправлениями запроса, а не штрафуется сам запрос.
+    topic_words = set().union(*(_key_words(t) for t in topic_terms)) if topic_terms else set()
+    ignore = _GENERIC_WORDS | topic_words | set(anchors)
     for i in ranked:
         name = assessed[i]["c"]["name_en"]
         twin = next((k for k in kept if near_duplicate(name, assessed[k]["c"]["name_en"])), None)
-        theme = next((w for w in sorted(_key_words(name) - _GENERIC_WORDS) if len(w) > 3 and themes.get(w, 0) >= MAX_PER_THEME), None)
+        theme = None if not crowding else next(
+            (w for w in sorted(_key_words(name) - ignore) if len(w) > 3 and themes.get(w, 0) >= MAX_PER_THEME), None)
         if twin is not None:
             out[i].update(status="excluded", code="duplicate", reason=f"Синоним технологии «{assessed[twin]['c']['name_en']}», которая уже в списке.")
         elif theme and len(kept) < top_k:
             out[i].update(status="excluded", code="crowded", reason=f"В топе уже {MAX_PER_THEME} технологии на тему «{theme}» — место отдано другим направлениям.")
         else:
             kept.append(i)
-            for w in _key_words(name) - _GENERIC_WORDS:
+            for w in _key_words(name) - ignore:
                 themes[w] = themes.get(w, 0) + 1
     ranked = kept
     for r, i in enumerate(ranked):
@@ -186,12 +314,16 @@ def template_dossier(a: dict, d: dict) -> dict:
     f = a["features"]
     works = int(round(math.expm1(f.get("log_total_works", 0))))
     parts = []
-    if works:
-        parts.append(f"в научной литературе найдено около {works} работ, из них {f.get('recent_share', 0):.0%} — за последние 3 года")
-    if f.get("age_years"):
-        parts.append(f"тема заметна в публикациях около {f['age_years']:.0f} лет")
+    if "openalex" in a.get("missing", []):
+        # Подставленные средние — не измерения: «около 1417 работ» на каждой карточке выглядело бы как факт.
+        parts.append("статистика публикаций недоступна (OpenAlex не ответил)")
+    else:
+        if works:
+            parts.append(f"в научной литературе найдено около {works} работ, из них {share_text(f.get('recent_share', 0))} — за последние 3 года")
+        if f.get("age_years"):
+            parts.append(f"тема заметна в публикациях {years_ru(f['age_years'])}")
     parts.append(wiki_fact(f, a.get("missing", [])).lower())
-    if f.get("log_gh_repos_12m"):
+    if f.get("log_gh_repos_12m") and "github" not in a.get("missing", []):
         parts.append(f"за 12 месяцев создано ~{int(math.expm1(f['log_gh_repos_12m']))} репозиториев GitHub")
     stage = a["res"].answers.get("maturity", {}).get("value")
     contrib = d.get("contributions", [])
@@ -199,7 +331,8 @@ def template_dossier(a: dict, d: dict) -> dict:
     neg = [f"{c['label']} — {c.get('level', '')} значение" for c in contrib if c["contribution"] < 0][:2]
     conf = ""
     if a["prob"] is not None:
-        conf = f"Вероятность слабого сигнала по модели {prob_text(a['prob'])}. Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}."
+        conf = (f"Оценка классификатора {prob_text(a['prob'])} — сходство с размеченными слабыми сигналами, не вероятность успеха технологии. "
+                f"Сильнее всего «за»: {', '.join(pos) or '—'}. «Против»: {', '.join(neg) or '—'}.")
         pp = a.get("passport")
         if pp:
             conf += f" Паспорт доказательств {pp['level']}: подтверждено {pp['confirmed']} из {pp['checked']} документов, {pp['domains']} разных источника."

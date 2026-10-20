@@ -62,9 +62,12 @@ def test_export_xlsx_in_dataset_columns(client, run_id):
     ws = wb["Сигналы"]
     header = [c.value for c in ws[1]]
     assert header[:9] == ["№", "Технология", "Technology (EN)", "Направление (запрос)", "Организации из источников", "Почему это слабый сигнал",
-                          "Стадия (самое твёрдое событие)", "Тренд публикаций", "Оценка 1–10"]
+                          "Стадия (самое твёрдое событие)", "Тренд публикаций", "Балл места (не больше 0,95)"]
     row = {h: c.value for h, c in zip(header, ws[2], strict=True)}
-    assert row["Технология"] == "Квантовые сенсоры" and row["Оценка 1–10"] == 10 and row["Вероятность по модели"] == "выше 95%"
+    # Шкалы «1–10» больше нет (она давала «10» — ту же ложную точность, что «100%»): балл = min(p; 0,95) × (0,6 + 0,4 × rel).
+    assert row["Технология"] == "Квантовые сенсоры" and row["Оценка классификатора"] == "выше 95%"
+    assert row["Балл места (не больше 0,95)"] == round(0.95 * (0.6 + 0.4 * 0.9), 2) <= 0.95
+    assert "100%" not in json.dumps(row, ensure_ascii=False) and 10 not in row.values()
     assert row["Стадия (самое твёрдое событие)"] == "пилот / испытания" and row["Паспорт доказательств"].startswith("B: подтверждено 4 из 6")
     assert "Qnami" in row["Организации из источников"] and "arXiv" not in row["Организации из источников"]
     assert row["Тренд публикаций"].startswith("растёт быстро")
@@ -95,7 +98,7 @@ def test_feedback_is_saved_shown_and_counted(client, run_id):
     with SessionLocal() as s:
         sig = s.query(Candidate).filter_by(run_id=run_id, status="signal").one()
         exc = s.query(Candidate).filter_by(run_id=run_id, status="excluded").one()
-    assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "noise"}).json()["label"] == "Хайп / шум"
+    assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "noise"}).json()["label"] == "Завышенные ожидания без подтверждений"
     assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "signal", "comment": "согласен"}).status_code == 200
     assert client.post(f"/api/candidates/{exc.id}/feedback", json={"verdict": "mature"}).status_code == 200
     assert client.post(f"/api/candidates/{sig.id}/feedback", json={"verdict": "maybe"}).status_code == 422

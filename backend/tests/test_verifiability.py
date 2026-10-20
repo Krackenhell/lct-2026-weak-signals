@@ -63,7 +63,7 @@ def test_no_llm_uses_rules():
 def _items(n, domains=None, types=None):
     domains = domains or [f"site{i}.org" for i in range(n)]
     types = types or ["preprint"] * n
-    return [{"type": types[i], "source": "s", "url": f"https://{domains[i]}/a{i}", "title": "t", "snippet": ""} for i in range(n)]
+    return [{"type": types[i], "source": "s", "url": f"https://{domains[i]}/a{i}", "title": f"work number {i}", "snippet": ""} for i in range(n)]
 
 
 def _ans(confirmed: list[bool], event=0.0):
@@ -121,6 +121,25 @@ def test_query_relevance_takes_minimum():
     a["res"].answers["relevance_query"] = {"type": "score", "value": 0.1}  # к теме плана подходит, к запросу — нет
     out = decide([a], model, top_k=15)
     assert out[0]["code"] == "irrelevant"
+
+
+def test_weakly_related_is_not_in_top_but_rules_keep_their_scale():
+    model = SignalModel(features=list(FEATURES), mean=[0.0] * len(FEATURES), scale=[1.0] * len(FEATURES), coef=[0.1] * len(FEATURES), intercept=0.0, meta={})
+    weak, rules = _assessed("quantum kernels", 0.98, "B"), _assessed("no topic words", 0.9, "B")
+    weak["res"].answers["relevance_query"] = {"type": "score", "value": 0.42}  # между «слабо связано» и «связано»
+    rules["res"].answers["relevance_query"] = {"type": "score", "value": 0.42}
+    rules["res"].provider = "heuristic"  # у офлайн-правил 0,4 — это «совпадений слов нет», а не «слабо связано»
+    out = decide([weak, rules], model, top_k=15)
+    assert out[0]["code"] == "irrelevant"
+    assert out[1]["status"] == "signal"
+
+
+def test_foundation_models_are_technology_not_a_fund():
+    from app.pipeline.decide import ORG
+
+    assert not ORG.search("industrial time-series foundation models")
+    assert not ORG.search("robot foundation-model")
+    assert ORG.search("Linux Foundation") and ORG.search("foundation for AI safety")
 
 
 # ---------------------------------------------------------------- вопросы decision-модели
@@ -234,3 +253,34 @@ def test_metrics_are_honest():
 
 def test_watchlist_off_by_default():
     assert get_settings().use_watchlist is False
+
+
+def test_passport_reprints_and_preprint_twins_are_one_family():
+    """Одна новость на пяти сайтах и одна работа на arXiv и в журнале — по одному подтверждению (замечание из разбора конкурентов)."""
+    items = [{"type": "news", "source": "s", "url": f"https://site{i}.com/x", "title": "Acme raises $10M for solid-state batteries", "snippet": ""}
+             for i in range(5)]
+    p = pp.passport(items, _ans([True] * 5), 5)
+    assert p["domains"] == 1 and p["reprints"] == 4 and p["level"] == "C"
+    twins = [{"type": "preprint", "source": "arXiv", "url": "https://arxiv.org/abs/1", "title": "Halide electrolytes for ASSB", "snippet": ""},
+             {"type": "science", "source": "Nature", "url": "https://doi.org/10.1/x", "title": "Halide Electrolytes for ASSB.", "snippet": ""},
+             {"type": "science", "source": "JACS", "url": "https://doi.org/10.1/y", "title": "Another group, another result", "snippet": ""}]
+    p = pp.passport(twins, _ans([True] * 3), 3)
+    assert p["science"] == 2 and p["domains"] == 2
+
+
+def test_no_hundred_percent_anywhere_in_texts():
+    """Замечание экспертов финала: «откуда 100%». Ни вероятность, ни доли в текстах не выводятся как «100%»."""
+    from app.pipeline.passport import prob_text, share_text
+
+    assert share_text(1.0) == "все" and share_text(0.999) == "все" and share_text(0.0) == "ни одной" and share_text(0.81) == "81%"
+    assert "100" not in prob_text(0.999) and "100" not in prob_text(1.0)
+
+
+def test_query_itself_in_russian_and_standards_are_excluded():
+    """Прогон «постквантовая криптография» 20.10: сама тема (другим английским словом) и «ML-KEM standard» не попадают в топ."""
+    from app.pipeline.decide import STANDARD_NAME, same_as_query_ru
+
+    assert same_as_query_ru("постквантовая криптография", "постквантовая криптография")
+    assert same_as_query_ru("Пост-квантовая криптография", "постквантовая криптография")
+    assert not same_as_query_ru("гибридное развертывание постквантовой криптографии", "постквантовая криптография")
+    assert STANDARD_NAME.search("ml-kem pqc standard") and not STANDARD_NAME.search("standardized testing chips")

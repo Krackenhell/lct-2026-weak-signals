@@ -40,11 +40,25 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
     # Домен издания: у новостей из лент — само издание (поле domain), а не адрес ленты.
     dom = lambda it: it.get("domain") or _domain(it.get("url", "")) or it.get("source", "")  # noqa: E731
     domains = sorted({dom(it) for it in confirmed} - {""})
-    science = sum(1 for it in confirmed if it.get("type") in ("science", "preprint"))
-    # Независимые источники: разные сайты; научные работы — каждая отдельно (разные исследовательские группы,
+    # Семейство происхождения: одна работа на arXiv и в журнале, одна новость в пяти перепечатках — одно подтверждение.
+    # Ключ — нормализованное название документа (DOI у новостей нет, а у препринта и статьи он разный).
+    family = lambda it: re.sub(r"[^0-9a-zа-яё]+", " ", (it.get("title") or "").lower()).strip()[:90] or it.get("url", "")  # noqa: E731
+    sci_fams = {family(it) for it in confirmed if it.get("type") in ("science", "preprint")}
+    science = len(sci_fams)
+    # Независимые источники: разные сайты; научные работы — каждое семейство отдельно (разные исследовательские группы,
     # даже если все лежат на arXiv), но не больше трёх, чтобы один препринт-сервер не давал «A» в одиночку.
-    other = {dom(it) for it in confirmed if it.get("type") not in ("science", "preprint")} - {""}
+    seen_fam, other = set(sci_fams), set()
+    for it in confirmed:
+        if it.get("type") in ("science", "preprint"):
+            continue
+        f = family(it)
+        if f in seen_fam:  # перепечатка уже учтённого документа на другом сайте
+            continue
+        seen_fam.add(f)
+        if dom(it):
+            other.add(dom(it))
     independent = len(other) + min(science, 3)
+    reprints = len(confirmed) - len({family(it) for it in confirmed})
     ev_level, ev_ru = event_label((answers.get("event") or {}).get("value"))
     # Подтверждённая новость о раунде или запуске — твёрдое событие, даже если модель оценила событие ниже.
     news_events = [it.get("event") for it in confirmed if it.get("event")]
@@ -54,6 +68,9 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         ev_level, ev_ru = event_label(5 / 6)
     elif "grant" in news_events and ev_level < 3:  # подтверждённый госгрант (NIH, NSF, UKRI)
         ev_level, ev_ru = event_label(3 / 6)
+    elif "startup" in news_events and ev_level < 3:
+        # Стартап в каталоге акселератора — деньги в направлении, но не раунд: уровень гранта, не «твёрдое событие».
+        ev_level, ev_ru = 3, "стартап в акселераторе (Y Combinator)"
     n = len(confirmed)
     if n >= max(5, min_docs) and independent >= 3 and len(domains) >= 2 and (science >= 1 or ev_level >= HARD_EVENT_LEVEL):
         level = "A"
@@ -68,13 +85,84 @@ def passport(items: list[dict], answers: dict, n_asked: int, min_docs: int = 3) 
         "confirmed": n,
         "domains": independent,
         "domain_list": domains[:8],
+        "reprints": reprints,
         "science": science,
         "event_level": ev_level,
         "event": ev_ru,
         "hard_event": ev_level >= HARD_EVENT_LEVEL,
         "funding_news": sum(1 for e in news_events if e == "funding"),
         "grants": sum(1 for e in news_events if e == "grant"),
+        "startups": sum(1 for e in news_events if e == "startup"),
+        "ladder": ladder(confirmed),
     }
+
+
+# П17. Лестница «почему рано»: по каким каналам технология уже видна в подтверждённых документах. Ранний сигнал обычно
+# виден в науке и сообществе, но ещё не в деловой прессе и не в энциклопедии. Стадия по шкале ТЗ ключевыми словами не
+# определяется (на источниках организатора не лучше константы), поэтому показываем каналы с первой датой и примером.
+LADDER = [("science", "наука"), ("community", "сообщество"), ("money", "деньги"), ("press", "пресса")]
+
+
+def _channel(it: dict) -> str | None:
+    t, ev = it.get("type"), it.get("event")
+    if ev in ("funding", "grant", "startup") or t in ("grant", "startup"):
+        return "money"
+    if t in ("science", "preprint"):
+        return "science"
+    if t in ("community", "repository"):
+        return "community"
+    if t in ("news", "press"):
+        return "press"
+    return None
+
+
+def ladder(confirmed: list[dict]) -> list[dict]:
+    out = []
+    for key, label in LADDER:
+        docs = sorted((it for it in confirmed if _channel(it) == key), key=lambda it: it.get("date") or "9999")
+        first = next((d for d in docs if d.get("date")), docs[0] if docs else None)
+        out.append({"channel": key, "label": label, "n": len(docs), "first_date": (first or {}).get("date"),
+                    "example": (first or {}).get("title", "")[:140] if first else None})
+    return out
+
+
+def why_early(lad: list[dict] | None, wiki: bool | None) -> str | None:
+    """Строка «Почему рано» для карточки: где технология уже есть и где её ещё нет."""
+    if not lad:
+        return None
+    has = [f"{s['label']} ({s['n']}, с {s['first_date'][:4]})" if s.get("first_date") else f"{s['label']} ({s['n']})" for s in lad if s["n"]]
+    lacks = [s["label"] for s in lad if not s["n"]]
+    if wiki is False:
+        lacks.append("энциклопедия")
+    elif wiki:
+        has.append("энциклопедия")
+    if not has:
+        return None
+    return "Уже есть: " + ", ".join(has) + (". Ещё нет: " + ", ".join(lacks) + "." if lacks else ".")
+
+
+def evidence_checks(pp: dict | None) -> dict | None:
+    """Второе число на карточке рядом с оценкой классификатора: «Проверки доказательств: k из 5». Это счёт выполненных
+    проверок, а не вероятность (подход «выполнено правил N из M»). Ссылки, которые не проверялись, — «не измерено»."""
+    if not pp:
+        return None
+    links = pp.get("links")
+    items = [
+        {"label": "не меньше 5 подтверждённых документов", "ok": pp.get("confirmed", 0) >= 5},
+        {"label": "не меньше 3 независимых источников", "ok": pp.get("domains", 0) >= 3},
+        {"label": "есть научная работа или препринт", "ok": pp.get("science", 0) >= 1},
+        {"label": "твёрдое событие: грант, пилот, запуск или раунд", "ok": pp.get("event_level", 0) >= 3},
+        {"label": "ссылки открываются при проверке", "ok": None if not links else links.get("ok", 0) > 0 and not links.get("dead", 0)},
+    ]
+    measured = [i for i in items if i["ok"] is not None]
+    return {"passed": sum(1 for i in measured if i["ok"]), "total": len(items), "measured": len(measured), "items": items}
+
+
+def pct_capped(v: float | None) -> str:
+    """Процент без ложной точности для ответов моделей и вероятностей: не бывает «100%» и «0%»."""
+    if v is None:
+        return "—"
+    return "выше 95%" if v >= 0.95 else "ниже 5%" if v <= 0.05 else f"{v:.0%}"
 
 
 def prob_text(p: float | None) -> str:
@@ -109,22 +197,22 @@ def robustness(prob: float | None, contributions: list[dict], intercept: float |
         logit = math.log(prob / (1 - prob))
     pos = [c for c in contributions if c["contribution"] > 0]
     if not pos:
-        return {"level": "fragile", "label": "хрупкий", "text": "Нет признаков, которые повышают вероятность.", "p_without": prob}
+        return {"level": "fragile", "label": "низкий", "text": "Нет признаков, которые повышают вероятность.", "p_without": prob}
     top = max(pos, key=lambda c: c["contribution"])
     p_without = _sigmoid(logit - top["contribution"])
     if p_without >= 0.75:
-        level, label = "strong", "прочный"
+        level, label = "strong", "высокий"
     elif p_without >= 0.5:
-        level, label = "stable", "устойчивый"
+        level, label = "stable", "достаточный"
     else:
-        level, label = "fragile", "хрупкий"
+        level, label = "fragile", "низкий"
     return {
         "level": level,
         "label": label,
         "feature": top["feature"],
         "feature_label": top["label"],
         "p_without": round(p_without, 3),
-        "text": f"Если убрать самый сильный довод «{top['label']}», вероятность станет {p_without:.0%}.",
+        "text": f"Если убрать самый сильный довод «{top['label']}», оценка станет {pct_capped(p_without)}.",
     }
 
 
@@ -135,10 +223,13 @@ def mentions(docs, terms: list[str]) -> int:
     keys = [t.lower() for t in terms if t and len(t) >= 4]
     if not keys:
         return 0
+    # Русские термины склоняются («твердотельные аккумуляторы» → «твердотельных аккумуляторов»): сравниваем по основам —
+    # первые 5 букв каждого слова длиннее 3 букв, все основы должны встретиться в тексте.
+    stems = [[w[:5] for w in re.findall(r"[а-яё]{4,}", k)] for k in keys if re.search(r"[а-яё]", k)]
     n = 0
     for d in docs:
         text = f"{d.title} {d.snippet}".lower()
-        if any(k in text for k in keys):
+        if any(k in text for k in keys) or any(st and all(s in text for s in st) for st in stems):
             n += 1
     return n
 
@@ -152,7 +243,8 @@ def russia_window(world_recent: int | None, ru_count: int | None) -> dict:
     if world_recent < 5:
         status, label, text = "thin", "Мало данных", "В мире пока мало публикаций — окно оценить нельзя."
     elif ru_count == 0:
-        status, label, text = "open", "Окно открыто", f"В мире {world_recent} научных работ за 2 года, в русскоязычных источниках упоминаний не найдено."
+        # Не «окно открыто»: поиск по русскому названию мог промахнуться, утверждать отсутствие темы в России нельзя.
+        status, label, text = "open", "Упоминаний на русском не найдено", f"В мире {world_recent} научных работ за 2 года, в русскоязычных источниках упоминаний не найдено."
     elif ru_count <= 4:
         status, label, text = "closing", "Окно закрывается", f"В мире {world_recent} работ за 2 года, в России — первые упоминания ({ru_count})."
     else:
@@ -235,6 +327,60 @@ def bank_radar(name: str, items: list[dict], dossier: dict, passport_: dict | No
 
 # ---------------------------------------------------------------- динамика
 
+# Стадия по ответу decision-модели о зрелости (шкала из 6 уровней) и соответствующий уровень готовности
+# технологии (УГТ, ГОСТ Р 58048-2017 / шкала TRL 1–9) — ориентир для аналитика, а не сертификация.
+STAGES = [
+    ("Фундаментальные исследования", "1–3"),
+    ("Лабораторный прототип", "4"),
+    ("Пилотные проекты и испытания", "5–6"),
+    ("Первые коммерческие продукты", "7"),
+    ("Растущий рынок, несколько поставщиков", "8"),
+    ("Массовое внедрение", "9"),
+]
+
+
+def card_facts(features: dict | None, answers: dict | None, dyn: list[dict] | None, year: int, missing: list[str] | None = None) -> dict:
+    """Короткие факты для списка и карточки: стадия (УГТ), год появления в литературе, рост работ за 2 года.
+    Если OpenAlex не ответил, возраст темы — среднее обучающей выборки, и «с 2006 г.» было бы выдумкой: не показываем."""
+    f, a = features or {}, answers or {}
+    if "openalex" in (missing or []):
+        f = {k: v for k, v in f.items() if k != "age_years"}
+    m = (a.get("maturity") or {}).get("value")
+    stage = None
+    if m is not None:
+        i = max(0, min(len(STAGES) - 1, int(round(float(m) * (len(STAGES) - 1)))))
+        stage = {"label": STAGES[i][0], "trl": STAGES[i][1]}
+    age = f.get("age_years") or 0
+    by_year = {d["year"]: d["works"] for d in dyn or []}
+    recent = by_year.get(year - 1, 0) + by_year.get(year - 2, 0)
+    prior = by_year.get(year - 3, 0) + by_year.get(year - 4, 0)
+    return {
+        "stage": stage,
+        "first_year": int(year - age) if age else None,
+        "works_2y": recent if dyn else None,
+        "growth_x": round(recent / prior, 1) if dyn and prior >= 3 else None,
+    }
+
+
+def _growth2(c: dict[int, int], year: int) -> float:
+    return math.log1p((c.get(year - 1, 0) + c.get(year - 2, 0)) / 2) - math.log1p((c.get(year - 3, 0) + c.get(year - 4, 0)) / 2)
+
+
+def topic_relation(cand_yearly: dict | None, topic_yearly: dict | None, year: int) -> dict | None:
+    """П14: кандидат относительно объёма самой темы. share — доля работ темы, где есть фраза кандидата (за всё время);
+    faster — во сколько раз рост кандидата за 2 года больше роста темы (по полным годам)."""
+    if not cand_yearly or not topic_yearly:
+        return None
+    c = {int(k): int(v) for k, v in cand_yearly.items()}
+    t = {int(k): int(v) for k, v in topic_yearly.items()}
+    ct, tt = sum(v for k, v in c.items() if k <= year), sum(v for k, v in t.items() if k <= year)
+    if tt < 50:
+        return None
+    excess = _growth2(c, year) - _growth2(t, year)
+    return {"works": ct, "topic_works": tt, "share": round(min(ct / tt, 1.0), 3), "excess_growth": round(excess, 3),
+            "faster": round(math.exp(excess), 1)}
+
+
 def dynamics(yearly: dict, today_year: int, years: int = 8) -> list[dict]:
     """Ряд публикаций по годам для графика в карточке (текущий год — неполный, помечается)."""
     c = {int(k): int(v) for k, v in (yearly or {}).items()}
@@ -243,7 +389,7 @@ def dynamics(yearly: dict, today_year: int, years: int = 8) -> list[dict]:
 
 # ---------------------------------------------------------------- сверка досье
 
-CHECK_FIELDS = ("description", "advantage", "case_example", "why_weak_signal")
+CHECK_FIELDS = ("description", "advantage", "case_example", "application", "why_weak_signal")
 
 
 def split_claims(dossier: dict, limit: int = 10) -> list[tuple[str, str]]:
@@ -288,3 +434,13 @@ def apply_verification(dossier: dict, claims: list[tuple[str, str]], answers: di
         "removed": removed,
     }
     return d
+
+
+def share_text(x: float | None) -> str:
+    """Доля словами без «100%» на экране: эксперты финала спрашивали, откуда «100%». 1,0 — «все», 0 — «ни одной»."""
+    x = float(x or 0)
+    if x >= 0.995:
+        return "все"
+    if x <= 0.005:
+        return "ни одной"
+    return f"{x:.0%}"

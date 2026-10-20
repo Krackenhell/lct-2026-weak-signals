@@ -1,0 +1,200 @@
+{
+ "date": "2026-10-19",
+ "pairs": [
+  {
+   "query": "технология многослойного графена",
+   "llm_only": {
+    "run_id": 67,
+    "query": "технология многослойного графена",
+    "mode": "только LLM",
+    "candidates": 15,
+    "signals": 0,
+    "watch": 1,
+    "passport_ab": 0,
+    "excluded_share": 0.933,
+    "excluded_by": {
+     "нерелевантные": 9,
+     "без доказательств": 5
+    },
+    "with_dated_doc_24m_share": 0.333,
+    "signals_list": []
+   },
+   "pipeline": {
+    "run_id": 61,
+    "query": "технология многослойного графена",
+    "mode": "конвейер",
+    "candidates": 30,
+    "signals": 10,
+    "watch": 1,
+    "passport_ab": 10,
+    "excluded_share": 0.6,
+    "excluded_by": {
+     "слишком общие": 5,
+     "нерелевантные": 7,
+     "сама тема": 1,
+     "без доказательств": 3,
+     "низкая оценка": 2
+    },
+    "with_dated_doc_24m_share": 1.0,
+    "signals_list": [
+     "twisted multilayer graphene",
+     "rhombohedral graphene",
+     "superconductivity in multilayer graphene",
+     "flat bands in graphene",
+     "high chern insulators",
+     "topological chiral superconductivity",
+     "fractional chern insulator",
+     "fractional quantum anomalous hall effect",
+     "spin polarized superconductivity",
+     "moire patterns in graphene"
+    ]
+   }
+  },
+  {
+   "query": "микрофлюидные чипы",
+   "llm_only": {
+    "run_id": 68,
+    "query": "микрофлюидные чипы",
+    "mode": "только LLM",
+    "candidates": 15,
+    "signals": 3,
+    "watch": 5,
+    "passport_ab": 3,
+    "excluded_share": 0.467,
+    "excluded_by": {
+     "низкая оценка": 6,
+     "без доказательств": 1
+    },
+    "with_dated_doc_24m_share": 1.0,
+    "signals_list": [
+     "Microfluidic Drug Delivery",
+     "Microfluidic Nanoparticle Fabrication",
+     "Electrokinetic Microfluidics"
+    ]
+   },
+   "pipeline": {
+    "run_id": 62,
+    "query": "микрофлюидные чипы",
+    "mode": "конвейер",
+    "candidates": 30,
+    "signals": 7,
+    "watch": 6,
+    "passport_ab": 7,
+    "excluded_share": 0.533,
+    "excluded_by": {
+     "низкая оценка": 5,
+     "сама тема": 3,
+     "нерелевантные": 6,
+     "без доказательств": 2
+    },
+    "with_dated_doc_24m_share": 1.0,
+    "signals_list": [
+     "matrix-integrated microfluidic tumor models",
+     "SERS spectra inertial microfluidics",
+     "3d printed microfluidic chips",
+     "digital microfluidics droplet menisci recognition",
+     "label-free CTC enrichment",
+     "microfluidic live-cell imaging",
+     "laser ablation microfluidic chip fabrication"
+    ]
+   }
+  },
+  {
+   "query": "газлифт в газоконденсатных скважинах",
+   "llm_only": {
+    "run_id": 69,
+    "query": "газлифт в газоконденсатных скважинах",
+    "mode": "только LLM",
+    "candidates": 15,
+    "signals": 0,
+    "watch": 0,
+    "passport_ab": 0,
+    "excluded_share": 1.0,
+    "excluded_by": {
+     "нерелевантные": 14,
+     "низкая оценка": 1
+    },
+    "with_dated_doc_24m_share": 1.0,
+    "signals_list": []
+   },
+   "pipeline": {
+    "run_id": 63,
+    "query": "газлифт в газоконденсатных скважинах",
+    "mode": "конвейер",
+    "candidates": 30,
+    "signals": 2,
+    "watch": 4,
+    "passport_ab": 2,
+    "excluded_share": 0.8,
+    "excluded_by": {
+     "не технологии": 3,
+     "низкая оценка": 8,
+     "нерелевантные": 4,
+     "слишком общие": 3,
+     "без доказательств": 2,
+     "сама тема": 1,
+     "зрелые": 2,
+     "заголовки статей": 1
+    },
+    "with_dated_doc_24m_share": 1.0,
+    "signals_list": [
+     "machine-learning-based gas lift optimization",
+     "surface controlled gas lift"
+    ]
+   }
+  },
+  {
+   "query": "перспективные решения в финтехе",
+   "llm_only": {
+    "run_id": 70,
+    "query": "перспективные решения в финтехе",
+    "mode": "только LLM",
+    "candidates": 15,
+    "signals": 1,
+    "watch": 0,
+    "passport_ab": 1,
+    "excluded_share": 0.933,
+    "excluded_by": {
+     "низкая оценка": 10,
+     "зрелые": 1,
+     "нерелевантные": 2,
+     "без доказательств": 1
+    },
+    "with_dated_doc_24m_share": 1.0,
+    "signals_list": [
+     "Smart contracts for financial agreements"
+    ]
+   },
+   "pipeline": {
+    "run_id": 40,
+    "query": "перспективные решения в финтехе",
+    "mode": "конвейер",
+    "candidates": 30,
+    "signals": 3,
+    "watch": 1,
+    "passport_ab": 3,
+    "excluded_share": 0.867,
+    "excluded_by": {
+     "нерелевантные": 9,
+     "без доказательств": 4,
+     "низкая оценка": 7,
+     "зрелые": 4,
+     "не технологии": 1,
+     "продукты": 1
+    },
+    "with_dated_doc_24m_share": 1.0,
+    "signals_list": [
+     "real-world asset (RWA) tokenization",
+     "quantum-resistant cryptography",
+     "transaction-based credit scoring"
+    ]
+   }
+  }
+ ],
+ "total": {
+  "llm_only_excluded_share": 0.833,
+  "llm_only_dated_share": 0.833,
+  "llm_only_signals": 4,
+  "pipeline_signals": 22
+ }
+}

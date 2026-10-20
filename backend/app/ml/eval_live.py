@@ -77,6 +77,9 @@ def summarize(run_id: int, domain: str | None) -> dict:
             ],
             "passport": {lv: sum(1 for c in signals if ((c.contributions or {}).get("passport") or {}).get("level") == lv) for lv in ("A", "B")},
             "watch": sum(1 for c in cands if c.status == "watch"),
+            # Чистый замер (П3): прогон с долей подставленной статистики OpenAlex > 20 % недействителен для сравнения.
+            "imputed_share": ((run.stats or {}).get("openalex") or {}).get("imputed_share"),
+            "degraded": bool((run.stats or {}).get("degraded")),
             "exclusions": {},
         }
         for c in cands:
@@ -94,7 +97,7 @@ def summarize(run_id: int, domain: str | None) -> dict:
 
 async def main_async(args) -> None:
     init_db()
-    path = Path(get_settings().model_dir) / "live_eval.json"
+    path = Path(get_settings().model_dir) / (getattr(args, "out", "") or "live_eval.json")
     report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"runs": []}
     before = path.with_name("live_eval_before.json")
     if args.fresh and path.exists() and not before.exists():
@@ -173,6 +176,7 @@ def main() -> None:
     ap.add_argument("--extras", action="store_true", help="добавить темы вне датасета")
     ap.add_argument("--nonsense", action="store_true", help="добавить контрольные бессмысленные запросы («Привет»)")
     ap.add_argument("--fresh", action="store_true", help="начать новый live_eval.json (старый сохраняется как live_eval_before.json)")
+    ap.add_argument("--out", default="", help="имя файла отчёта в data/model (по умолчанию live_eval.json)")
     ap.add_argument("--label", default="", help="что проверяет прогон — для журнала испытаний (docs/ЖУРНАЛ_ИСПЫТАНИЙ.md)")
     args = ap.parse_args()
     asyncio.run(main_async(args))

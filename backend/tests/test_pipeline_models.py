@@ -66,6 +66,9 @@ class FakeJev:
     async def ask(self, state, questions):
         base = await self.rules.ask(state, questions)
         answers = dict(base.answers)
+        for qid in ("relevance", "relevance_query"):  # шкала Jev: 0,67 — «связано»; у правил минимум 0,4 означает «нет слов темы»
+            if qid in answers:
+                answers[qid] = {"type": "score", "value": 0.67}
         for qid, q in questions.items():
             if qid.startswith("claim_"):
                 answers[qid] = {"type": "noul", "value": 0.05 if FABRICATED in q["instructions"] else 0.9}
@@ -117,7 +120,9 @@ def test_dossier_cross_check_removes_fabricated_claim_and_flags_fake_quote(stand
     assert signals
     for c in signals:
         d = c.dossier
-        assert d["generated_by"] == "gigachat:GigaChat-2-Max" and c.name_ru.startswith("Технология ")
+        assert d["generated_by"] == "gigachat:GigaChat-2-Max"
+        # Досье не затирает название, полученное при извлечении; своё название из досье берётся, только если другого нет.
+        assert c.name_ru == f"{c.name} (рус.)" or c.name_ru.startswith("Технология ")
         v = d["verification"]
         assert v["by"] == "jev:jev-1.13.0" and v["checked"] >= 3 and v["supported"] == v["checked"] - 1
         assert FABRICATED not in d["description"]  # выдуманное утверждение удалено

@@ -116,3 +116,52 @@ class ModelCall(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     ok: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Subscription(Base):
+    """Подписка на тему: сервер пересчитывает её раз в every_days дней и записывает, что изменилось."""
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    query: Mapped[str] = mapped_column(String(500))
+    every_days: Mapped[int] = mapped_column(Integer, default=7)
+    webhook: Mapped[str | None] = mapped_column(String(500), nullable=True)  # необязательно: куда отправить сводку изменений
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    next_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class SubscriptionEvent(Base):
+    """Что изменилось в теме между двумя расчётами: новые сигналы, выпавшие, усилившиеся (появился патент, раунд, закупка)."""
+
+    __tablename__ = "subscription_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(ForeignKey("subscriptions.id"))
+    run_id: Mapped[int] = mapped_column(Integer)
+    prev_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class Forecast(Base):
+    """Прогноз, зафиксированный на дату: «этот сигнал за полгода усилится». Через horizon система сама проверяет, сбылся ли он."""
+
+    __tablename__ = "forecasts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(Integer)
+    candidate_id: Mapped[int] = mapped_column(Integer)
+    query: Mapped[str] = mapped_column(String(500))
+    name: Mapped[str] = mapped_column(String(300))
+    made_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    check_after: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    probability: Mapped[float | None] = mapped_column(Float, nullable=True)
+    baseline: Mapped[dict] = mapped_column(JSON, default=dict)  # работы за 12 мес до прогноза, достигнутая ступень лестницы
+    criteria: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | confirmed | not_confirmed | unknown
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    result: Mapped[dict] = mapped_column(JSON, default=dict)

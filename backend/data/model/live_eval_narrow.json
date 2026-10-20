@@ -1,0 +1,431 @@
+{
+ "runs": [
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 55,
+   "query": "газлифт в газоконденсатных скважинах",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 134,
+   "n_signals": 1,
+   "confident_75": 0,
+   "new_candidates_in_top": 1,
+   "top": [
+    {
+     "rank": 1,
+     "name": "machine-learning based gas lift optimization",
+     "name_ru": "машинно-обучаемая оптимизация газлифта",
+     "p": 0.637,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 0,
+    "B": 1
+   },
+   "watch": 2,
+   "exclusions": {
+    "broad": 1,
+    "low_probability": 8,
+    "not_technology": 2,
+    "irrelevant": 11,
+    "low_evidence": 2,
+    "topic_itself": 1,
+    "mature": 2
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 56,
+   "query": "технологии многослойного графена",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 181,
+   "n_signals": 11,
+   "confident_75": 9,
+   "new_candidates_in_top": 11,
+   "top": [
+    {
+     "rank": 1,
+     "name": "twisted multilayer graphene",
+     "name_ru": "скрученный мультиграфен",
+     "p": 0.994,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "rhombohedral graphene",
+     "name_ru": "графен ромбоэдрической структуры",
+     "p": 0.993,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 3,
+     "name": "moire superlattices",
+     "name_ru": "многослойный графен moire superlattices",
+     "p": 0.991,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "bilayer graphene quantum dots",
+     "name_ru": "bilayer graphene quantum dots",
+     "p": 0.991,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 5,
+     "name": "chern insulator in graphene",
+     "name_ru": "Chern изолятор в графене",
+     "p": 0.997,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 6,
+     "name": "chiral superconductivity",
+     "name_ru": "хиральная сверхпроводимость графена",
+     "p": 0.978,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 7,
+     "name": "fractional chern insulator",
+     "name_ru": "фракционный чирн-изолятор",
+     "p": 0.971,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 8,
+     "name": "polyurea graphene nanocomposites",
+     "name_ru": "полиефируретановые графеновые нанокомпозиты",
+     "p": 0.945,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 9,
+     "name": "chiral superconductors",
+     "name_ru": "хиральные сверхпроводники",
+     "p": 0.952,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "open"
+    },
+    {
+     "rank": 10,
+     "name": "graphene-based sensors",
+     "name_ru": "сенсоры на основе многослойного графена",
+     "p": 0.6,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 11,
+     "name": "graphene plasmonics",
+     "name_ru": "графеновая плазмоника",
+     "p": 0.538,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "closing"
+    }
+   ],
+   "passport": {
+    "A": 3,
+    "B": 8
+   },
+   "watch": 1,
+   "exclusions": {
+    "irrelevant": 7,
+    "topic_itself": 1,
+    "low_probability": 2,
+    "not_technology": 4,
+    "broad": 3,
+    "low_evidence": 1
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 57,
+   "query": "микрофлюидные технологии",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 154,
+   "n_signals": 2,
+   "confident_75": 2,
+   "new_candidates_in_top": 2,
+   "top": [
+    {
+     "rank": 1,
+     "name": "droplet navigation",
+     "name_ru": "Микрофлюидная навигация капель",
+     "p": 0.977,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "nanofluidic scattering microscopy",
+     "name_ru": "нанофлюидная микроскопия рассеяния",
+     "p": 0.998,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 1,
+    "B": 1
+   },
+   "watch": 5,
+   "exclusions": {
+    "low_probability": 1,
+    "irrelevant": 17,
+    "not_technology": 1,
+    "topic_itself": 1,
+    "low_evidence": 3
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 58,
+   "query": "нефтегазовое дело",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 164,
+   "n_signals": 2,
+   "confident_75": 1,
+   "new_candidates_in_top": 2,
+   "top": [
+    {
+     "rank": 1,
+     "name": "wind modeling with observational nudging",
+     "name_ru": "моделирование ветра с наблюдательным подталкиванием",
+     "p": 0.927,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "microbiologically influenced corrosion modeling",
+     "name_ru": "моделирование МИК",
+     "p": 0.58,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 0,
+    "B": 2
+   },
+   "watch": 3,
+   "exclusions": {
+    "irrelevant": 19,
+    "broad": 1,
+    "low_probability": 3,
+    "low_evidence": 2
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 59,
+   "query": "квантовые сенсоры",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 174,
+   "n_signals": 5,
+   "confident_75": 4,
+   "new_candidates_in_top": 5,
+   "top": [
+    {
+     "rank": 1,
+     "name": "trapped atom interferometry",
+     "name_ru": "замкнутая атомная интерферометрия",
+     "p": 0.966,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "machine learning in quantum sensing",
+     "name_ru": "Квантовое зондирование с применением машинного обучения",
+     "p": 0.956,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "quantum space gravimetry",
+     "name_ru": "квантовая космическая гравиметрия",
+     "p": 0.877,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "photon integrated light generation",
+     "name_ru": "фотонно-интегрированная генерация света",
+     "p": 0.926,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 5,
+     "name": "quantum magnetometry",
+     "name_ru": "квантовая магнитометрия",
+     "p": 0.547,
+     "origin": "discovered",
+     "passport": "A",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 3,
+    "B": 2
+   },
+   "watch": 3,
+   "exclusions": {
+    "irrelevant": 14,
+    "topic_itself": 1,
+    "low_probability": 4,
+    "duplicate": 1,
+    "broad": 2
+   }
+  },
+  {
+   "domain": null,
+   "mode": "с базой отслеживания",
+   "run_id": 60,
+   "query": "перовскитные солнечные элементы",
+   "status": "done",
+   "options": {
+    "use_watchlist": true,
+    "eval": true
+   },
+   "seconds": 182,
+   "n_signals": 7,
+   "confident_75": 4,
+   "new_candidates_in_top": 7,
+   "top": [
+    {
+     "rank": 1,
+     "name": "triple-junction photovoltaics",
+     "name_ru": "перовскитные тройные гетероструктурные солнечные элементы",
+     "p": 0.851,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 2,
+     "name": "Yb-doped ZnO investigation",
+     "name_ru": "Yb-допированный ZnO в перовскитных солнечных элементах",
+     "p": 0.944,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 3,
+     "name": "evaporation methods for perovskite-silicon tandems",
+     "name_ru": "Перовскит-силиконовые тандемные солнечные элементы методом испарения",
+     "p": 0.769,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 4,
+     "name": "perovskite tandem solar cells",
+     "name_ru": "перовскитные тандемные солнечные ячейки",
+     "p": 0.712,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 5,
+     "name": "composite-based perovskite materials",
+     "name_ru": "композитные перовскитовые материалы для солнечных элементов",
+     "p": 0.714,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 6,
+     "name": "doped ZnO nanostructures",
+     "name_ru": "перовскитные солнечные элементы с допированным ZnO наноструктурами",
+     "p": 0.754,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    },
+    {
+     "rank": 7,
+     "name": "interfacial charge transport layer",
+     "name_ru": "интерфейсовая транспортная слой для перовскитных солнечных элементов",
+     "p": 0.604,
+     "origin": "discovered",
+     "passport": "B",
+     "window": "unknown"
+    }
+   ],
+   "passport": {
+    "A": 0,
+    "B": 7
+   },
+   "watch": 6,
+   "exclusions": {
+    "irrelevant": 10,
+    "low_probability": 5,
+    "paper_title": 1,
+    "low_evidence": 1
+   }
+  }
+ ]
+}

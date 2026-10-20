@@ -1,0 +1,386 @@
+{
+ "provider": "jev:jev-latest",
+ "n": 205,
+ "n_pos": 43,
+ "n_neg": 162,
+ "train_date": "2026-09-23",
+ "min_docs": 3,
+ "evidence_rule": "OpenAlex находит хотя бы одну работу по термину",
+ "incomplete_sources": {
+  "rows": 0,
+  "names": []
+ },
+ "dropped_no_evidence": {
+  "pos": 77,
+  "neg": 24
+ },
+ "cv5": {
+  "precision": 0.843,
+  "recall": 1.0,
+  "f1": 0.915,
+  "accuracy": 0.961,
+  "roc_auc": 0.993,
+  "brier": 0.03
+ },
+ "cv5_ci95": {
+  "precision": [
+   0.733,
+   0.94
+  ],
+  "recall": [
+   1.0,
+   1.0
+  ],
+  "f1": [
+   0.846,
+   0.969
+  ],
+  "roc_auc": [
+   0.983,
+   0.999
+  ]
+ },
+ "cv5_repeated": {
+  "f1_mean": 0.908,
+  "f1_std": 0.014,
+  "repeats": 10
+ },
+ "reference_all_rows": {
+  "n": 266,
+  "precision": 0.915,
+  "recall": 0.97,
+  "f1": 0.942,
+  "accuracy": 0.955,
+  "roc_auc": 0.986,
+  "brier": 0.043
+ },
+ "features_used": [
+  "log_total_works",
+  "recent_share",
+  "growth",
+  "age_years",
+  "wiki_exists",
+  "log_wiki_views",
+  "log_gh_repos_12m",
+  "log_hn_12m",
+  "fresh_preprints",
+  "share_science",
+  "log_evidence",
+  "specific_tech",
+  "mass_adoption",
+  "market_leaders",
+  "standard",
+  "early_stage",
+  "independent",
+  "hype",
+  "novelty",
+  "benefit",
+  "textbook",
+  "maturity",
+  "event"
+ ],
+ "features_dropped": [],
+ "limitations": [
+  "Отрицательные примеры собраны командой (включая 26 трудных: малоизвестные зрелые технологии, заглохший хайп, общие направления); пограничных случаев всё равно мало, поэтому метрики — верхняя оценка.",
+  "В обучение и оценку входят только примеры, у которых есть научная история (OpenAlex находит хотя бы одну работу по термину): без неё признаки не несут информации, и модель училась бы правилу «ничего не нашли — значит сигнал». У части сигналов организатора такой истории нет — они в обучении не участвуют.",
+  "Перенос на новую область считается на 20–50 примерах; для областей, где в проверке меньше 5 сигналов, число не публикуется — такая оценка ничего не значит.",
+  "В живом поиске кандидат без подтверждённых документов не попадает в топ, а уходит в «Наблюдать»."
+ ],
+ "confident_75": {
+  "share_of_positives_above_075": 0.86,
+  "precision_above_075": 0.902
+ },
+ "ablation": {
+  "numeric_only": {
+   "precision": 0.641,
+   "recall": 0.953,
+   "f1": 0.766,
+   "accuracy": 0.878,
+   "roc_auc": 0.953,
+   "brier": 0.082
+  },
+  "decision_model_only": {
+   "precision": 0.722,
+   "recall": 0.907,
+   "f1": 0.804,
+   "accuracy": 0.907,
+   "roc_auc": 0.975,
+   "brier": 0.065
+  },
+  "all": {
+   "precision": 0.843,
+   "recall": 1.0,
+   "f1": 0.915,
+   "accuracy": 0.961,
+   "roc_auc": 0.993,
+   "brier": 0.03
+  }
+ },
+ "leave_one_domain_out": {
+  "Edge": {
+   "too_few": true,
+   "n": 25,
+   "n_pos": 4
+  },
+  "Защита ИИ": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0,
+   "accuracy": 1.0,
+   "roc_auc": 1.0,
+   "brier": 0.015,
+   "f1_ci95": [
+    1.0,
+    1.0
+   ],
+   "errors": 0,
+   "error_rate_upper95": 0.087,
+   "n": 33,
+   "n_pos": 11
+  },
+  "Индустриальный ИИ": {
+   "too_few": true,
+   "n": 26,
+   "n_pos": 2
+  },
+  "Инфраструктура ИИ": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0,
+   "accuracy": 1.0,
+   "roc_auc": 1.0,
+   "brier": 0.013,
+   "f1_ci95": [
+    1.0,
+    1.0
+   ],
+   "errors": 0,
+   "error_rate_upper95": 0.092,
+   "n": 31,
+   "n_pos": 6
+  },
+  "Роботы": {
+   "precision": 0.846,
+   "recall": 1.0,
+   "f1": 0.917,
+   "accuracy": 0.935,
+   "roc_auc": 0.995,
+   "brier": 0.042,
+   "f1_ci95": [
+    0.769,
+    1.0
+   ],
+   "errors": 2,
+   "n": 31,
+   "n_pos": 11
+  },
+  "Финтех": {
+   "precision": 0.818,
+   "recall": 1.0,
+   "f1": 0.9,
+   "accuracy": 0.951,
+   "roc_auc": 0.986,
+   "brier": 0.045,
+   "f1_ci95": [
+    0.71,
+    1.0
+   ],
+   "errors": 2,
+   "n": 41,
+   "n_pos": 9
+  }
+ },
+ "recall_by_domain": {
+  "Edge": 1.0,
+  "Защита ИИ": 1.0,
+  "Индустриальный ИИ": 1.0,
+  "Инфраструктура ИИ": 1.0,
+  "Роботы": 1.0,
+  "Финтех": 1.0
+ },
+ "errors": [
+  {
+   "name": "Банкинг в метавселенной",
+   "label": 0,
+   "code": "hype",
+   "p": 0.946
+  },
+  {
+   "name": "Доставка посылок дронами",
+   "label": 0,
+   "code": "hype",
+   "p": 0.864
+  },
+  {
+   "name": "Графовые нейросети для антифрода",
+   "label": 0,
+   "code": "mature",
+   "p": 0.818
+  },
+  {
+   "name": "Поиск аномалий автоэнкодерами",
+   "label": 0,
+   "code": "mature",
+   "p": 0.778
+  },
+  {
+   "name": "Прунинг нейросетей",
+   "label": 0,
+   "code": "mature",
+   "p": 0.619
+  },
+  {
+   "name": "ИИ-ПК (маркетинговая категория)",
+   "label": 0,
+   "code": "hype",
+   "p": 0.543
+  },
+  {
+   "name": "Этические принципы ИИ",
+   "label": 0,
+   "code": "hype",
+   "p": 0.532
+  },
+  {
+   "name": "Повсеместные роботакси",
+   "label": 0,
+   "code": "hype",
+   "p": 0.513
+  }
+ ],
+ "calibration": {
+  "temperature": 1.0,
+  "ece_before": 0.045,
+  "ece_after": 0.045,
+  "max_p_before": 0.9997,
+  "max_p_after": 0.9997,
+  "brier_before": 0.03,
+  "brier_after": 0.03,
+  "bins": [
+   {
+    "range": "0–25%",
+    "n": 149,
+    "mean_p": 0.023,
+    "share_signals": 0.0
+   },
+   {
+    "range": "25–50%",
+    "n": 5,
+    "mean_p": 0.358,
+    "share_signals": 0.0
+   },
+   {
+    "range": "50–75%",
+    "n": 10,
+    "mean_p": 0.633,
+    "share_signals": 0.6
+   },
+   {
+    "range": "75–90%",
+    "n": 8,
+    "mean_p": 0.811,
+    "share_signals": 0.625
+   },
+   {
+    "range": "90–100%",
+    "n": 33,
+    "mean_p": 0.969,
+    "share_signals": 0.97
+   }
+  ]
+ },
+ "weights": [
+  {
+   "feature": "maturity",
+   "weight": -1.107
+  },
+  {
+   "feature": "log_gh_repos_12m",
+   "weight": -1.061
+  },
+  {
+   "feature": "novelty",
+   "weight": 1.039
+  },
+  {
+   "feature": "log_total_works",
+   "weight": -0.892
+  },
+  {
+   "feature": "independent",
+   "weight": -0.855
+  },
+  {
+   "feature": "growth",
+   "weight": 0.693
+  },
+  {
+   "feature": "share_science",
+   "weight": 0.576
+  },
+  {
+   "feature": "hype",
+   "weight": -0.559
+  },
+  {
+   "feature": "market_leaders",
+   "weight": -0.503
+  },
+  {
+   "feature": "textbook",
+   "weight": -0.468
+  },
+  {
+   "feature": "log_wiki_views",
+   "weight": -0.431
+  },
+  {
+   "feature": "specific_tech",
+   "weight": 0.428
+  },
+  {
+   "feature": "wiki_exists",
+   "weight": -0.377
+  },
+  {
+   "feature": "log_hn_12m",
+   "weight": -0.327
+  },
+  {
+   "feature": "event",
+   "weight": 0.292
+  },
+  {
+   "feature": "mass_adoption",
+   "weight": -0.291
+  },
+  {
+   "feature": "recent_share",
+   "weight": 0.273
+  },
+  {
+   "feature": "log_evidence",
+   "weight": -0.202
+  },
+  {
+   "feature": "standard",
+   "weight": -0.191
+  },
+  {
+   "feature": "fresh_preprints",
+   "weight": 0.118
+  },
+  {
+   "feature": "early_stage",
+   "weight": -0.085
+  },
+  {
+   "feature": "age_years",
+   "weight": -0.076
+  },
+  {
+   "feature": "benefit",
+   "weight": -0.046
+  }
+ ]
+}

@@ -1,0 +1,411 @@
+{
+ "date": "2026-10-19",
+ "summary": {
+  "GigaChat-2": {
+   "valid_plans": 8,
+   "n": 8,
+   "on_topic_per_plan": 5.38,
+   "good_per_plan": 1.0,
+   "invented_share": 0.729,
+   "p95_seconds": 2.5,
+   "median_seconds": 1.6
+  },
+  "GigaChat-2-Max": {
+   "valid_plans": 8,
+   "n": 8,
+   "on_topic_per_plan": 4.75,
+   "good_per_plan": 1.75,
+   "invented_share": 0.5,
+   "p95_seconds": 5.3,
+   "median_seconds": 3.9
+  }
+ },
+ "decision": "план остаётся на GigaChat-2",
+ "rule": "Max, если +1 хороший подзапрос из 6, выдуманных на 30 % меньше, p95 ≤ 20 с, без сбоев",
+ "rows": [
+  {
+   "query": "технология многослойного графена",
+   "model": "GigaChat-2",
+   "seconds": 2.5,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "electronic properties of multilayer graphene",
+    "multilayer graphene for energy storage",
+    "multifunctional graphene coatings",
+    "thermoelectric generators with graphene layers",
+    "high strength graphene based materials",
+    "nanocomposite reinforcement with graphene sheets"
+   ],
+   "query_en": [
+    "multilayer graphene technology",
+    "graphene nanosheets applications",
+    "advanced graphene composites"
+   ],
+   "topic_en": "multilayer graphene technology",
+   "on_topic": 6,
+   "invented": 6,
+   "checked": 6
+  },
+  {
+   "query": "технология многослойного графена",
+   "model": "GigaChat-2-Max",
+   "seconds": 4.3,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "bilayer graphene heterostructures",
+    "trilayer graphene devices",
+    "stacked graphene layers",
+    "graphene interlayer coupling",
+    "twisted bilayer graphene",
+    "graphene superlattices"
+   ],
+   "query_en": [
+    "multilayer graphene",
+    "few layer graphene",
+    "graphene multilayers"
+   ],
+   "topic_en": "multilayer graphene",
+   "on_topic": 6,
+   "invented": 1,
+   "checked": 6
+  },
+  {
+   "query": "микрофлюидные чипы",
+   "model": "GigaChat-2",
+   "seconds": 1.6,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "single cell analysis on chip",
+    "integrated lab on a chip devices",
+    "biofuel production using microfluidic reactors",
+    "microfluidic sensors for environmental monitoring",
+    "smart microfluidic platforms for drug discovery",
+    "digital microfluidics applications"
+   ],
+   "query_en": [
+    "microfluidic chips",
+    "lab on a chip",
+    "nanofluidics"
+   ],
+   "topic_en": "microfluidic chips",
+   "on_topic": 5,
+   "invented": 5,
+   "checked": 6
+  },
+  {
+   "query": "микрофлюидные чипы",
+   "model": "GigaChat-2-Max",
+   "seconds": 3.7,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "organ on a chip",
+    "digital microfluidics",
+    "droplet based microfluidics",
+    "paper based microfluidics",
+    "acoustic droplet ejection",
+    "electrowetting on dielectric"
+   ],
+   "query_en": [
+    "microfluidic chips",
+    "lab on a chip technology",
+    "μTAS"
+   ],
+   "topic_en": "microfluidic chips",
+   "on_topic": 5,
+   "invented": 0,
+   "checked": 6
+  },
+  {
+   "query": "перовскитные солнечные элементы",
+   "model": "GigaChat-2",
+   "seconds": 1.7,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "novel perovskite compositions",
+    "perovskite heterojunctions",
+    "stable perovskite films",
+    "low temperature perovskite fabrication",
+    "perovskite quantum dots",
+    "perovskite tandem cells"
+   ],
+   "query_en": [
+    "perovskite solar cells",
+    "perovskite materials for solar",
+    "high efficiency perovskites"
+   ],
+   "topic_en": "perovskite solar cells",
+   "on_topic": 6,
+   "invented": 1,
+   "checked": 6
+  },
+  {
+   "query": "перовскитные солнечные элементы",
+   "model": "GigaChat-2-Max",
+   "seconds": 4.4,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "perovskite tandem cells",
+    "lead free perovskites",
+    "perovskite quantum dots",
+    "perovskite inkjet printing",
+    "two dimensional perovskites",
+    "perovskite stability enhancement"
+   ],
+   "query_en": [
+    "perovskite solar cells",
+    "hybrid perovskites",
+    "organometal halide perovskites"
+   ],
+   "topic_en": "perovskite solar cells",
+   "on_topic": 6,
+   "invented": 2,
+   "checked": 6
+  },
+  {
+   "query": "твердотельные аккумуляторы",
+   "model": "GigaChat-2",
+   "seconds": 1.5,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "3D lithium metal anodes",
+    "solid polymer electrolytes performance",
+    "nanomaterials for solid state batteries",
+    "high energy density solid state cells",
+    "fast charging solid state battery systems",
+    "ion transport mechanisms in solid electrolytes"
+   ],
+   "query_en": [
+    "solid state batteries",
+    "lithium sulfur batteries",
+    "all solid state electrolytes"
+   ],
+   "topic_en": "solid state batteries",
+   "on_topic": 5,
+   "invented": 5,
+   "checked": 6
+  },
+  {
+   "query": "твердотельные аккумуляторы",
+   "model": "GigaChat-2-Max",
+   "seconds": 3.9,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "solid polymer electrolyte optimization",
+    "fast charging solid state cells",
+    "sulfide based solid electrolytes",
+    "lithium metal anode protection",
+    "cobalt free cathodes development",
+    "nanocomposite separator materials"
+   ],
+   "query_en": [
+    "Solid state batteries",
+    "All solid state batteries",
+    "Inorganic solid electrolytes"
+   ],
+   "topic_en": "Solid state batteries",
+   "on_topic": 3,
+   "invented": 4,
+   "checked": 6
+  },
+  {
+   "query": "спайковые нейронные сети",
+   "model": "GigaChat-2",
+   "seconds": 1.7,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "spiking neural networks for anomaly detection",
+    "energy efficient spiking models",
+    "real time spike based AI systems",
+    "low latency spiking neural networks",
+    "adaptive spiking neurons for predictive analytics",
+    "spiking neural networks with neuromorphic chips"
+   ],
+   "query_en": [
+    "spike neural networks",
+    "early warning ANN",
+    "novel spiking architectures"
+   ],
+   "topic_en": "spike neural networks",
+   "on_topic": 6,
+   "invented": 5,
+   "checked": 6
+  },
+  {
+   "query": "спайковые нейронные сети",
+   "model": "GigaChat-2-Max",
+   "seconds": 3.9,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "event driven neuromorphic chips",
+    "low power spiking inference",
+    "spike timing dependent plasticity algorithms",
+    "neuromorphic hardware accelerators",
+    "multi layered spiking convolutional networks",
+    "biologically inspired spike coding schemes"
+   ],
+   "query_en": [
+    "Spiking Neural Networks",
+    "Spike based Computing",
+    "Neuromorphic Systems"
+   ],
+   "topic_en": "Spiking Neural Networks",
+   "on_topic": 6,
+   "invented": 5,
+   "checked": 6
+  },
+  {
+   "query": "гомоморфное шифрование",
+   "model": "GigaChat-2",
+   "seconds": 1.5,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "ring homomorphic encryption schemes",
+    "fully homomorphic encryption algorithms",
+    "post quantum homomorphic encryption methods",
+    "homomorphic encryption for privacy preserving computation",
+    "zero knowledge proofs with homomorphic encryption",
+    "multi party computation using homomorphic encryption"
+   ],
+   "query_en": [
+    "early stage homomorphic encryption",
+    "novel homomorphic encryption techniques",
+    "recent advancements in homomorphic encryption"
+   ],
+   "topic_en": "early stage homomorphic encryption",
+   "on_topic": 6,
+   "invented": 3,
+   "checked": 6
+  },
+  {
+   "query": "гомоморфное шифрование",
+   "model": "GigaChat-2-Max",
+   "seconds": 3.6,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "quantum resistant homomorphic schemes",
+    "multi key homomorphic encryption",
+    "approximate homomorphic encryption",
+    "lattice based cryptosystems",
+    "bootstrapping techniques optimization",
+    "post quantum secure FHE"
+   ],
+   "query_en": [
+    "homomorphic encryption",
+    "fully homomorphic encryption",
+    "leveled fully homomorphic encryption"
+   ],
+   "topic_en": "homomorphic encryption",
+   "on_topic": 4,
+   "invented": 3,
+   "checked": 6
+  },
+  {
+   "query": "газлифт в газоконденсатных скважинах",
+   "model": "GigaChat-2",
+   "seconds": 1.5,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "intelligent gas lift control systems",
+    "artificial intelligence for gas lift optimization",
+    "high pressure gas lift valves",
+    "low energy gas lift techniques",
+    "smart gas lift monitoring systems",
+    "electric submersible pumps with gas lift"
+   ],
+   "query_en": [
+    "gas lift technology",
+    "gas condesate wells gas lift",
+    "advanced gas lift systems"
+   ],
+   "topic_en": "gas lift technology",
+   "on_topic": 6,
+   "invented": 6,
+   "checked": 6
+  },
+  {
+   "query": "газлифт в газоконденсатных скважинах",
+   "model": "GigaChat-2-Max",
+   "seconds": 5.3,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "intelligent gas lift optimization",
+    "multiphase flow modeling gas lift",
+    "autonomous gas injection control",
+    "predictive maintenance gas lift systems",
+    "digital twin gas lift simulation",
+    "advanced corrosion monitoring gas lift"
+   ],
+   "query_en": [
+    "gas lift",
+    "gas condensate wells",
+    "artificial lift"
+   ],
+   "topic_en": "gas lift",
+   "on_topic": 5,
+   "invented": 6,
+   "checked": 6
+  },
+  {
+   "query": "перспективные решения в финтехе",
+   "model": "GigaChat-2",
+   "seconds": 1.6,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "digital twin for banking",
+    "regtech and artificial intelligence",
+    "cryptocurrency asset tokenization",
+    "quantum computing applications finance",
+    "decentralized exchange platforms",
+    "synthetic data for risk modeling"
+   ],
+   "query_en": [
+    "early-tech-signals-fintech",
+    "next-gen-financial-tech-solutions",
+    "innovative-financial-technology"
+   ],
+   "topic_en": "fintech innovations",
+   "on_topic": 3,
+   "invented": 4,
+   "checked": 6
+  },
+  {
+   "query": "перспективные решения в финтехе",
+   "model": "GigaChat-2-Max",
+   "seconds": 3.7,
+   "ok": true,
+   "error": "",
+   "subqueries": [
+    "Decentralized Finance DeFi protocols",
+    "Quantum Computing Cryptography",
+    "Zero knowledge Proof Authentication",
+    "Regulatory Tech Compliance Automation",
+    "Embedded Finance APIs",
+    "Open source Core Banking Systems"
+   ],
+   "query_en": [
+    "Emerging Fintech Solutions",
+    "Next-generation Banking Technologies",
+    "Innovative Financial Services"
+   ],
+   "topic_en": "FinTech Innovations",
+   "on_topic": 3,
+   "invented": 3,
+   "checked": 6
+  }
+ ]
+}

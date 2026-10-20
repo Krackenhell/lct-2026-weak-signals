@@ -1,0 +1,23 @@
+# Домен с HTTPS для стенда (Caddy сам получает и продлевает сертификат Let's Encrypt).
+# Запуск на сервере стенда (Windows):  set DOMAIN=radar.example.ru  &&  caddy run --config deploy\Caddyfile
+# Приложение при этом слушает 127.0.0.1:8081 (set PORT=8081 перед run_windows.bat), Caddy — порты 80 и 443.
+{$DOMAIN} {
+	encode gzip zstd
+	reverse_proxy 127.0.0.1:{$APP_PORT:8081} {
+		# Долгие запросы живого поиска (до 6 минут) не обрываются прокси.
+		transport http {
+			read_timeout 10m
+		}
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# Старый адрес по IP продолжает работать (ссылки в материалах сдачи).
+:8080 {
+	reverse_proxy 127.0.0.1:{$APP_PORT:8081}
+}

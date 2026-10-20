@@ -34,14 +34,26 @@ def startup() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     startup()
-    every = get_settings().precompute_every_hours
-    task = None
-    if every > 0:
+    s = get_settings()
+    tasks = []
+    if s.more_sources:  # свежий каталог препринтов bioRxiv/medRxiv — в фоне, первый запрос его не ждёт
+        from app.collectors import science_more
+
+        science_more.ensure_catalog()
+    if s.precompute_every_hours > 0:
         from app import precompute
 
-        task = asyncio.create_task(precompute.loop(every))
+        tasks.append(asyncio.create_task(precompute.loop(s.precompute_every_hours)))
+    if s.subscriptions_every_hours > 0:  # подписки на темы: пересчёт по расписанию
+        from app.pipeline import watch
+
+        tasks.append(asyncio.create_task(watch.loop(s.subscriptions_every_hours)))
+    if s.forecast_check_every_hours > 0:  # проверка прогнозов, срок которых наступил
+        from app.pipeline import forecasts
+
+        tasks.append(asyncio.create_task(forecasts.loop(s.forecast_check_every_hours)))
     yield
-    if task:
+    for task in tasks:
         task.cancel()
 
 

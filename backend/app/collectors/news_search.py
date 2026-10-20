@@ -11,6 +11,7 @@ SiliconANGLE (WordPress) разрешает всё, включая RSS поис�
 """
 import asyncio
 import re
+import time
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote, urlparse
 
@@ -79,6 +80,18 @@ COMMON = {
 }
 
 
+# Слова, которые LLM приставляет к любой теме: «machine learning in gaslift control» приводил в корпус запроса о газлифте
+# все новости про ИИ. Игнорируются, только если их нет в самом запросе: для «квантовых сенсоров» «quantum» — главное слово.
+GENERIC_EXTRA = {"quantum", "computing", "autonomous", "optimization", "control", "monitoring", "management", "neural", "deep",
+                 "agent", "agents", "agentic", "modeling", "modelling", "analytics", "efficiency", "advanced", "generation", "innovative"}
+
+
+def generic_for(topic_text: str) -> set[str]:
+    """Основы общих слов, которые нужно игнорировать для этого запроса (те, что в нём не встречаются)."""
+    asked = _stems(topic_text)
+    return {w[:5] for w in GENERIC_EXTRA} - asked
+
+
 def event_of(text: str) -> str | None:
     """Тип события в заголовке новости: раунд или сделка, запуск или пилот, иначе None."""
     if FUNDING.search(text or ""):
@@ -119,7 +132,16 @@ def _blocked(http: HttpClient, url: str) -> None:
     st["robots_blocked"] = st.get("robots_blocked", 0) + 1
 
 
+# Разобранные ленты в памяти процесса. Скорость: лента TechNode — 11 МБ и 2000 записей; раньше её заново разбирал
+# каждый из 30 кандидатов, и синхронный разбор на минуту блокировал все остальные запросы (замер 19.10).
+FEED_TTL = 1800.0
+_PARSED: dict[str, tuple[float, list[RawDoc]]] = {}
+
+
 async def _feed(http: HttpClient, url: str, publisher: str, lang: str) -> list[RawDoc]:
+    hit = _PARSED.get(url)
+    if hit and time.monotonic() - hit[0] < FEED_TTL:
+        return hit[1]
     if not await robots.allowed(http, url):
         _blocked(http, url)
         return []
@@ -127,6 +149,12 @@ async def _feed(http: HttpClient, url: str, publisher: str, lang: str) -> list[R
         text = await http.get(url, as_json=False)
     except SourceError:
         return []
+    docs = await asyncio.to_thread(_parse_feed, text, url, publisher, lang)  # разбор — в отдельном потоке
+    _PARSED[url] = (time.monotonic(), docs)
+    return docs
+
+
+def _parse_feed(text: str, url: str, publisher: str, lang: str) -> list[RawDoc]:
     docs = []
     for e in feedparser.parse(text).entries:
         title = clean(e.get("title"), 400)
@@ -179,10 +207,11 @@ async def tag_feeds(http: HttpClient, terms: list[str], n: int = 20) -> list[Raw
     return _unique(d for b in batches for d in b[:n])
 
 
-def select(docs: list[RawDoc], terms: list[str], n: int = 20, min_score: int = 2) -> list[RawDoc]:
+def select(docs: list[RawDoc], terms: list[str], n: int = 20, min_score: int = 2, ignore: set[str] | frozenset = frozenset()) -> list[RawDoc]:
     """Записи лент, относящиеся к теме: у одного из терминов совпало не меньше min_score основ слов
-    (у однословного термина — само слово). Выше — больше совпадений, затем новости о раундах и запусках."""
-    term_stems = [s for s in (_stems(t) for t in terms if t and not CJK.search(t)) if s]
+    (у однословного термина — само слово). Выше — больше совпадений, затем новости о раундах и запусках.
+    ignore — основы общих слов, которые для этого запроса не считаются (см. generic_for)."""
+    term_stems = [s for s in (_stems(t) - ignore for t in terms if t and not CJK.search(t)) if s]
     # В китайском нет пробелов: сравниваем пары соседних иероглифов, нужно совпадение 60% пар термина.
     term_bigrams = [b for b in (_bigrams(t) for t in terms if t and CJK.search(t)) if b]
     scored = []
@@ -198,15 +227,16 @@ def select(docs: list[RawDoc], terms: list[str], n: int = 20, min_score: int = 2
     return [d for *_, d in scored[:n]]
 
 
-async def matching(http: HttpClient, terms: list[str], lang: str = "en", n: int = 20, min_score: int = 2) -> list[RawDoc]:
-    return select(await industry_feeds(http, lang), terms, n, min_score)
+async def matching(http: HttpClient, terms: list[str], lang: str = "en", n: int = 20, min_score: int = 2,
+                   ignore: set[str] | frozenset = frozenset()) -> list[RawDoc]:
+    return select(await industry_feeds(http, lang), terms, n, min_score, ignore)
 
 
 async def for_topic(http: HttpClient, topic_text: str, terms: list[str], lang: str = "en", n: int = 80) -> list[RawDoc]:
     """Корпус новостей для запроса: все записи тематических лент + совпавшие по словам из остальных
     + ленты тегов по подтемам (только для английского)."""
     themed = await industry_feeds(http, lang, topic_text)
-    by_words = await matching(http, terms, lang, n)
+    by_words = await matching(http, terms, lang, n, ignore=generic_for(topic_text))
     tagged = await tag_feeds(http, terms[:4]) if lang == "en" else []
     themed.sort(key=lambda d: (bool(d.extra.get("event")), d.published or ""), reverse=True)  # раунды и запуски, затем свежие
     return _unique([*by_words, *tagged, *themed])[:n]

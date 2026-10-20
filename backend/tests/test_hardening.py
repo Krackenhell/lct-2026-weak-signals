@@ -1,9 +1,11 @@
 """Устойчивость и безопасность: выход за пределы каталога сайта, кривые ответы LLM, повреждённый кэш, очередь запусков."""
 import asyncio
 import json
+import os
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app import main as main_mod
@@ -72,6 +74,8 @@ def test_corrupted_cache_file_is_refetched(tmp_path, monkeypatch):
         asyncio.run(go())
         assert len(calls) == 2
         assert not list(tmp_path.glob("*.tmp"))
+        for p in tmp_path.glob("*.json"):  # файл записан только что: «состариваем», иначе сравнение времени зависит от точности часов
+            os.utime(p, (p.stat().st_mtime - 10, p.stat().st_mtime - 10))
         assert prune_cache(tmp_path, 0) >= 1  # просроченные файлы удаляются
     finally:
         get_settings.cache_clear()
@@ -132,22 +136,53 @@ def test_repeat_query_opens_recent_result_instantly(monkeypatch):
         started.append(run_id)
 
     monkeypatch.setattr(routes.runner, "execute", fake_execute)
+    prov = {"llm": "none:template", "pipeline": runner.PIPELINE_VERSION}
     with SessionLocal() as s:
-        done = Run(query="Квантовые  сенсоры!", status="done", stats={"signals": 3}, providers={"llm": "none:template"}, options={})
-        old = Run(query="микрофлюидика", status="done", stats={"signals": 2}, providers={"llm": "none:template"}, options={},
-                  created_at=datetime.now(timezone.utc) - timedelta(days=3))
+        done = Run(query="Квантовые  сенсоры!", status="done", stats={"signals": 3}, providers=prov, options={})
+        old = Run(query="микрофлюидика", status="done", stats={"signals": 2}, providers=prov, options={},
+                  created_at=datetime.now(timezone.utc) - timedelta(days=5))
         s.add_all([done, old])
         s.commit()
         done_id = done.id
     with TestClient(main_mod.app) as c:
-        r = c.post("/api/search", json={"query": "квантовые сенсоры"}).json()
+        r = c.post("/api/search", json={"query": "квантовый сенсор"}).json()  # другая словоформа — та же тема
         assert r["id"] == done_id and r["reused"] is True and not started
         r = c.post("/api/search", json={"query": "квантовые сенсоры", "fresh": True}).json()
         assert r["id"] != done_id and "reused" not in r and started == [r["id"]]
-        assert c.post("/api/search", json={"query": "микрофлюидика"}).json().get("reused") is None  # старше суток — пересчёт
+        assert c.post("/api/search", json={"query": "микрофлюидика"}).json().get("reused") is None  # старше REUSE_HOURS — пересчёт
         r2 = c.post("/api/search", json={"query": "квантовые сенсоры"}).json()
         assert r2["id"] == r["id"] and r2["status"] == "queued"  # тот же запрос уже в работе — второй не запускается
         assert len(started) == 2
+
+
+@pytest.mark.parametrize("a, b, same", [
+    ("технология многослойного графена", "технологии многослойного графена", True),
+    ("микрофлюидные чипы", "Микрофлюидный чип", True),
+    ("органы на чипе", "органы-на-чипе", True),
+    ("технологии в финтехе", "решения в финтехе", False),
+    ("безопасность ИИ", "ИИ для безопасности", False),
+    ("графен", "графит", False),
+    ("квантовые сенсоры", "квантовые компьютеры", False),
+])
+def test_query_key_matches_word_forms_only(a, b, same):
+    from app.api.routes import _norm_query
+
+    assert (_norm_query(a) == _norm_query(b)) is same
+
+
+@pytest.mark.parametrize("change, blocked", [
+    ({}, False),
+    ({"providers": {"llm": "none:template", "pipeline": "старая"}}, True),  # другая версия конвейера
+    ({"stats": {"signals": 3, "candidates": 30, "decision_fallback": 10}}, True),  # decision-модель не ответила по трети
+    ({"stats": {"signals": 3, "degraded": True}}, True),  # OpenAlex был недоступен
+    ({"stats": {"signals": 0}}, True),
+])
+def test_reuse_gates(change, blocked):
+    from app.api.routes import reuse_blockers
+
+    base = {"query": "x", "status": "done", "stats": {"signals": 3, "candidates": 30},
+            "providers": {"llm": "none:template", "pipeline": runner.PIPELINE_VERSION}, "plan": {"generated_by": "lexicon"}}
+    assert bool(reuse_blockers(Run(**{**base, **change}))) is blocked
 
 
 def test_precompute_runs_topics_once(monkeypatch):
@@ -168,7 +203,7 @@ def test_cost_of_request_in_rubles(monkeypatch):
 
     usage = {"gigachat": {"model": "GigaChat-2-Max", "calls": 20, "tokens": 50_000}, "jev": {"model": "jev-latest", "calls": 30, "tokens": 0}}
     c = cost.estimate(usage)
-    assert c["total_rub"] == 97.5 and {x["provider"] for x in c["lines"]} == {"gigachat", "jev"}  # 50 тыс. токенов × 1,95 ₽
+    assert c["total_rub"] == 32.5 and {x["provider"] for x in c["lines"]} == {"gigachat", "jev"}  # 50 тыс. токенов × 0,65 ₽ (тариф Max, 19.10)
     monkeypatch.setenv("DECISION_RUB_PER_CALL", "0.5")
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     monkeypatch.setenv("OPENAI_BASE_URL", "http://ollama:11434/v1")
@@ -235,3 +270,21 @@ def test_link_check_skips_internal_addresses():
     res = asyncio.run(links.check_all(urls, transport=httpx.MockTransport(handler)))
     assert res["https://arxiv.org/abs/1"] == "ok" and seen == ["https://arxiv.org/abs/1"]
     assert all(res[u] == "restricted" for u in urls[:-1])
+
+
+def test_webhook_dns_rebinding_is_blocked():
+    """Имя, которое разрешается во внутренний адрес, не проходит (раньше проверялась только запись адреса в URL)."""
+    import asyncio
+
+    from app.pipeline.links import resolves_internal
+
+    assert asyncio.run(resolves_internal("https://localhost/hook"))
+    assert asyncio.run(resolves_internal("https://127.0.0.1.nip.invalid/hook"))  # не разрешается — небезопасно
+
+
+def test_grouped_cv_groups_synonyms():
+    from app.ml.grouped_cv import synonym_groups
+
+    rows = [{"phrase": "solid-state battery"}, {"phrase": "all solid state batteries"}, {"phrase": "vector database"}]
+    g = synonym_groups(rows)
+    assert g[0] == g[1] != g[2]

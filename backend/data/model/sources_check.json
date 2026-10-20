@@ -1,25 +1,25 @@
 {
- "date": "2026-10-17",
- "query_en": "agentic commerce",
- "query_ru": "агентская коммерция",
+ "date": "2026-10-20",
+ "query_en": "solid state battery",
+ "query_ru": "твердотельный аккумулятор",
  "sources": [
   {
    "source": "arXiv",
    "ok": true,
    "records": 5,
-   "seconds": 1.0
+   "seconds": 1.3
   },
   {
    "source": "OpenAlex",
    "ok": true,
    "records": 5,
-   "seconds": 1.2
+   "seconds": 1.5
   },
   {
    "source": "Crossref",
    "ok": true,
    "records": 5,
-   "seconds": 1.2
+   "seconds": 1.4
   },
   {
    "source": "Semantic Scholar (ключ)",
@@ -30,26 +30,26 @@
   {
    "source": "Europe PMC",
    "ok": true,
-   "records": 2,
-   "seconds": 0.7
+   "records": 5,
+   "seconds": 1.1
   },
   {
    "source": "КиберЛенинка (RU)",
-   "ok": true,
-   "records": 5,
-   "seconds": 0.9
+   "ok": false,
+   "error": "ConnectError",
+   "seconds": 64.1
   },
   {
    "source": "Хабр (RU)",
    "ok": true,
    "records": 5,
-   "seconds": 0.1
+   "seconds": 0.5
   },
   {
    "source": "GDELT (EN)",
    "ok": false,
    "error": "HTTP 429",
-   "seconds": 9.8
+   "seconds": 10.9
   },
   {
    "source": "GDELT (RU)",
@@ -67,19 +67,79 @@
    "source": "Hacker News",
    "ok": true,
    "records": 5,
-   "seconds": 0.9
+   "seconds": 1.2
   },
   {
    "source": "GitHub",
    "ok": true,
    "records": 3,
-   "seconds": 0.0
+   "seconds": 1.5
   },
   {
    "source": "Википедия",
    "ok": true,
-   "records": 1,
-   "seconds": 0.0
+   "records": 0,
+   "seconds": 1.1
+  },
+  {
+   "source": "PubMed (ключ NCBI)",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.6
+  },
+  {
+   "source": "NASA ADS (токен)",
+   "ok": true,
+   "records": 5,
+   "seconds": 2.9
+  },
+  {
+   "source": "Stack Exchange (ключ)",
+   "ok": true,
+   "records": 0,
+   "seconds": 1.0
+  },
+  {
+   "source": "ClinicalTrials.gov",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.1
+  },
+  {
+   "source": "SEC EDGAR (User-Agent)",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.6
+  },
+  {
+   "source": "Lens.org патенты (токен)",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.7
+  },
+  {
+   "source": "EPO OPS патенты (ключ)",
+   "ok": true,
+   "records": 5,
+   "seconds": 1.7
+  },
+  {
+   "source": "Роспатент (ключ)",
+   "ok": false,
+   "error": "ReadTimeout",
+   "seconds": 10.2
+  },
+  {
+   "source": "ЕИС госзакупки (RU)",
+   "ok": true,
+   "records": 5,
+   "seconds": 0.5
+  },
+  {
+   "source": "Brave Search (ключ)",
+   "ok": true,
+   "records": 6,
+   "seconds": 1.9
   }
  ]
 }
